@@ -36,13 +36,15 @@ def cmd_calibrate(args):
     os.makedirs(args.out, exist_ok=True)
     base = SimConfig(speed_profile_csv=getattr(args, "speed_profile", None))
     src = f"hourly speeds from {base.speed_profile_csv}" if base.speed_profile_csv else "default hourly speeds"
-    print(f"Calibrating schedule tightness to on-time target {base.target_otp:.1%} ({src}) ...")
+    print(f"Calibrating to on-time {base.target_otp:.1%}, 1-20 min {base.target_late_1_20:.1%}, "
+          f"21-59 min {base.target_late_21_59:.1%}, 60+ min {base.target_late_60_plus:.2%} ({src}) ...")
     cfg, report = calibrate(base)
     cfg.save(os.path.join(args.out, "calibrated_config.json"))
     with open(os.path.join(args.out, "calibration_report.json"), "w") as f:
         json.dump(report, f, indent=2)
     a = report["achieved"]
-    print(f"-> plan_factor={cfg.plan_factor}  on-time={a['otp']:.3f}  denied={a['denial_rate']:.3f}")
+    print(f"-> n_vans={cfg.n_vans}  plan_factor={cfg.plan_factor}  rescue_availability={cfg.rescue_availability}  "
+          f"on-time={a['otp']:.3f}  denied={a['denial_rate']:.3f}")
 
 
 def cmd_generate(args):
@@ -63,8 +65,9 @@ def cmd_generate(args):
     pd.concat(stops).to_csv(os.path.join(args.out, "stops.csv"), index=False)
     w.riders.to_csv(os.path.join(args.out, "riders.csv"), index=False)
     summary = summarize(results)
-    summary["reference_ebp_dec_2019"] = dict(otp_ytd=0.879, otp_standard=0.91, over_60_late_ytd=0.002,
-                                             rider_no_show_ytd=0.026, revenue_miles_per_passenger=9.8,
+    summary["reference_ebp_otp_latest"] = dict(otp=cfg.target_otp, late_1_20=cfg.target_late_1_20,
+                                               late_21_59=cfg.target_late_21_59, late_60_plus=cfg.target_late_60_plus)
+    summary["reference_ebp_dec_2019"] = dict(rider_no_show_ytd=0.026, revenue_miles_per_passenger=9.8,
                                              minutes_per_passenger=42.0)
     with open(os.path.join(args.out, "summary.json"), "w") as f:
         json.dump(summary, f, indent=2)

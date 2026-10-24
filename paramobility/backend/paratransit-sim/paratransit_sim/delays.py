@@ -32,16 +32,23 @@ def execute_day(vans, trips: pd.DataFrame, plan: pd.DataFrame, cfg: SimConfig,
         lat, lon = van.lat0, van.lon0
         breakdown_at = int(rng.integers(len(g))) if rng.random() < cfg.breakdown_prob_per_van_day else -1
         noshow = set()
+        rescued = {}  # ti -> dispatcher decision time
+        no_backup = set()  # dispatch asked, no backup was free; the van keeps the trip
         prev_plan_dep = van.start
-        for k, s in enumerate(g.itertuples(index=False)):
+        stops = list(g.itertuples(index=False))
+        for k, s in enumerate(stops):
             row = dict(van_id=van_id, depot=s.depot, seq=s.seq, kind=s.kind, trip_id=s.trip_id, ti=s.ti,
                        lat=s.lat, lon=s.lon, mobility=s.mobility, promised=s.promised,
                        plan_arr=s.plan_arr, plan_dep=s.plan_dep,
                        depart_prev=t, prev_lat=lat, prev_lon=lon,
                        inherited_behind_min=t - prev_plan_dep,   # lateness carried in from earlier stops
                        late_start_min=late_start if k == 0 else 0.0)
-            if s.kind == "D" and s.ti in noshow:
+            if s.kind == "D" and (s.ti in noshow or s.ti in rescued):
                 rows.append(dict(row, status="skipped", arr=np.nan, arr_eff=np.nan, dep=t))
+                continue
+            if s.kind == "P" and s.ti in rescued:
+                arr = rescued[s.ti] + _lognormal_mean(rng, cfg.rescue_response_min, 0.3)
+                rows.append(dict(row, status="rescued", arr=arr, arr_eff=max(arr, s.promised), dep=t))
                 continue
             km = float(travel.road_km(lat, lon, s.lat, s.lon))
             med = travel.median_scalar(km, t, weekend)
@@ -78,6 +85,19 @@ def execute_day(vans, trips: pd.DataFrame, plan: pd.DataFrame, cfg: SimConfig,
                              dwell_min=dwell, breakdown_min=breakdown,
                              arr=arr, arr_eff=arr_eff, dep=dep))
             t, lat, lon, prev_plan_dep = dep, s.lat, s.lon, s.plan_dep
+            behind = t - s.plan_dep
+            if cfg.rescue_threshold_min is not None and behind > 0:
+                for s2 in stops[k + 1:]:
+                    if s2.plan_arr - s.plan_dep > cfg.rescue_lookahead_min:
+                        break
+                    van_eta = s2.plan_arr + behind
+                    if (s2.kind == "P" and s2.ti not in rescued and s2.ti not in noshow and s2.ti not in no_backup
+                            and van_eta - s2.promised - cfg.window_min > cfg.rescue_threshold_min
+                            and t + cfg.rescue_response_min < van_eta):  # only if the backup gets there first
+                        if rng.random() < cfg.rescue_availability:
+                            rescued[s2.ti] = t
+                        else:
+                            no_backup.add(s2.ti)
     ex = pd.DataFrame(rows)
     p = ex["kind"] == "P"
     ex["late_vs_window_start"] = np.where(p, ex["arr_eff"] - ex["promised"], np.nan)

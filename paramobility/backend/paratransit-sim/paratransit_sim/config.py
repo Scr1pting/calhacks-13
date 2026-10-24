@@ -43,7 +43,8 @@ class SimConfig:
     plan_into_window_min: float = 10.0     # planner aims to arrive within first N min of window
     plan_dwell_factor: float = 0.85        # planners under-estimate boarding a little
     tail_positions: int = 7
-    candidate_vans: int = 10
+    candidate_vans: int = 25               # nearest busy vans tried per trip
+    idle_candidates: int = 8               # nearest not-yet-used vans tried per trip
 
     # ---- Delay model (ASSUMPTIONS) ------------------------------------------
     sigma_offpeak: float = 0.22            # lognormal spread of travel time
@@ -61,6 +62,13 @@ class SimConfig:
     hard_address_prob: float = 0.03
     hard_address_min: float = 2.0
     hard_address_max: float = 7.0
+    # ---- Dispatcher rescue (threshold CALIBRATED, rest ASSUMPTION) ----------
+    # When a van leaves a stop, dispatch projects its upcoming pickups; any that would be
+    # more than rescue_threshold_min past window goes to a backup vehicle (taxi / spare van).
+    rescue_threshold_min: float | None = 30.0   # None disables rescues
+    rescue_lookahead_min: float = 90.0          # how far ahead in the plan dispatch looks
+    rescue_response_min: float = 30.0           # backup vehicle: decision -> at the door (lognormal mean)
+    rescue_availability: float = 1.0            # chance a backup is free when asked (CALIBRATED)
     dwell_sigma: float = 0.35
     board_mean: tuple = (2.0, 3.5, 6.5)    # ambulatory, walker, wheelchair
     alight_mean: tuple = (1.5, 2.5, 5.0)
@@ -74,8 +82,14 @@ class SimConfig:
     weekend_speed_factor: float = 1.12
     speed_profile_csv: str | None = None   # optional hour,speed_mph,sigma override
 
-    # ---- Calibration targets (EBP ops report Dec 2019) -----------------------
-    target_otp: float = 0.879              # FY year-to-date; agency standard is >= 91%
+    # ---- Calibration targets --------------------------------------------------
+    # Most recent EBP on-time figures: on time 94.7%, 1-20 min past window 4.42%,
+    # 21-59 min 0.79%, 60+ min 0.06%
+    target_otp: float = 0.947
+    target_late_1_20: float = 0.0442
+    target_late_21_59: float = 0.0079
+    target_late_60_plus: float = 0.0006
+    target_denial_rate: float = 0.005      # ADA: capacity denials should be ~0; fleet size is fitted to this
     ref_miles_per_passenger: float = 9.8   # revenue miles per ADA passenger (check only)
     ref_minutes_per_passenger: float = 42.0  # van revenue minutes per ADA passenger (check only)
 

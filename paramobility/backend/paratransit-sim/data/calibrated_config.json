@@ -4,7 +4,7 @@
   "saturday_factor": 0.29,
   "sunday_factor": 0.29,
   "rider_pool": 7000,
-  "n_vans": 215,
+  "n_vans": 275,
   "shift_hours": 10.0,
   "depots": [
     [
@@ -29,11 +29,12 @@
   "window_min": 30.0,
   "no_show_wait_min": 5.0,
   "max_negotiation_min": 60.0,
-  "plan_factor": 1.0813,
+  "plan_factor": 1.1938,
   "plan_into_window_min": 10.0,
   "plan_dwell_factor": 0.85,
   "tail_positions": 7,
-  "candidate_vans": 10,
+  "candidate_vans": 25,
+  "idle_candidates": 8,
   "sigma_offpeak": 0.22,
   "sigma_peak": 0.32,
   "incident_prob": 0.03,
@@ -49,6 +50,10 @@
   "hard_address_prob": 0.03,
   "hard_address_min": 2.0,
   "hard_address_max": 7.0,
+  "rescue_threshold_min": 30.0,
+  "rescue_lookahead_min": 90.0,
+  "rescue_response_min": 30.0,
+  "rescue_availability": 0.15,
   "dwell_sigma": 0.35,
   "board_mean": [
     2.0,
@@ -67,7 +72,11 @@
   "freeway_km": 25.0,
   "weekend_speed_factor": 1.12,
   "speed_profile_csv": null,
-  "target_otp": 0.879,
+  "target_otp": 0.947,
+  "target_late_1_20": 0.0442,
+  "target_late_21_59": 0.0079,
+  "target_late_60_plus": 0.0006,
+  "target_denial_rate": 0.005,
   "ref_miles_per_passenger": 9.8,
   "ref_minutes_per_passenger": 42.0
 }

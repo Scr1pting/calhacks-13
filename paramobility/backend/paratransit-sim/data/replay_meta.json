@@ -1,10 +1,10 @@
 {
   "day": 15,
   "weekday": "Tue",
-  "n_events": 58236,
-  "start": 300.0,
-  "end": 1382.0,
-  "vans": 207,
+  "n_events": 62292,
+  "start": 240.0,
+  "end": 1374.0,
+  "vans": 220,
   "bounds": [
     [
       37.52009516715651,
@@ -17,30 +17,33 @@
   ],
   "persona": {
     "name": "Maria",
-    "trip_id": "D15T0918",
-    "rider_id": "R04801",
-    "van_id": 52,
+    "trip_id": "D15T0966",
+    "rider_id": "R02303",
+    "van_id": 26,
     "purpose": "dialysis",
-    "pickup": "Home (Downtown Oakland / Chinatown)",
-    "dropoff": "Dialysis Center - Oakland (synthetic)",
+    "pickup": "Home (San Pablo)",
+    "dropoff": "Dialysis Center - Richmond (synthetic)",
     "mobility": "ambulatory",
-    "window": "10:30-11:00",
-    "appointment": "11:23",
-    "actual_pickup": "11:25",
-    "minutes_past_window": 24.6,
-    "stops_before_on_van": 6
+    "window": "11:20-11:50",
+    "appointment": "11:42",
+    "actual_pickup": "12:04",
+    "minutes_past_window": 14.3,
+    "stops_before_on_van": 19
   },
   "summary": {
     "days": 1,
     "trips": 2400,
-    "denial_rate": 0.05458333333333333,
-    "otp": 0.8655795504627589,
-    "no_show_rate": 0.01895107977082415,
-    "share_over_60_late": 0.005288673424416042,
-    "mean_minutes_past_window_when_late": 16.67541280773985,
-    "avg_trip_miles": 8.968925989647945,
-    "revenue_miles_per_passenger": 6.847234870805556,
-    "avg_ride_minutes": 51.96615425321433,
-    "revenue_minutes_per_passenger": 46.34458221984552
+    "denial_rate": 0.0,
+    "otp": 0.94875,
+    "late_1_20": 0.035,
+    "late_21_59": 0.015833333333333335,
+    "late_60_plus": 0.0004166666666666667,
+    "rescue_rate": 0.0008333333333333334,
+    "no_show_rate": 0.025833333333333333,
+    "mean_minutes_past_window_when_late": 14.895089353134335,
+    "avg_trip_miles": 8.91867377147585,
+    "revenue_miles_per_passenger": 6.775847565184223,
+    "avg_ride_minutes": 49.92717230486085,
+    "revenue_minutes_per_passenger": 47.450211515235274
   }
 }

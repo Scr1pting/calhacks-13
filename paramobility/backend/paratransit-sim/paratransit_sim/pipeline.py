@@ -54,13 +54,17 @@ def summarize(results: list[DayResult]) -> dict:
     p = ex[ex["kind"] == "P"]
     served = tr[~tr["denied"] & (tr["pickup_status"] == "ok")]
     hour = (p["promised"] // 60).astype(int)
+    L = p["late_past_window"]
     return dict(
         days=len(results),
         trips=int(len(tr)),
         denial_rate=float(tr["denied"].mean()),
         otp=float(p["on_time"].mean()),
+        late_1_20=float(((L > 0) & (L <= 20)).mean()),
+        late_21_59=float(((L > 20) & (L < 60)).mean()),
+        late_60_plus=float((L >= 60).mean()),
+        rescue_rate=float((p["status"] == "rescued").mean()),
         no_show_rate=float(p["status"].str.startswith("no_show").mean()),
-        share_over_60_late=float((p["late_past_window"] > 60).mean()),
         mean_minutes_past_window_when_late=float(p.loc[p["on_time"] == 0, "late_past_window"].mean()),
         avg_trip_miles=float(served["direct_km"].mean() / KM_PER_MILE),
         # comparable to EBP's "revenue miles per ADA passenger": van miles between

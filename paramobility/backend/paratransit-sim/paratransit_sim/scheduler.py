@@ -135,8 +135,9 @@ class Scheduler:
 def make_fleet(cfg: SimConfig, rng: np.random.Generator, dow: int) -> list[Van]:
     scale = cfg.saturday_factor if dow == 5 else cfg.sunday_factor if dow == 6 else 1.0
     n = max(5, int(round(cfg.n_vans * min(1.0, scale * 1.2))))
-    starts_h = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0]
-    w = np.array([1, 2, 3, 3, 3, 2, 2, 1.5, 1.5, 1.5, 1.5, 1.5])
+    # early starts cover the 6:30 dialysis chair
+    starts_h = [4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0]
+    w = np.array([1, 1, 1, 2, 3, 3, 3, 2, 2, 1.5, 1.5, 1.5, 1.5, 1.5])
     dw = np.array([d[3] for d in cfg.depots])
     vans = []
     for v in range(n):
@@ -178,7 +179,7 @@ def schedule_day(trips: pd.DataFrame, cfg: SimConfig, travel: TravelModel, rng: 
         busy.sort(key=lambda x: x[0])
         idle.sort(key=lambda x: x[0])
         best = None
-        for _, van in busy[: cfg.candidate_vans] + idle[:2]:   # fresh vans pay the yard deadhead
+        for _, van in busy[: cfg.candidate_vans] + idle[: cfg.idle_candidates]:   # fresh vans pay the yard deadhead
             r = sched.best_insertion(van, ti, ta, P, D)
             if r and (best is None or r[0] < best[0]):
                 best = (r[0], r[1], van)

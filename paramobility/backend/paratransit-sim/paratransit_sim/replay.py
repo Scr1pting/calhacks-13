@@ -38,7 +38,7 @@ def _along(pts, cum, f):
 
 
 def _positions(ex: pd.DataFrame, routes_cache: str | None, step=2.0):
-    live = ex[ex["status"] != "skipped"]
+    live = ex[~ex["status"].isin(["skipped", "rescued"])]  # rescued pickups are done by another vehicle
     routes = fetch_routes(zip(live["prev_lat"], live["prev_lon"], live["lat"], live["lon"]), routes_cache)
     events = []
     for van_id, g in live.groupby("van_id"):
