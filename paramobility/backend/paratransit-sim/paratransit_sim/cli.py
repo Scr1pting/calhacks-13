@@ -43,7 +43,7 @@ def cmd_calibrate(args):
     with open(os.path.join(args.out, "calibration_report.json"), "w") as f:
         json.dump(report, f, indent=2)
     a = report["achieved"]
-    print(f"-> n_vans={cfg.n_vans}  plan_factor={cfg.plan_factor}  rescue_availability={cfg.rescue_availability}  "
+    print(f"-> n_vans={cfg.n_vans}  plan_factor={cfg.plan_factor}  incident_sigma={cfg.incident_sigma}  "
           f"on-time={a['otp']:.3f}  denied={a['denial_rate']:.3f}")
 
 

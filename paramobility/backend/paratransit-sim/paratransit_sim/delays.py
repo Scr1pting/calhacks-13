@@ -53,7 +53,8 @@ def execute_day(vans, trips: pd.DataFrame, plan: pd.DataFrame, cfg: SimConfig,
             km = float(travel.road_km(lat, lon, s.lat, s.lon))
             med = travel.median_scalar(km, t, weekend)
             traffic = med * float(rng.lognormal(0.0, float(travel.sigma(t))))
-            incident = rng.exponential(cfg.incident_mean_min) if rng.random() < cfg.incident_prob else 0.0
+            incident = (_lognormal_mean(rng, cfg.incident_mean_min, cfg.incident_sigma)
+                        if rng.random() < cfg.incident_prob else 0.0)
             hard_addr = rng.uniform(cfg.hard_address_min, cfg.hard_address_max) if rng.random() < cfg.hard_address_prob else 0.0
             arr = t + traffic + incident + hard_addr
             status, rider_wait, idle_wait = "ok", 0.0, 0.0

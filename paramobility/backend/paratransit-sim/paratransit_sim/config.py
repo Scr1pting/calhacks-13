@@ -25,7 +25,7 @@ class SimConfig:
     rider_pool: int = 7000                 # ASSUMPTION
 
     # ---- Fleet (ASSUMPTION: EBP does not publish fleet size in the report) ---
-    n_vans: int = 215
+    n_vans: int = 275                      # CALIBRATED: smallest fleet with ~no capacity denials
     shift_hours: float = 10.0
     # Synthetic yards in the areas where contractors operate (approximate)
     depots: tuple = (("Oakland yard", 37.7700, -122.2050, 0.5),
@@ -51,6 +51,7 @@ class SimConfig:
     sigma_peak: float = 0.32
     incident_prob: float = 0.03            # per leg: freeway crash, closure, double-parking
     incident_mean_min: float = 9.0
+    incident_sigma: float = 1.0            # lognormal spread: most incidents are short, a few close a freeway (CALIBRATED)
     late_shift_prob: float = 0.08
     late_shift_min: float = 5.0
     late_shift_max: float = 20.0
@@ -68,7 +69,7 @@ class SimConfig:
     rescue_threshold_min: float | None = 30.0   # None disables rescues
     rescue_lookahead_min: float = 90.0          # how far ahead in the plan dispatch looks
     rescue_response_min: float = 30.0           # backup vehicle: decision -> at the door (lognormal mean)
-    rescue_availability: float = 1.0            # chance a backup is free when asked (CALIBRATED)
+    rescue_availability: float = 0.5            # chance a backup is free when asked (ASSUMPTION; weakly identified)
     dwell_sigma: float = 0.35
     board_mean: tuple = (2.0, 3.5, 6.5)    # ambulatory, walker, wheelchair
     alight_mean: tuple = (1.5, 2.5, 5.0)

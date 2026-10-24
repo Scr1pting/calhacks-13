@@ -8,18 +8,15 @@
   },
   "chosen": {
     "n_vans": 275,
-    "plan_factor": 1.1938,
-    "rescue_availability": 0.15,
-    "rescue_threshold_min": 30.0
+    "plan_factor": 1.1633,
+    "incident_sigma": 0.8
   },
   "fleet_probe": {
-    "215": 0.028888888888888888,
-    "235": 0.011805555555555555,
-    "255": 0.00625,
-    "275": 0.003472222222222222,
-    "295": 0.003472222222222222,
-    "315": 0.0025,
-    "335": 0.002638888888888889
+    "235": 0.014583333333333334,
+    "255": 0.005694444444444445,
+    "275": 0.002777777777777778,
+    "295": 0.002916666666666667,
+    "315": 0.0031944444444444446
   },
   "calibration_days": [
     0,
@@ -45,417 +42,417 @@
   "achieved": {
     "days": 14,
     "trips": 26784,
-    "denial_rate": 0.0036215651135005976,
-    "otp": 0.9517368006894743,
-    "late_1_20": 0.03867051373327837,
-    "late_21_59": 0.009180499868850002,
-    "late_60_plus": 0.00041218570839734705,
-    "rescue_rate": 0.0007119571326863267,
-    "no_show_rate": 0.0228575711020347,
-    "mean_minutes_past_window_when_late": 12.559317393995087,
-    "avg_trip_miles": 8.837528431970172,
-    "revenue_miles_per_passenger": 6.962705189044132,
-    "avg_ride_minutes": 49.54837750981063,
-    "revenue_minutes_per_passenger": 47.08754090529214,
+    "denial_rate": 0.003173536439665472,
+    "otp": 0.9435933930109742,
+    "late_1_20": 0.04599423199370763,
+    "late_21_59": 0.010112738304805424,
+    "late_60_plus": 0.0002996366905127533,
+    "rescue_rate": 0.0023970935241020264,
+    "no_show_rate": 0.023296752687366567,
+    "mean_minutes_past_window_when_late": 11.979533144322513,
+    "avg_trip_miles": 8.835022452655695,
+    "revenue_miles_per_passenger": 6.915915795558009,
+    "avg_ride_minutes": 49.86372003686433,
+    "revenue_minutes_per_passenger": 45.764826079482376,
     "otp_by_hour": {
-      "4": 1.0,
-      "5": 0.99,
-      "6": 0.98,
-      "7": 0.968,
-      "8": 0.956,
-      "9": 0.952,
-      "10": 0.936,
-      "11": 0.947,
-      "12": 0.949,
-      "13": 0.941,
-      "14": 0.963,
-      "15": 0.966,
-      "16": 0.933,
-      "17": 0.899,
-      "18": 0.921,
-      "19": 0.907,
-      "20": 0.975,
-      "21": 0.961
+      "4": 0.993,
+      "5": 0.988,
+      "6": 0.983,
+      "7": 0.974,
+      "8": 0.955,
+      "9": 0.936,
+      "10": 0.938,
+      "11": 0.923,
+      "12": 0.928,
+      "13": 0.935,
+      "14": 0.961,
+      "15": 0.956,
+      "16": 0.903,
+      "17": 0.892,
+      "18": 0.838,
+      "19": 0.963,
+      "20": 0.986,
+      "21": 0.987
     }
   },
   "candidates": [
     {
-      "rescue_availability": 1.0,
-      "plan_factor": 1.1938,
-      "score": 0.865,
-      "otp": 0.95192,
-      "late_1_20": 0.04069,
-      "late_21_59": 0.00716,
-      "late_60_plus": 0.00022,
-      "rescue_rate": 0.00236,
-      "denial_rate": 0.00362,
+      "incident_sigma": 0.8,
+      "plan_factor": 1.1633,
+      "score": 0.805,
+      "otp": 0.94359,
+      "late_1_20": 0.04599,
+      "late_21_59": 0.01011,
+      "late_60_plus": 0.0003,
+      "rescue_rate": 0.0024,
+      "denial_rate": 0.00317,
       "history": [
         {
           "plan_factor": 1.275,
-          "otp": 0.9835,
-          "late_1_20": 0.0151,
-          "late_21_59": 0.0014,
-          "late_60_plus": 0.0,
+          "otp": 0.97833,
+          "late_1_20": 0.01748,
+          "late_21_59": 0.00405,
+          "late_60_plus": 0.00014,
           "rescue_rate": 0.00056,
           "denial_rate": 0.00667
         },
         {
           "plan_factor": 1.1125,
-          "otp": 0.88612,
-          "late_1_20": 0.09219,
-          "late_21_59": 0.02169,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00945,
-          "denial_rate": 0.00111
-        },
-        {
-          "plan_factor": 1.1938,
-          "otp": 0.94241,
-          "late_1_20": 0.0463,
-          "late_21_59": 0.01088,
+          "otp": 0.88988,
+          "late_1_20": 0.08913,
+          "late_21_59": 0.02058,
           "late_60_plus": 0.00042,
-          "rescue_rate": 0.00321,
-          "denial_rate": 0.00403
-        },
-        {
-          "plan_factor": 1.2344,
-          "otp": 0.97235,
-          "late_1_20": 0.02458,
-          "late_21_59": 0.00307,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00098,
-          "denial_rate": 0.00556
-        },
-        {
-          "plan_factor": 1.2141,
-          "otp": 0.96424,
-          "late_1_20": 0.03018,
-          "late_21_59": 0.00545,
-          "late_60_plus": 0.00014,
-          "rescue_rate": 0.00154,
-          "denial_rate": 0.00583
-        },
-        {
-          "plan_factor": 1.2039,
-          "otp": 0.9675,
-          "late_1_20": 0.02581,
-          "late_21_59": 0.0067,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00377,
-          "denial_rate": 0.00431
-        },
-        {
-          "plan_factor": 1.1988,
-          "otp": 0.96346,
-          "late_1_20": 0.03068,
-          "late_21_59": 0.00586,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00279,
-          "denial_rate": 0.00403
-        }
-      ]
-    },
-    {
-      "rescue_availability": 0.75,
-      "plan_factor": 1.1735,
-      "score": 0.862,
-      "otp": 0.95103,
-      "late_1_20": 0.04005,
-      "late_21_59": 0.00869,
-      "late_60_plus": 0.00022,
-      "rescue_rate": 0.0039,
-      "denial_rate": 0.00343,
-      "history": [
-        {
-          "plan_factor": 1.275,
-          "otp": 0.98336,
-          "late_1_20": 0.0151,
-          "late_21_59": 0.00154,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00042,
-          "denial_rate": 0.00667
-        },
-        {
-          "plan_factor": 1.1125,
-          "otp": 0.89335,
-          "late_1_20": 0.08426,
-          "late_21_59": 0.02169,
-          "late_60_plus": 0.0007,
-          "rescue_rate": 0.00848,
+          "rescue_rate": 0.00375,
           "denial_rate": 0.00111
         },
         {
           "plan_factor": 1.1938,
-          "otp": 0.9505,
-          "late_1_20": 0.03779,
-          "late_21_59": 0.01116,
+          "otp": 0.95342,
+          "late_1_20": 0.04086,
+          "late_21_59": 0.00516,
           "late_60_plus": 0.00056,
-          "rescue_rate": 0.00223,
+          "rescue_rate": 0.00139,
           "denial_rate": 0.00403
         },
         {
           "plan_factor": 1.1532,
-          "otp": 0.94078,
-          "late_1_20": 0.04988,
+          "otp": 0.94287,
+          "late_1_20": 0.04891,
           "late_21_59": 0.00822,
-          "late_60_plus": 0.00111,
-          "rescue_rate": 0.00293,
-          "denial_rate": 0.00319
-        },
-        {
-          "plan_factor": 1.1735,
-          "otp": 0.94589,
-          "late_1_20": 0.04477,
-          "late_21_59": 0.00934,
           "late_60_plus": 0.0,
-          "rescue_rate": 0.00209,
-          "denial_rate": 0.00417
-        },
-        {
-          "plan_factor": 1.1837,
-          "otp": 0.95595,
-          "late_1_20": 0.0368,
-          "late_21_59": 0.00725,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00335,
-          "denial_rate": 0.00375
-        },
-        {
-          "plan_factor": 1.1786,
-          "otp": 0.95483,
-          "late_1_20": 0.03778,
-          "late_21_59": 0.00725,
-          "late_60_plus": 0.00014,
-          "rescue_rate": 0.00349,
-          "denial_rate": 0.00375
-        }
-      ]
-    },
-    {
-      "rescue_availability": 0.5,
-      "plan_factor": 1.1938,
-      "score": 0.914,
-      "otp": 0.95324,
-      "late_1_20": 0.03848,
-      "late_21_59": 0.00809,
-      "late_60_plus": 0.00019,
-      "rescue_rate": 0.00139,
-      "denial_rate": 0.00362,
-      "history": [
-        {
-          "plan_factor": 1.275,
-          "otp": 0.98364,
-          "late_1_20": 0.01468,
-          "late_21_59": 0.00168,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00028,
-          "denial_rate": 0.00667
-        },
-        {
-          "plan_factor": 1.1125,
-          "otp": 0.89002,
-          "late_1_20": 0.08384,
-          "late_21_59": 0.02558,
-          "late_60_plus": 0.00056,
-          "rescue_rate": 0.00389,
-          "denial_rate": 0.00111
-        },
-        {
-          "plan_factor": 1.1938,
-          "otp": 0.94757,
-          "late_1_20": 0.04072,
-          "late_21_59": 0.0113,
-          "late_60_plus": 0.00042,
-          "rescue_rate": 0.00167,
-          "denial_rate": 0.00403
-        },
-        {
-          "plan_factor": 1.1532,
-          "otp": 0.938,
-          "late_1_20": 0.05072,
-          "late_21_59": 0.01003,
-          "late_60_plus": 0.00125,
-          "rescue_rate": 0.00237,
-          "denial_rate": 0.00319
-        },
-        {
-          "plan_factor": 1.1735,
-          "otp": 0.94477,
-          "late_1_20": 0.04435,
-          "late_21_59": 0.01088,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00126,
-          "denial_rate": 0.00417
-        },
-        {
-          "plan_factor": 1.1837,
-          "otp": 0.94228,
-          "late_1_20": 0.04545,
-          "late_21_59": 0.01227,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00265,
-          "denial_rate": 0.00375
-        },
-        {
-          "plan_factor": 1.1887,
-          "otp": 0.94873,
-          "late_1_20": 0.03998,
-          "late_21_59": 0.01128,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00293,
-          "denial_rate": 0.00306
-        }
-      ]
-    },
-    {
-      "rescue_availability": 0.3,
-      "plan_factor": 1.1938,
-      "score": 0.544,
-      "otp": 0.95087,
-      "late_1_20": 0.04028,
-      "late_21_59": 0.00851,
-      "late_60_plus": 0.00034,
-      "rescue_rate": 0.00109,
-      "denial_rate": 0.00362,
-      "history": [
-        {
-          "plan_factor": 1.275,
-          "otp": 0.98518,
-          "late_1_20": 0.01286,
-          "late_21_59": 0.00196,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.0,
-          "denial_rate": 0.00667
-        },
-        {
-          "plan_factor": 1.1125,
-          "otp": 0.89182,
-          "late_1_20": 0.07647,
-          "late_21_59": 0.03003,
-          "late_60_plus": 0.00167,
-          "rescue_rate": 0.00362,
-          "denial_rate": 0.00111
-        },
-        {
-          "plan_factor": 1.1938,
-          "otp": 0.9484,
-          "late_1_20": 0.0403,
-          "late_21_59": 0.01116,
-          "late_60_plus": 0.00014,
-          "rescue_rate": 0.00181,
-          "denial_rate": 0.00403
-        },
-        {
-          "plan_factor": 1.1532,
-          "otp": 0.93995,
-          "late_1_20": 0.05253,
-          "late_21_59": 0.00669,
-          "late_60_plus": 0.00084,
           "rescue_rate": 0.00125,
           "denial_rate": 0.00319
         },
         {
           "plan_factor": 1.1735,
-          "otp": 0.94463,
-          "late_1_20": 0.04463,
-          "late_21_59": 0.01074,
+          "otp": 0.95244,
+          "late_1_20": 0.04114,
+          "late_21_59": 0.00642,
           "late_60_plus": 0.0,
-          "rescue_rate": 0.00098,
+          "rescue_rate": 0.00126,
           "denial_rate": 0.00417
         },
         {
-          "plan_factor": 1.1837,
-          "otp": 0.94368,
-          "late_1_20": 0.03959,
-          "late_21_59": 0.01575,
-          "late_60_plus": 0.00098,
-          "rescue_rate": 0.00139,
-          "denial_rate": 0.00375
+          "plan_factor": 1.1633,
+          "otp": 0.94365,
+          "late_1_20": 0.04673,
+          "late_21_59": 0.00962,
+          "late_60_plus": 0.0,
+          "rescue_rate": 0.00377,
+          "denial_rate": 0.00431
         },
         {
-          "plan_factor": 1.1887,
-          "otp": 0.95305,
-          "late_1_20": 0.03441,
-          "late_21_59": 0.0124,
-          "late_60_plus": 0.00014,
-          "rescue_rate": 0.00195,
-          "denial_rate": 0.00306
+          "plan_factor": 1.1684,
+          "otp": 0.93855,
+          "late_1_20": 0.04933,
+          "late_21_59": 0.01212,
+          "late_60_plus": 0.0,
+          "rescue_rate": 0.00279,
+          "denial_rate": 0.00333
         }
       ]
     },
     {
-      "rescue_availability": 0.15,
-      "plan_factor": 1.1938,
-      "score": 0.461,
-      "otp": 0.95174,
-      "late_1_20": 0.03867,
-      "late_21_59": 0.00918,
-      "late_60_plus": 0.00041,
-      "rescue_rate": 0.00071,
-      "denial_rate": 0.00362,
+      "incident_sigma": 1.2,
+      "plan_factor": 1.1735,
+      "score": 1.072,
+      "otp": 0.94703,
+      "late_1_20": 0.04091,
+      "late_21_59": 0.01064,
+      "late_60_plus": 0.00142,
+      "rescue_rate": 0.00288,
+      "denial_rate": 0.00343,
       "history": [
         {
           "plan_factor": 1.275,
-          "otp": 0.98518,
-          "late_1_20": 0.01286,
-          "late_21_59": 0.00196,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.0,
+          "otp": 0.97511,
+          "late_1_20": 0.0193,
+          "late_21_59": 0.00433,
+          "late_60_plus": 0.00126,
+          "rescue_rate": 0.0007,
           "denial_rate": 0.00667
         },
         {
           "plan_factor": 1.1125,
-          "otp": 0.88863,
-          "late_1_20": 0.07995,
-          "late_21_59": 0.03017,
-          "late_60_plus": 0.00125,
-          "rescue_rate": 0.00236,
+          "otp": 0.9035,
+          "late_1_20": 0.073,
+          "late_21_59": 0.02294,
+          "late_60_plus": 0.00056,
+          "rescue_rate": 0.00667,
           "denial_rate": 0.00111
         },
         {
           "plan_factor": 1.1938,
-          "otp": 0.94938,
-          "late_1_20": 0.03849,
-          "late_21_59": 0.01199,
-          "late_60_plus": 0.00014,
-          "rescue_rate": 0.00098,
+          "otp": 0.95482,
+          "late_1_20": 0.03514,
+          "late_21_59": 0.00892,
+          "late_60_plus": 0.00112,
+          "rescue_rate": 0.00237,
           "denial_rate": 0.00403
         },
         {
           "plan_factor": 1.1532,
-          "otp": 0.93772,
-          "late_1_20": 0.05225,
-          "late_21_59": 0.00836,
-          "late_60_plus": 0.00167,
-          "rescue_rate": 0.00042,
+          "otp": 0.94176,
+          "late_1_20": 0.04361,
+          "late_21_59": 0.01184,
+          "late_60_plus": 0.00279,
+          "rescue_rate": 0.00418,
           "denial_rate": 0.00319
         },
         {
           "plan_factor": 1.1735,
-          "otp": 0.94324,
-          "late_1_20": 0.04561,
-          "late_21_59": 0.01116,
-          "late_60_plus": 0.0,
-          "rescue_rate": 0.00056,
+          "otp": 0.94714,
+          "late_1_20": 0.04184,
+          "late_21_59": 0.01074,
+          "late_60_plus": 0.00028,
+          "rescue_rate": 0.00251,
           "denial_rate": 0.00417
         },
         {
-          "plan_factor": 1.1837,
-          "otp": 0.95344,
-          "late_1_20": 0.03332,
-          "late_21_59": 0.01213,
-          "late_60_plus": 0.00112,
-          "rescue_rate": 0.0007,
+          "plan_factor": 1.1633,
+          "otp": 0.95243,
+          "late_1_20": 0.03724,
+          "late_21_59": 0.00893,
+          "late_60_plus": 0.00139,
+          "rescue_rate": 0.00321,
+          "denial_rate": 0.00431
+        },
+        {
+          "plan_factor": 1.1583,
+          "otp": 0.94551,
+          "late_1_20": 0.04153,
+          "late_21_59": 0.01143,
+          "late_60_plus": 0.00153,
+          "rescue_rate": 0.00418,
+          "denial_rate": 0.00347
+        }
+      ]
+    },
+    {
+      "incident_sigma": 1.6,
+      "plan_factor": 1.1735,
+      "score": 2.124,
+      "otp": 0.94987,
+      "late_1_20": 0.03544,
+      "late_21_59": 0.01027,
+      "late_60_plus": 0.00442,
+      "rescue_rate": 0.00416,
+      "denial_rate": 0.00343,
+      "history": [
+        {
+          "plan_factor": 1.275,
+          "otp": 0.97511,
+          "late_1_20": 0.01902,
+          "late_21_59": 0.00419,
+          "late_60_plus": 0.00168,
+          "rescue_rate": 0.0014,
+          "denial_rate": 0.00667
+        },
+        {
+          "plan_factor": 1.1125,
+          "otp": 0.90503,
+          "late_1_20": 0.06855,
+          "late_21_59": 0.02044,
+          "late_60_plus": 0.00598,
+          "rescue_rate": 0.00695,
+          "denial_rate": 0.00111
+        },
+        {
+          "plan_factor": 1.1938,
+          "otp": 0.95119,
+          "late_1_20": 0.03974,
+          "late_21_59": 0.00655,
+          "late_60_plus": 0.00251,
+          "rescue_rate": 0.00195,
+          "denial_rate": 0.00403
+        },
+        {
+          "plan_factor": 1.1532,
+          "otp": 0.94092,
+          "late_1_20": 0.04389,
+          "late_21_59": 0.01254,
+          "late_60_plus": 0.00265,
+          "rescue_rate": 0.00348,
+          "denial_rate": 0.00319
+        },
+        {
+          "plan_factor": 1.1735,
+          "otp": 0.94868,
+          "late_1_20": 0.0364,
+          "late_21_59": 0.01046,
+          "late_60_plus": 0.00446,
+          "rescue_rate": 0.00404,
+          "denial_rate": 0.00417
+        },
+        {
+          "plan_factor": 1.1633,
+          "otp": 0.94406,
+          "late_1_20": 0.0392,
+          "late_21_59": 0.01409,
+          "late_60_plus": 0.00265,
+          "rescue_rate": 0.00488,
+          "denial_rate": 0.00431
+        },
+        {
+          "plan_factor": 1.1684,
+          "otp": 0.94105,
+          "late_1_20": 0.04348,
+          "late_21_59": 0.0124,
+          "late_60_plus": 0.00307,
+          "rescue_rate": 0.00321,
+          "denial_rate": 0.00333
+        }
+      ]
+    },
+    {
+      "incident_sigma": 2.0,
+      "plan_factor": 1.1532,
+      "score": 2.044,
+      "otp": 0.94255,
+      "late_1_20": 0.04289,
+      "late_21_59": 0.01063,
+      "late_60_plus": 0.00393,
+      "rescue_rate": 0.00457,
+      "denial_rate": 0.00243,
+      "history": [
+        {
+          "plan_factor": 1.275,
+          "otp": 0.97847,
+          "late_1_20": 0.0158,
+          "late_21_59": 0.00308,
+          "late_60_plus": 0.00266,
+          "rescue_rate": 0.00154,
+          "denial_rate": 0.00667
+        },
+        {
+          "plan_factor": 1.1125,
+          "otp": 0.91115,
+          "late_1_20": 0.06535,
+          "late_21_59": 0.01571,
+          "late_60_plus": 0.00779,
+          "rescue_rate": 0.00695,
+          "denial_rate": 0.00111
+        },
+        {
+          "plan_factor": 1.1938,
+          "otp": 0.95524,
+          "late_1_20": 0.0364,
+          "late_21_59": 0.00516,
+          "late_60_plus": 0.00321,
+          "rescue_rate": 0.00195,
+          "denial_rate": 0.00403
+        },
+        {
+          "plan_factor": 1.1532,
+          "otp": 0.94636,
+          "late_1_20": 0.03929,
+          "late_21_59": 0.01073,
+          "late_60_plus": 0.00362,
+          "rescue_rate": 0.00362,
+          "denial_rate": 0.00319
+        },
+        {
+          "plan_factor": 1.1735,
+          "otp": 0.95467,
+          "late_1_20": 0.03013,
+          "late_21_59": 0.00976,
+          "late_60_plus": 0.00544,
+          "rescue_rate": 0.00404,
+          "denial_rate": 0.00417
+        },
+        {
+          "plan_factor": 1.1633,
+          "otp": 0.9456,
+          "late_1_20": 0.0378,
+          "late_21_59": 0.01325,
+          "late_60_plus": 0.00335,
+          "rescue_rate": 0.00572,
+          "denial_rate": 0.00431
+        },
+        {
+          "plan_factor": 1.1684,
+          "otp": 0.94091,
+          "late_1_20": 0.04376,
+          "late_21_59": 0.01226,
+          "late_60_plus": 0.00307,
+          "rescue_rate": 0.00432,
+          "denial_rate": 0.00333
+        }
+      ]
+    },
+    {
+      "incident_sigma": 2.4,
+      "plan_factor": 1.1532,
+      "score": 1.962,
+      "otp": 0.94517,
+      "late_1_20": 0.04094,
+      "late_21_59": 0.01007,
+      "late_60_plus": 0.00382,
+      "rescue_rate": 0.00423,
+      "denial_rate": 0.00243,
+      "history": [
+        {
+          "plan_factor": 1.275,
+          "otp": 0.98056,
+          "late_1_20": 0.01314,
+          "late_21_59": 0.00378,
+          "late_60_plus": 0.00252,
+          "rescue_rate": 0.00154,
+          "denial_rate": 0.00667
+        },
+        {
+          "plan_factor": 1.1125,
+          "otp": 0.91393,
+          "late_1_20": 0.06507,
+          "late_21_59": 0.01543,
+          "late_60_plus": 0.00556,
+          "rescue_rate": 0.00654,
+          "denial_rate": 0.00111
+        },
+        {
+          "plan_factor": 1.1938,
+          "otp": 0.95691,
+          "late_1_20": 0.03584,
+          "late_21_59": 0.00432,
+          "late_60_plus": 0.00293,
+          "rescue_rate": 0.00167,
+          "denial_rate": 0.00403
+        },
+        {
+          "plan_factor": 1.1532,
+          "otp": 0.94817,
+          "late_1_20": 0.03734,
+          "late_21_59": 0.01115,
+          "late_60_plus": 0.00334,
+          "rescue_rate": 0.00404,
+          "denial_rate": 0.00319
+        },
+        {
+          "plan_factor": 1.1328,
+          "otp": 0.93364,
+          "late_1_20": 0.04893,
+          "late_21_59": 0.01115,
+          "late_60_plus": 0.00627,
+          "rescue_rate": 0.00558,
           "denial_rate": 0.00375
         },
         {
-          "plan_factor": 1.1786,
-          "otp": 0.94995,
-          "late_1_20": 0.03694,
-          "late_21_59": 0.01269,
-          "late_60_plus": 0.00042,
-          "rescue_rate": 0.00042,
-          "denial_rate": 0.00375
+          "plan_factor": 1.143,
+          "otp": 0.94875,
+          "late_1_20": 0.03552,
+          "late_21_59": 0.01128,
+          "late_60_plus": 0.00446,
+          "rescue_rate": 0.00529,
+          "denial_rate": 0.00278
+        },
+        {
+          "plan_factor": 1.1379,
+          "otp": 0.94407,
+          "late_1_20": 0.04188,
+          "late_21_59": 0.01252,
+          "late_60_plus": 0.00153,
+          "rescue_rate": 0.00195,
+          "denial_rate": 0.00167
         }
       ]
     }
