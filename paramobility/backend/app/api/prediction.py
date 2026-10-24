@@ -18,11 +18,11 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.prediction import live, ontime, personal, prior, ride, routing, sim
+from app.prediction.plan import BOARD_AFTER_START
 
 from .trips import require_api_key
 
 ARRIVAL_QUANTILES = (0.1, 0.5, 0.9)
-BOARD_AFTER_START = 15.0  # minutes: drive time is looked up for a typical boarding time
 DAILY_P_LATE = 0.053  # EBP Jul '25-Apr '26: 94.7% of pickups within the window
 # minutes left after the median ride; less -> a van at the window's end is late
 TIGHT_SLACK = prior.WINDOW

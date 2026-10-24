@@ -8,7 +8,7 @@ pickup times the model has scored and stores the model's numbers, not Claude's.
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from anthropic import beta_async_tool
 
@@ -18,6 +18,7 @@ from app.core.llm import FALLBACK_BETA, final_text, get_client
 from app.core.schemas import Plan, Trip, TripOption, TripStatus
 from app.core.store import get_store
 from app.core.thread import notify_rider
+from app.prediction.prior import WINDOW
 from app.tools import actions, model_tools
 from app.tools.model_tools import ModelUnavailable
 
@@ -144,8 +145,9 @@ def build_tools(trip_id: str):
         store.log(trip_id, "plan_ready", explanation, recommended=chosen.model_dump(mode="json"))
         # The numbers in the notice come from the model, not from Claude.
         notify_rider(trip_id, (
-            f"Your plan{f' for {trip.title.lower()}' if trip.title else ''} is ready: pickup at "
-            f"{actions.clock(chosen.pickup_time, trip.arrive_by)}, "
+            f"Your plan{f' for {trip.title.lower()}' if trip.title else ''} is ready: "
+            f"pickup window {actions.clock(chosen.pickup_time, trip.arrive_by)}–"
+            f"{actions.clock(chosen.pickup_time + timedelta(minutes=WINDOW), trip.arrive_by)}, "
             f"with a {chosen.p_on_time:.0%} chance of arriving on time and about "
             f"{chosen.expected_wait_minutes:.0f} min of waiting. {explanation}"
         ))

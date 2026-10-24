@@ -50,3 +50,31 @@ def test_no_key(monkeypatch):
     get_settings.cache_clear()
     with pytest.raises(RuntimeError, match="no routing key"):
         routing.drive_minutes((37.67, -122.08), (37.80, -122.23), datetime(2027, 1, 5, 13, 0))
+
+
+def test_geocode_is_cached_by_normalized_address(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_get(url, params):
+        calls.append(params["address"])
+        return {
+            "status": "OK",
+            "results": [{"geometry": {"location": {"lat": 37.8, "lng": -122.27}}}],
+        }
+
+    monkeypatch.setenv("DRIVE_CACHE_PATH", str(tmp_path / "cache.json"))
+    monkeypatch.setattr(routing, "_get", fake_get)
+    monkeypatch.setenv("GOOGLE_MAPS_KEY", "test")
+    get_settings.cache_clear()
+    assert routing.geocode("1 Main St, Oakland") == (37.8, -122.27)
+    assert routing.geocode("  1 main st,   OAKLAND ") == (37.8, -122.27)
+    assert calls == ["1 Main St, Oakland"]
+
+
+def test_geocode_without_a_match(monkeypatch, tmp_path):
+    monkeypatch.setenv("DRIVE_CACHE_PATH", str(tmp_path / "cache.json"))
+    monkeypatch.setattr(routing, "_get", lambda url, params: {"status": "ZERO_RESULTS"})
+    monkeypatch.setenv("GOOGLE_MAPS_KEY", "test")
+    get_settings.cache_clear()
+    with pytest.raises(routing.RoutingError, match="can't find"):
+        routing.geocode("nowhere")

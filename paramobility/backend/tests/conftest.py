@@ -1,15 +1,20 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from app.core import config
 from app.core.schemas import Contact, Rider, Trip, TripRequest
 from app.core.store import Store, set_store
+from app.prediction import plan
+
+DRIVE_MIN = 20.0
+LA = ZoneInfo("America/Los_Angeles")
 
 
 @pytest.fixture(autouse=True)
 def settings(monkeypatch):
-    """Fake model, no real calls, and a webhook secret for the voice API tests."""
+    """No real calls, and a webhook secret for the voice API tests."""
     for key in (
         "CARTESIA_API_KEY",
         "CARTESIA_FROM_NUMBER_ID",
@@ -18,12 +23,20 @@ def settings(monkeypatch):
         "ORS_API_KEY",
     ):
         monkeypatch.setenv(key, "")
-    monkeypatch.setenv("MODEL_BACKEND", "fake")
     monkeypatch.setenv("DEMO_CACHE", "false")
     monkeypatch.setenv("VOICE_WEBHOOK_SECRET", "test-secret")
     config.get_settings.cache_clear()
     yield config.get_settings()
     config.get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def drive(monkeypatch):
+    """Every trip is a 20-min direct drive, so the model runs without routing calls."""
+    monkeypatch.setattr(plan, "drive_minutes", lambda ride, depart: DRIVE_MIN)
+    plan.tradeoff.cache_clear()
+    yield
+    plan.tradeoff.cache_clear()
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +48,7 @@ def store():
 
 @pytest.fixture
 def arrive_by():
-    return datetime(2026, 11, 3, 14, 0, tzinfo=UTC)
+    return datetime(2026, 11, 3, 14, 0, tzinfo=LA)  # the model's clock runs on LA time
 
 
 @pytest.fixture

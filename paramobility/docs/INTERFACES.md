@@ -15,10 +15,10 @@ POST /trips ──► planning ──► planned ──book──► booked ─�
 ```
 
 1. **Create a trip.** The planner agent starts at once. If the rider allows it, it may phone the appointment first to learn the grace period, which takes a few minutes. When the plan is ready, it appears on the trip and as a notice in the chat thread.
-2. **Show the plan.** `plan.recommended` is the suggested pickup time. `plan.options` holds the best times for the rider's certainty, and `plan.tradeoff` scores every candidate time. All probabilities and wait times come from the delay model.
+2. **Show the plan.** `plan.recommended` is the suggested pickup time. `plan.options` holds the best times for the rider's certainty, and `plan.tradeoff` scores every candidate time. Each pickup time is the start of the provider's 30-minute pickup window. All probabilities and wait times come from the delay model.
 3. **Book.** The rider confirms a time from the plan, with a button or by telling the chat agent.
 4. **Ride.** Send live updates from the rider app. The backend re-checks the arrival outlook after each update and once a minute. If the rider becomes likely to be late, the late-notice agent phones the appointment, within the rider's permissions, and posts what happened in the chat.
-5. **Arrive.** The trip is logged so the delay model's estimates improve over time.
+5. **Arrive.** The trip is logged, so the model's promised chances can be checked against what happened (`GET /calibration`).
 
 ## Riders and talking to Leeway
 
@@ -84,7 +84,7 @@ A trip created without a `rider_id` gets its own conversation at `/trips/{id}/me
 | `PUT` | `/trips/{id}/appointment-time` | `{"arrive_by": "…"}` | `Trip` (202). Before pickup this clears the booking and replans; during the ride it updates the outlook |
 | `POST` | `/trips/{id}/book` | `{"pickup_time": "…"}` | `Trip`; the time must come from the plan |
 | `POST` | `/trips/{id}/status` | `{"kind": "van_eta" \| "picked_up" \| "arrived", "at": "…"}` | `Trip`; `at` defaults to now. For `van_eta`, `at` is when the van is expected |
-| `GET` | `/trips/{id}/distribution?pickup_time=…` | | arrival histogram and per-sample components, for the dashboard |
+| `GET` | `/trips/{id}/distribution?pickup_time=…` | | arrival histogram for one pickup time: `bin_edges` and `p` per 5-min bin, for the dashboard |
 | `GET` | `/calibration` | | `[{"promised": 0.9, "observed": 0.87}, …]` |
 | `GET` | `/health` | | `{"ok": true}` |
 

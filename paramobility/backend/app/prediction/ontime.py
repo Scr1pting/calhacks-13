@@ -1,13 +1,13 @@
 """P(on time): pickup lateness and ride time combined.
 
-    arrival = window_start + max(L, 0) + R
+    arrival = window_start + L + R
 
 L comes from personal.lateness (the prior when there is no history; `key` picks a recurring
-trip) and R from ride.ride_time, given the direct drive time of the trip. The rider boards at
-the window start at the earliest. While a rider is still waiting at `now`, L is conditioned on
-L > now - window_start.
+trip) and R from ride.ride_time, given the direct drive time of the trip. L can be negative: the
+van comes early and the rider boards early. While a rider is still waiting at `now`, L is
+conditioned on L > now - window_start.
 
-There is no closed form for the sum, but P(arrival <= x) = E_L[F_R(x - window_start - max(L, 0))]
+There is no closed form for the sum, but P(arrival <= x) = E_L[F_R(x - window_start - L)]
 is a smooth 1-D integral. It is evaluated on m evenly spaced quantiles of L: deterministic, ~1 ms,
 ~4 decimals. arrival_draws (Monte Carlo) is kept to check it.
 
@@ -35,18 +35,18 @@ def arrival_draws(
     tail = 1.0 if now is None else L_dist.sf(now - window_start)
     L = L_dist.isf(rng.uniform(0.0, tail, n))  # isf keeps precision deep in the tail
     R = ride_time(drive_min).rvs(n, random_state=rng)
-    return window_start + np.maximum(L, 0.0) + R
+    return window_start + L + R
 
 
 def pickup_quantiles(window_start, history=(), today=0, now=None, m=2000, key=None) -> np.ndarray:
-    """max(L, 0) at m evenly spaced quantiles of L.
+    """L at m evenly spaced quantiles.
 
     Conditioned on L > now - window_start if now is set.
     """
     d = lateness(window_start, history, today, key)
     tail = 1.0 if now is None else d.sf(now - window_start)  # P(still not picked up)
     u = (np.arange(m) + 0.5) / m
-    return np.maximum(d.isf(u * tail), 0.0)  # isf keeps precision deep in the tail
+    return d.isf(u * tail)  # isf keeps precision deep in the tail
 
 
 def arrival_cdf(x, window_start, drive_min, history=(), today=0, now=None, key=None) -> np.ndarray:
@@ -83,12 +83,12 @@ def evaluate_window(
     """P(on time), P(more than early_min early) and arrival quantiles relative to the appointment.
 
     The quantiles invert arrival_cdf on a 1-min grid that covers the arrival's support, from the
-    window start to well past the top pickup quantile plus the ride's 99.9th percentile. With
-    `now`, the rider is still waiting at that time.
+    lowest pickup quantile to well past the top pickup quantile plus the ride's 99.9th
+    percentile. With `now`, the rider is still waiting at that time.
     """
     L = pickup_quantiles(window_start, history, today, now, key=key)
     hi = window_start + L.max() + ride_time(drive_min).ppf(0.999)
-    grid = np.arange(window_start, np.ceil(hi) + 1.0)
+    grid = np.arange(np.floor(window_start + L.min()), np.ceil(hi) + 1.0)
     cdf = arrival_cdf(grid, window_start, drive_min, history, today, now, key)
     return {
         "p_on_time": p_on_time(appointment, window_start, drive_min, history, today, now, key),

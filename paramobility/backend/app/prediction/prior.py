@@ -9,8 +9,7 @@ shifted lognormal, log(L + C) ~ N(mu0(t), S^2), where t is the window start.
   94.7% on time, 4.42% 1-20, 0.79% 21-59, 0.06% 60+ min past the window).
 * C = 5 (vans can arrive ~5 min early) is assumed; the data can't identify it.
 
-L can be negative (the van is early). A rider boards at the window start at the earliest, so
-boarding lateness is max(L, 0).
+L can be negative: the van is early, and the rider boards early.
 
 To refit, rerun the notebook and paste mu0(CENTERS) and s into _MU0_HOURLY and S.
 

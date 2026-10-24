@@ -51,7 +51,7 @@ def tools(rider):
 
 @pytest.fixture
 def planned(trip, store):
-    """The trip with a plan from the fake model, as if the planner had run."""
+    """The trip with a plan from the model, as if the planner had run."""
     opts = model_tools.options(trip, trip.certainty)
     rows = model_tools.tradeoff(trip)
 

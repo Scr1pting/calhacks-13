@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     cors_origins: str = "*"  # comma-separated
     public_base_url: str = "http://localhost:8000"
     database_path: str = "./paramobility.db"
-    model_backend: str = "fake"  # "fake" until app/model is implemented, then "real"
 
     # Drive times for app.prediction.routing: Google (traffic-aware) first, else OpenRouteService.
     google_maps_key: str = ""

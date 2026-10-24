@@ -23,12 +23,19 @@ def test_no_history_is_prior():
         (9 * 60, 7 * 60 + 30, 30, (), None, None),
         (18 * 60, 17 * 60, 15, (), 17 * 60 + 20, None),
         (14 * 60, 13 * 60, 25, KEYED, 13 * 60 + 40, "a"),
+        (13 * 60 + 2, 13 * 60, 1, (), None, None),  # mostly decided by early vans
     ],
 )
 def test_integral_matches_monte_carlo(appt, ws, drive, history, now, key):
     p = ontime.p_on_time(appt, ws, drive, history, now=now, key=key)
     mc = np.mean(ontime.arrival_draws(ws, drive, history, now=now, n=200_000, key=key) <= appt)
     assert abs(p - mc) < 0.01
+
+
+def test_early_van_boards_early():
+    ws = 13 * 60
+    assert ontime.p_on_time(ws, ws, 1.0) > 0.001  # was exactly 0 while boarding waited for ws
+    assert ontime.pickup_quantiles(ws).min() < 0
 
 
 def test_monotone():

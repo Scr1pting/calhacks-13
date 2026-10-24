@@ -14,6 +14,10 @@ time), so reruns stay free. Google's Maps Platform terms only allow temporary ca
 performance, so the cache stays local (DRIVE_CACHE_PATH, git-ignored) and entries expire
 after max_age_days.
 
+Addresses become coordinates with geocode (Google Geocoding, else OpenRouteService's Pelias),
+cached the same way under the normalized address. Google's key needs the Geocoding API enabled
+as well as Routes.
+
 Live calls (drive_now, during a ride) depart now and are never cached on disk, since the van's
 position changes every call. Only with DEMO_CACHE=1 are live and route responses recorded in
 DEMO_CACHE_PATH and replayed afterwards, so a demo survives bad venue Wi-Fi.
@@ -24,6 +28,7 @@ import math
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -37,6 +42,8 @@ ROUND_MIN = 15
 
 GOOGLE_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 ORS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
+GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+ORS_GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
 
 LatLng = tuple[float, float]
 
@@ -77,20 +84,23 @@ def drive_minutes(
     t = departure(depart)
     when = f"{t.weekday()}|{t:%H:%M}" if name == "google" else "*"
     key = "|".join([*(f"{v:.5f}" for v in (*origin, *destination)), when, name])
+    return _cached(
+        key,
+        max_age_days,
+        lambda: _google(origin, destination, t) if name == "google" else _ors(origin, destination),
+    )
 
-    with _lock:
-        cache = _load()
-        hit = cache.get(key)
-        if hit and time.time() - hit["at"] < max_age_days * 86400:
-            return hit["min"]
 
-    minutes = _google(origin, destination, t) if name == "google" else _ors(origin, destination)
-
-    with _lock:
-        cache = _load()
-        cache[key] = {"min": minutes, "at": time.time()}
-        _save(cache, max_age_days)
-    return minutes
+def geocode(address: str, max_age_days: float = 7.0) -> LatLng:
+    """(lat, lng) of a street address or place name."""
+    name = provider()
+    key = "|".join(["geo", " ".join(address.lower().split()), name])
+    lat, lng = _cached(
+        key,
+        max_age_days,
+        lambda: _google_geocode(address) if name == "google" else _ors_geocode(address),
+    )
+    return lat, lng
 
 
 def drive_now(origin: LatLng, destination: LatLng) -> float:
@@ -204,10 +214,44 @@ def _ors(origin: LatLng, destination: LatLng) -> float:
         raise RoutingError(f"ors: no route in response {res!r}") from e
 
 
+def _google_geocode(address: str) -> LatLng:
+    params = {"address": address, "region": "us", "key": get_settings().google_maps_key}
+    res = _get(GEOCODE_URL, params)
+    if res.get("status") != "OK":
+        detail = res.get("error_message") or res.get("status")
+        raise RoutingError(f"google: can't find {address!r}: {detail}")
+    loc = res["results"][0]["geometry"]["location"]
+    return loc["lat"], loc["lng"]
+
+
+def _ors_geocode(address: str) -> LatLng:
+    params = {
+        "text": address,
+        "size": 1,
+        "boundary.country": "US",
+        "api_key": get_settings().ors_api_key,
+    }
+    res = _get(ORS_GEOCODE_URL, params)
+    try:
+        lng, lat = res["features"][0]["geometry"]["coordinates"]
+    except (KeyError, IndexError, ValueError) as e:
+        raise RoutingError(f"ors: can't find {address!r}") from e
+    return lat, lng
+
+
 def _post(url: str, body: dict, headers: dict) -> dict:
     req = urllib.request.Request(
         url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **headers}
     )
+    return _fetch(req, url)
+
+
+def _get(url: str, params: dict) -> dict:
+    return _fetch(urllib.request.Request(f"{url}?{urllib.parse.urlencode(params)}"), url)
+
+
+def _fetch(req: urllib.request.Request, url: str) -> dict:
+    """The JSON response. Errors name url, not the full request URL, which may hold a key."""
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
             return json.load(r)
@@ -215,6 +259,20 @@ def _post(url: str, body: dict, headers: dict) -> dict:
         raise RoutingError(f"{url}: HTTP {e.code}: {e.read()[:300]!r}") from e
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
         raise RoutingError(f"{url}: {e}") from e
+
+
+def _cached(key: str, max_age_days: float, fetch):
+    """fetch(), kept in the temporary on-disk cache for max_age_days."""
+    with _lock:
+        hit = _load().get(key)
+    if hit and "value" in hit and time.time() - hit["at"] < max_age_days * 86400:
+        return hit["value"]
+    value = fetch()
+    with _lock:
+        cache = _load()
+        cache[key] = {"value": value, "at": time.time()}
+        _save(cache, max_age_days)
+    return value
 
 
 def _demo_cached(key: str, fetch):

@@ -8,7 +8,7 @@ Each turn starts with what you know in `<rider>`:
 
 A trip's `status` says where it stands:
 - `planning`: a plan is being made.
-- `planned`: a pickup time is recommended but not booked.
+- `planned`: a pickup time is recommended but not booked. A pickup time is the start of the provider's 30-minute pickup window: the van can come any time in it.
 - `booked`
 - `riding`: the rider is in the van.
 - `completed`

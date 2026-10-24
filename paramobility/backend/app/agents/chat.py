@@ -244,7 +244,7 @@ def build_tools(thread_id: str):
             t = trip_ops.book(trip_id, _parse_time(pickup_time, trip(trip_id).arrive_by.tzinfo))
         except (TripOpError, ValueError) as e:
             return f"Error: {e}"
-        return f"Booked pickup at {t.booked_pickup.isoformat()}."
+        return f"Booked the pickup window starting {t.booked_pickup.isoformat()}."
 
     @beta_async_tool
     async def save_known_policy(

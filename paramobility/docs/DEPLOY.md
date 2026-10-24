@@ -63,7 +63,7 @@ ssh root@2.29.114.245 'cd /opt/paramobility/repo/paramobility/deploy && PARAMOBI
 | `ANTHROPIC_API_KEY` | Planner and late-notice agent (Sonnet), rider chat and transcript extraction (Haiku) |
 | `API_KEY` | Clients must send this as `X-API-Key` |
 | `PUBLIC_BASE_URL` | `https://api.cal.fuzz.li`; the base URL for the voice webhooks |
-| `MODEL_BACKEND` | `fake` until `app/model` is implemented, then `real` |
+| `GOOGLE_MAPS_KEY` | Drive times and geocoding for the delay model; enable the Routes and Geocoding APIs. Without it, `ORS_API_KEY` (OpenRouteService, no traffic). Planning needs one |
 | `CARTESIA_API_KEY` | Cartesia voice |
 | `CARTESIA_FROM_NUMBER_ID` | The number calls come from (its `ap_…` id, or the `+1…` number) |
 | `CARTESIA_POLICY_AGENT_ID`, `CARTESIA_LATE_AGENT_ID`, `CARTESIA_MESSAGE_AGENT_ID` | Printed by `python -m app.voice.setup` |
