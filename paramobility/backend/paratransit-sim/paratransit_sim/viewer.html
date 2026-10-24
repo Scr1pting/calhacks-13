@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>East Bay Paratransit Sim</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
   :root { --bg:#f6f5f2; --panel:#fff; --ink:#1d1d1b; --muted:#6b6a66; --ok:#2e7d4f; --warn:#c77d0a; --bad:#c0392b; --line:#e3e1dc; }
   * { box-sizing:border-box; }
@@ -44,14 +44,43 @@
   <div class="muted">Simulated data calibrated to East Bay Paratransit's published on-time performance. Not real riders.</div>
 </aside>
 <script>
-const map = L.map('map');
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom:19}).addTo(map);
-const vans = {}; let pickups = 0, onTime = 0, noShows = 0, persona = null;
+const map = new maplibregl.Map({
+  container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
+  center: [-122.2, 37.78], zoom: 10, pitch: 60, bearing: -20, maxPitch: 80,
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch: true}));
+const vans = {}; let pickups = 0, onTime = 0, noShows = 0, persona = null, ready = false;
 const color = b => b >= 25 ? '#c0392b' : b >= 10 ? '#c77d0a' : '#2e7d4f';
 
+function renderVans() {
+  if (!ready) return;
+  map.getSource('vans').setData({type: 'FeatureCollection', features: Object.values(vans).map(v => ({
+    type: 'Feature', geometry: {type: 'Point', coordinates: [v.lon, v.lat]},
+    properties: {id: v.van_id, behind: v.behind_plan, color: color(v.behind_plan),
+                 persona: !!(persona && v.van_id === persona.van_id)}}))});
+}
+
+map.on('load', () => {
+  map.addSource('vans', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
+  map.addLayer({id: 'vans', type: 'circle', source: 'vans', paint: {
+    'circle-color': ['get', 'color'], 'circle-opacity': .9,
+    'circle-radius': ['case', ['get', 'persona'], 9, 6],
+    'circle-stroke-color': '#1d1d1b', 'circle-stroke-width': ['case', ['get', 'persona'], 3, 1]},
+    layout: {'circle-sort-key': ['case', ['get', 'persona'], 1, 0]}});
+  const popup = new maplibregl.Popup({closeButton: false, closeOnClick: false});
+  map.on('mousemove', 'vans', e => {
+    const p = e.features[0].properties;
+    map.getCanvas().style.cursor = 'pointer';
+    popup.setLngLat(e.lngLat).setText(`Van ${p.id}: ${p.behind > 0 ? p.behind + ' min behind plan' : 'on plan'}`).addTo(map);
+  });
+  map.on('mouseleave', 'vans', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
+  ready = true;
+  renderVans();
+});
+
 fetch('/meta').then(r => r.json()).then(m => {
-  map.fitBounds(m.bounds);
+  const [[la0, lo0], [la1, lo1]] = m.bounds;
+  map.fitBounds([[lo0, la0], [lo1, la1]], {padding: 40, pitch: 60, bearing: -20, duration: 0});
   document.getElementById('sub').textContent = `${m.weekday} - ${m.vans} vans - replayed live`;
   persona = m.persona;
   if (persona) {
@@ -71,10 +100,7 @@ es.onmessage = msg => {
   document.getElementById('clock').textContent = d.clock;
   for (const e of d.events) {
     if (e.type === 'van_pos') {
-      const isP = persona && e.van_id === persona.van_id;
-      if (!vans[e.van_id]) vans[e.van_id] = L.circleMarker([e.lat, e.lon], {radius: isP ? 8 : 5, weight: isP ? 3 : 1, color:'#1d1d1b', fillOpacity:.9}).addTo(map);
-      vans[e.van_id].setLatLng([e.lat, e.lon]).setStyle({fillColor: color(e.behind_plan)})
-        .bindTooltip(`Van ${e.van_id}: ${e.behind_plan > 0 ? e.behind_plan + ' min behind plan' : 'on plan'}`);
+      vans[e.van_id] = e;
     } else if (e.type === 'stop' && e.kind === 'P') {
       pickups++; if (e.on_time) onTime++; if (e.status.startsWith('no_show')) noShows++;
       if (!e.on_time) {
@@ -89,6 +115,7 @@ es.onmessage = msg => {
       }
     }
   }
+  renderVans();
   document.getElementById('n').textContent = pickups;
   document.getElementById('otp').textContent = pickups ? (100 * onTime / pickups).toFixed(1) + '%' : '-';
   document.getElementById('ns').textContent = noShows;
