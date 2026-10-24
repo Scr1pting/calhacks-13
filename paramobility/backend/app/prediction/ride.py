@@ -1,6 +1,6 @@
 """Ride-time model: minutes from boarding to arrival at the destination.
 
-Baked from paramobility/prediction/notebooks/ride_time_drive.ipynb.
+Baked from backend/notebooks/ride_time_drive.ipynb.
 
 The ride is a shared van, so it takes longer than driving straight there. It scales with the
 direct (traffic-aware) drive time for that origin, destination and departure:
