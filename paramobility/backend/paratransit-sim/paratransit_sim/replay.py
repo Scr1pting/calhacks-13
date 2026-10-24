@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .config import MOBILITY, SimConfig
+from .routing import fetch_routes, route_for
 
 CAUSES = ["late_start_min", "incident_min", "hard_address_min", "rider_not_ready_min", "breakdown_min"]
 
@@ -23,35 +24,51 @@ def clock(t):
     return f"{h % 24:d}:{m:02d}"
 
 
-def _positions(ex: pd.DataFrame, step=2.0):
+def _polyline(route):
+    pts = np.asarray(route, dtype=float)
+    d = np.diff(pts, axis=0) * [1.0, np.cos(np.radians(pts[0, 0]))]
+    return pts, np.concatenate([[0.0], np.cumsum(np.hypot(d[:, 0], d[:, 1]))])
+
+
+def _along(pts, cum, f):
+    if cum[-1] == 0:
+        return pts[-1]
+    x = f * cum[-1]
+    return np.array([np.interp(x, cum, pts[:, 0]), np.interp(x, cum, pts[:, 1])])
+
+
+def _positions(ex: pd.DataFrame, routes_cache: str | None, step=2.0):
+    live = ex[ex["status"] != "skipped"]
+    routes = fetch_routes(zip(live["prev_lat"], live["prev_lon"], live["lat"], live["lon"]), routes_cache)
     events = []
-    for van_id, g in ex.groupby("van_id"):
+    for van_id, g in live.groupby("van_id"):
         segs, behind = [], 0.0
         for s in g.sort_values("seq").itertuples(index=False):
-            if s.status == "skipped":
-                continue
-            segs.append((s.depart_prev, s.arr, s.prev_lat, s.prev_lon, s.lat, s.lon, behind))
+            pts, cum = _polyline(route_for(routes, s.prev_lat, s.prev_lon, s.lat, s.lon))
+            segs.append((s.depart_prev, s.arr, pts, cum, behind))
             behind = s.dep - s.plan_dep
-            segs.append((s.arr, s.dep, s.lat, s.lon, s.lat, s.lon, behind))
+            # park on the road point the route ended at, not the raw (possibly off-road) address
+            segs.append((s.arr, s.dep, pts[-1:], np.zeros(1), behind))
         if not segs:
             continue
         t, i = np.ceil(segs[0][0] / step) * step, 0
         while t <= segs[-1][1]:
             while i < len(segs) - 1 and t > segs[i][1]:
                 i += 1
-            t0, t1, a0, o0, a1, o1, b = segs[i]
+            t0, t1, pts, cum, b = segs[i]
             f = 0.0 if t1 <= t0 else min(1.0, max(0.0, (t - t0) / (t1 - t0)))
+            lat, lon = _along(pts, cum, f)
             events.append(dict(t=float(t), type="van_pos", van_id=int(van_id),
-                               lat=round(a0 + f * (a1 - a0), 5), lon=round(o0 + f * (o1 - o0), 5),
+                               lat=round(float(lat), 5), lon=round(float(lon), 5),
                                behind_plan=round(float(b), 1)))
             t += step
     return events
 
 
-def build_replay(day_result, cfg: SimConfig):
+def build_replay(day_result, cfg: SimConfig, routes_cache: str | None = None):
     ex, trips = day_result.executed, day_result.trips
     tinfo = trips.set_index("trip_id")
-    events = _positions(ex)
+    events = _positions(ex, routes_cache)
     for s in ex.itertuples(index=False):
         if s.status == "skipped":
             continue

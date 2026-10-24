@@ -73,7 +73,7 @@ def cmd_replay(args):
     os.makedirs(args.out, exist_ok=True)
     cfg = _cfg(args)
     r = World(cfg).simulate_day(args.day, seed_offset=7)
-    events = build_replay(r, cfg)
+    events = build_replay(r, cfg, routes_cache=os.path.join(args.out, "routes_cache.json"))
     write_jsonl(os.path.join(args.out, "replay.jsonl"), events)
     persona = pick_persona(r)
     lat = r.executed["lat"]
