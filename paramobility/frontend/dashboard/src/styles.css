@@ -1,0 +1,430 @@
+/* Leeway look, from the rider app's tokens (frontend/rider/src/tokens.css). */
+:root {
+  --ink: #141618;
+  --gray: #6b6e72;
+  --bg: #f5f5f3;
+  --card: #ffffff;
+  --border: #e6e5e2;
+  --border-2: #e1e0dc;
+  --divider: #eeedea;
+  --success: #1f6b4a;
+  --success-bg: #e3f1e8;
+  --accent: #4a3bb8;
+  --accent-bg: #ece9fa;
+  --warn: #8a5a00;
+  --warn-bg: #fbf0d9;
+  --shadow: 0 12px 30px -20px rgba(20, 22, 24, 0.28), 0 2px 6px rgba(20, 22, 24, 0.04);
+  --font: 'Instrument Sans', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: #ededeb;
+  color: var(--ink);
+  font: 15px/1.45 var(--font);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.app,
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.loading,
+.error {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--gray);
+  font-size: 17px;
+}
+
+.error {
+  color: #a8382d;
+  max-width: 480px;
+  text-align: center;
+}
+
+/* brand */
+
+.brand {
+  position: absolute;
+  top: 22px;
+  left: 26px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-name {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  color: var(--gray);
+  font-size: 20px;
+}
+
+/* cards */
+
+.card {
+  background: var(--card);
+  border-radius: 28px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eyebrow {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+.headline {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+}
+
+.headline.small {
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.gray {
+  color: var(--gray);
+  margin: 0;
+}
+
+.divider {
+  height: 1px;
+  background: var(--divider);
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--gray);
+}
+
+.kv-value {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary {
+  position: absolute;
+  top: 70px;
+  left: 16px;
+  width: 360px;
+}
+
+.side {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  bottom: 104px;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.side > * {
+  pointer-events: auto;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close {
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  font-size: 24px;
+  line-height: 1;
+  min-width: 36px;
+  min-height: 36px;
+  margin: -8px -10px -8px 0;
+}
+
+/* buttons and pills */
+
+.btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  border: 1px solid transparent;
+  font-size: 15px;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+
+.btn-solid {
+  background: var(--ink);
+  color: #fff;
+  font-weight: 500;
+}
+
+.btn-outline {
+  background: var(--card);
+  border-color: var(--border-2);
+}
+
+.btn-outline.pressed {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.btn-pill {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.btn.wide {
+  width: 100%;
+  box-shadow: none;
+}
+
+.pill {
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+}
+
+.pill-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* late pickups */
+
+.late {
+  min-height: 0;
+  overflow: auto;
+}
+
+.late ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.late li + li {
+  border-top: 1px solid var(--divider);
+}
+
+.late button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+}
+
+.late-min {
+  grid-row: span 2;
+  font-size: 20px;
+  color: #a8382d;
+  font-variant-numeric: tabular-nums;
+}
+
+.late-place {
+  font-size: 15px;
+}
+
+.late-why {
+  color: var(--gray);
+  font-size: 13px;
+}
+
+.late button:hover .late-place {
+  text-decoration: underline;
+}
+
+/* timeline: a slim bar like the rider app's Ask Leeway bar */
+
+.timeline {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(820px, calc(100% - 32px));
+  min-height: 60px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 30px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.play {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.time {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  min-width: 78px;
+}
+
+.timeline input[type='range'] {
+  flex: 1;
+  margin: 0;
+  height: 20px;
+  appearance: none;
+  background: transparent;
+}
+
+.timeline input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--ink) var(--pct), var(--border) var(--pct));
+}
+
+.timeline input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--ink) var(--pct), var(--border) var(--pct));
+}
+
+.timeline input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+}
+
+.timeline input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+}
+
+.speeds {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 22px;
+  background: var(--bg);
+}
+
+.speeds button {
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  font-size: 14px;
+  min-width: 44px;
+  min-height: 38px;
+  border-radius: 19px;
+}
+
+.speeds button.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(20, 22, 24, 0.12);
+}
+
+/* map chrome */
+
+.deck-tip {
+  background: var(--card) !important;
+  color: var(--ink) !important;
+  border-radius: 14px;
+  padding: 8px 12px !important;
+  box-shadow: var(--shadow);
+  font: 14px/1.4 var(--font) !important;
+}
+
+.maplibregl-ctrl-attrib {
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: var(--gray);
+}
+
+.maplibregl-ctrl-bottom-left {
+  bottom: 96px;
+  left: 16px;
+}
+
+@media (max-width: 900px) {
+  .summary {
+    width: auto;
+    right: 16px;
+  }
+  .side {
+    top: auto;
+    bottom: 100px;
+    left: 16px;
+    width: auto;
+  }
+  .side .card {
+    display: none;
+  }
+  .speeds {
+    display: none;
+  }
+}

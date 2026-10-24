@@ -7,23 +7,36 @@ set -euo pipefail
 ROOT=/opt/paramobility
 REPO=$ROOT/repo
 SHA=${1:-origin/main}
-exec 9>"$ROOT/deploy.lock"
-flock 9  # one deploy at a time; a newer one waits for the current one
-exec > >(tee -a "$ROOT/deploy.log") 2>&1
 
-echo "=== $(date -Is) deploying $SHA"
-cd "$REPO"
-git fetch --quiet origin main
-if ! git merge-base --is-ancestor "$SHA" origin/main; then
-    echo "$SHA is not on origin/main, refusing to deploy"
-    exit 1
+if [ "${DEPLOY_STAGE:-1}" = 1 ]; then
+    exec 9>"$ROOT/deploy.lock"
+    flock 9  # one deploy at a time; a newer one waits for the current one
+    exec > >(tee -a "$ROOT/deploy.log") 2>&1
+
+    echo "=== $(date -Is) deploying $SHA"
+    cd "$REPO"
+    git fetch --quiet origin main
+    if ! git merge-base --is-ancestor "$SHA" origin/main; then
+        echo "$SHA is not on origin/main, refusing to deploy"
+        exit 1
+    fi
+    git reset --quiet --hard "$SHA"
+    echo "checked out $(git log -1 --format='%h %s')"
+
+    # Bash keeps running the copy of this script it started with, so continue
+    # with the one just checked out: changes to these steps apply on this deploy.
+    # The lock and the log stay open across the exec.
+    DEPLOY_STAGE=2 exec bash "$REPO/paramobility/deploy/deploy.sh" "$SHA"
 fi
-git reset --quiet --hard "$SHA"
-echo "checked out $(git log -1 --format='%h %s')"
 
 cd "$REPO/paramobility/deploy"
 export PARAMOBILITY_ENV_FILE=$ROOT/.env
 docker compose build api
+
+# The fleet dashboard is a static site: build it in a throwaway Node container.
+docker run --rm -v "$REPO/paramobility/frontend/dashboard:/app" -w /app node:22-slim \
+    sh -c 'npm ci --legacy-peer-deps --no-audit --no-fund && npm run build'
+
 docker compose up -d --remove-orphans
 docker image prune -f >/dev/null
 

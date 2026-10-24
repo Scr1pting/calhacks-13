@@ -8,14 +8,14 @@ The API runs on the Hetzner server `2.29.114.245` (Ubuntu 26.04, ARM64) at `http
 2. GitHub Actions runs **CI** (`.github/workflows/ci.yml`): `ruff check` and `pytest`.
 3. When CI finishes, GitHub sends a "workflow run" webhook to `https://hooks.cal.fuzz.li/github`.
 4. The listener on the server (`deploy/webhook/github_webhook.py`, systemd service `paramobility-webhook`) checks the signature. It deploys only a **successful CI run for a push to `main`**; every other delivery is ignored.
-5. `deploy/deploy.sh` checks out exactly that commit in `/opt/paramobility/repo`, rebuilds the image on the server, restarts the containers, and waits for the API to report healthy.
+5. `deploy/deploy.sh` checks out exactly that commit in `/opt/paramobility/repo`, rebuilds the image on the server, builds the fleet dashboard (in a throwaway `node:22-slim` container), restarts the containers, and waits for the API to report healthy.
 
 Pull requests run CI but never deploy. A failed CI run never deploys.
 
 Docker Compose (`deploy/docker-compose.yml`, project `paramobility`) runs:
 
 - `api`: the backend, built from `backend/`, with SQLite on the `api-data` volume.
-- `caddy`: HTTPS with automatic Let's Encrypt certificates. It proxies `api.cal.fuzz.li` to `api` and `hooks.cal.fuzz.li` to the webhook listener on the host.
+- `caddy`: HTTPS with automatic Let's Encrypt certificates. It proxies `api.cal.fuzz.li` to `api` and `hooks.cal.fuzz.li` to the webhook listener on the host, and serves the fleet dashboard's static build at `dashboard.cal.fuzz.li`.
 
 ## One-time GitHub setup
 

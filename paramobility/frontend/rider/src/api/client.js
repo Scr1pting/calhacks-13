@@ -56,7 +56,8 @@ export const api = {
   // Voice: a recording in, {transcript, messages} out; then Leeway's reply as MP3.
   async sendVoice(id, recording) {
     const form = new FormData()
-    form.append('audio', recording, `speech.${recording.type.includes('mp4') ? 'mp4' : 'webm'}`)
+    const ext = recording.type.includes('wav') ? 'wav' : recording.type.includes('mp4') ? 'mp4' : 'webm'
+    form.append('audio', recording, `speech.${ext}`)
     return (await send('POST', `/riders/${id}/voice`, { form })).json()
   },
   async speech(text) {
