@@ -12,6 +12,31 @@ const ROAD = '#ffffff' // --lw-map-road
 const CASING = '#e1e0dc' // --lw-border-secondary
 const TEXT = '#6b6e72' // --lw-text-secondary
 
+// Very soft pastels for buildings, each barely off white and drawn from the
+// Leeway palette: warm creams for the warm grey, sage from the parks, mist from
+// the water, lavender from the accent background.
+const CREAM = '#f6efe4'
+const SAND = '#f1ece2'
+const PASTELS = [
+  '#f3e9e5', // blush
+  '#e8efe7', // sage
+  '#e6ecf1', // mist blue
+  '#ebe8f2', // lavender
+  CREAM,
+]
+
+// The tiles carry no building ids, so colour follows height. Low-rise housing
+// (mostly one default height) stays in two warm neutrals, a calm field;
+// taller buildings get the pastel range, so downtown has the colour.
+const height = ['coalesce', ['get', 'render_height'], 6]
+const pick = (n) => ['%', ['floor', ['*', height, 7]], n]
+const buildingColor = [
+  'case',
+  ['<', height, 12],
+  ['match', pick(2), 0, CREAM, SAND],
+  ['match', pick(PASTELS.length), ...PASTELS.slice(0, -1).flatMap((c, i) => [i, c]), PASTELS.at(-1)],
+]
+
 const width = (z12, z18) => ['interpolate', ['exponential', 1.6], ['zoom'], 10, z12 * 0.4, 12, z12, 18, z18]
 
 function roads(id, classes, w12, w18, minzoom = 0) {
@@ -101,7 +126,7 @@ export const mapStyle = {
       'source-layer': 'building',
       minzoom: 13,
       paint: {
-        'fill-extrusion-color': '#fbfbf9',
+        'fill-extrusion-color': buildingColor,
         'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 13, 0, 14, ['coalesce', ['get', 'render_height'], 6]],
         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
         'fill-extrusion-opacity': 0.96,
