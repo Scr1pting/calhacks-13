@@ -356,10 +356,13 @@ class LiveField:
         # the pseudo-data at C; the covariance doesn't depend on y.
         minv_c = linalg.cho_solve((chol, True), np.eye(m)[:, cpts])
         W_c = minv_c.T @ K  # K[C,:] (K + T)^-1
-        chol_c = _cholesky(K[np.ix_(cpts, cpts)] - W_c @ K[:, cpts])
+        W_cc = W_c[:, cpts]
+        # Posterior covariance K - K (K+T)^-1 K = K (K+T)^-1 T; the product form avoids the
+        # cancellation that breaks positive definiteness when many riders share a point.
+        cov_post = W_cc / prec[cpts]
+        sqrt_c = _sqrt_psd(0.5 * (cov_post + cov_post.T))
         ybar0 = wsum0 / prec
         base = m0[cpts] + W_c @ (ybar0 - m0)
-        W_cc = W_c[:, cpts]
         to_d = 1.0 / (sigma**2 * prec[cpts])
 
         y = _truncnorm_lower(m0[pts], sigma, lo, rng)
@@ -370,7 +373,7 @@ class LiveField:
         draws = np.empty((max(p.sweeps - p.burn_in, 1), q))
         for s in range(p.sweeps):
             d = to_d * np.bincount(rider_c, weights=y, minlength=q)
-            f_c = base + W_cc @ d + chol_c @ rng.standard_normal(q)
+            f_c = base + W_cc @ d + sqrt_c @ rng.standard_normal(q)
             y = _truncnorm_lower(f_c[rider_c], sigma, lo, rng)
             if s >= p.sweeps - len(draws):
                 draws[s - (p.sweeps - len(draws))] = to_d * np.bincount(
@@ -454,6 +457,15 @@ def _cholesky(A: np.ndarray) -> np.ndarray:
         except linalg.LinAlgError:
             jitter *= 100
     raise linalg.LinAlgError("matrix is not positive definite")
+
+
+def _sqrt_psd(A: np.ndarray) -> np.ndarray:
+    """Some S with S S^T = A, for an A that is PSD up to rounding."""
+    try:
+        return _cholesky(A)
+    except linalg.LinAlgError:
+        w, V = np.linalg.eigh(A)
+        return V * np.sqrt(np.clip(w, 0.0, None))
 
 
 def _truncnorm_lower(mean, sd, lower, rng) -> np.ndarray:
