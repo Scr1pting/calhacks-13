@@ -1,0 +1,72 @@
+{
+  "seed": 7,
+  "trips_per_weekday": 2400,
+  "saturday_factor": 0.29,
+  "sunday_factor": 0.29,
+  "rider_pool": 7000,
+  "n_vans": 215,
+  "shift_hours": 10.0,
+  "depots": [
+    [
+      "Oakland yard",
+      37.77,
+      -122.205,
+      0.5
+    ],
+    [
+      "Hayward yard",
+      37.645,
+      -122.11,
+      0.3
+    ],
+    [
+      "Richmond yard",
+      37.93,
+      -122.36,
+      0.2
+    ]
+  ],
+  "window_min": 30.0,
+  "no_show_wait_min": 5.0,
+  "max_negotiation_min": 60.0,
+  "plan_factor": 1.0813,
+  "plan_into_window_min": 10.0,
+  "plan_dwell_factor": 0.85,
+  "tail_positions": 7,
+  "candidate_vans": 10,
+  "sigma_offpeak": 0.22,
+  "sigma_peak": 0.32,
+  "incident_prob": 0.03,
+  "incident_mean_min": 9.0,
+  "late_shift_prob": 0.08,
+  "late_shift_min": 5.0,
+  "late_shift_max": 20.0,
+  "breakdown_prob_per_van_day": 0.01,
+  "breakdown_min": 30.0,
+  "breakdown_max": 60.0,
+  "not_ready_prob": 0.12,
+  "not_ready_mean_min": 3.0,
+  "hard_address_prob": 0.03,
+  "hard_address_min": 2.0,
+  "hard_address_max": 7.0,
+  "dwell_sigma": 0.35,
+  "board_mean": [
+    2.0,
+    3.5,
+    6.5
+  ],
+  "alight_mean": [
+    1.5,
+    2.5,
+    5.0
+  ],
+  "detour_factor": 1.3,
+  "curb_overhead_min": 1.0,
+  "freeway_boost": 0.8,
+  "freeway_km": 25.0,
+  "weekend_speed_factor": 1.12,
+  "speed_profile_csv": null,
+  "target_otp": 0.879,
+  "ref_miles_per_passenger": 9.8,
+  "ref_minutes_per_passenger": 42.0
+}

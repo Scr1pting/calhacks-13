@@ -1,0 +1,46 @@
+{
+  "day": 15,
+  "weekday": "Tue",
+  "n_events": 58220,
+  "start": 300.0,
+  "end": 1384.0,
+  "vans": 207,
+  "bounds": [
+    [
+      37.52009516715651,
+      -122.36
+    ],
+    [
+      38.01408908836262,
+      -121.96176939575973
+    ]
+  ],
+  "persona": {
+    "name": "Maria",
+    "trip_id": "D15T0946",
+    "rider_id": "R04755",
+    "van_id": 70,
+    "purpose": "dialysis",
+    "pickup": "Home (Richmond)",
+    "dropoff": "Dialysis Center - Richmond (synthetic)",
+    "mobility": "ambulatory",
+    "window": "11:00-11:30",
+    "appointment": "11:32",
+    "actual_pickup": "11:46",
+    "minutes_past_window": 16.0,
+    "stops_before_on_van": 18
+  },
+  "summary": {
+    "days": 1,
+    "trips": 2400,
+    "denial_rate": 0.042083333333333334,
+    "otp": 0.8877772944758591,
+    "no_show_rate": 0.023923444976076555,
+    "share_over_60_late": 0.006524575902566333,
+    "mean_minutes_past_window_when_late": 15.768329751345192,
+    "avg_trip_miles": 9.325846035315521,
+    "revenue_miles_per_passenger": 6.591346242296296,
+    "avg_ride_minutes": 51.87645819484068,
+    "revenue_minutes_per_passenger": 46.05756177475909
+  }
+}
