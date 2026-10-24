@@ -9,71 +9,71 @@
   "achieved": {
     "days": 3,
     "trips": 7200,
-    "denial_rate": 0.03833333333333333,
-    "otp": 0.878682842287695,
-    "no_show_rate": 0.021374927787406125,
-    "share_over_60_late": 0.002310803004043905,
-    "mean_minutes_past_window_when_late": 15.482500051781159,
-    "avg_trip_miles": 9.213066112211585,
-    "revenue_miles_per_passenger": 6.479265696990868,
-    "avg_ride_minutes": 52.731275693062436,
-    "revenue_minutes_per_passenger": 45.96469852198961,
+    "denial_rate": 0.043055555555555555,
+    "otp": 0.8873730043541365,
+    "no_show_rate": 0.023076923076923078,
+    "share_over_60_late": 0.0023222060957910013,
+    "mean_minutes_past_window_when_late": 16.51253854269754,
+    "avg_trip_miles": 8.792603003537394,
+    "revenue_miles_per_passenger": 6.816072262614012,
+    "avg_ride_minutes": 51.07367416628744,
+    "revenue_minutes_per_passenger": 46.249675709295765,
     "otp_by_hour": {
       "4": 1.0,
-      "5": 1.0,
-      "6": 0.992,
-      "7": 0.913,
-      "8": 0.918,
-      "9": 0.906,
-      "10": 0.857,
-      "11": 0.861,
-      "12": 0.825,
-      "13": 0.879,
-      "14": 0.901,
-      "15": 0.885,
-      "16": 0.788,
-      "17": 0.763,
-      "18": 0.656,
-      "19": 0.947,
-      "20": 0.904,
-      "21": 0.75
+      "5": 0.99,
+      "6": 0.966,
+      "7": 0.964,
+      "8": 0.92,
+      "9": 0.89,
+      "10": 0.838,
+      "11": 0.858,
+      "12": 0.834,
+      "13": 0.902,
+      "14": 0.917,
+      "15": 0.922,
+      "16": 0.753,
+      "17": 0.772,
+      "18": 0.913,
+      "19": 0.88,
+      "20": 0.973,
+      "21": 0.778
     }
   },
   "history": [
     {
       "plan_factor": 1.125,
-      "otp": 0.9312,
-      "denial_rate": 0.0468
+      "otp": 0.9192,
+      "denial_rate": 0.0546
     },
     {
       "plan_factor": 1.0375,
-      "otp": 0.8216,
-      "denial_rate": 0.0294
+      "otp": 0.8165,
+      "denial_rate": 0.0372
     },
     {
       "plan_factor": 1.0813,
-      "otp": 0.8787,
-      "denial_rate": 0.0383
-    },
-    {
-      "plan_factor": 1.1031,
-      "otp": 0.9121,
-      "denial_rate": 0.0453
-    },
-    {
-      "plan_factor": 1.0922,
-      "otp": 0.9062,
-      "denial_rate": 0.0461
-    },
-    {
-      "plan_factor": 1.0867,
-      "otp": 0.8785,
+      "otp": 0.8874,
       "denial_rate": 0.0431
     },
     {
-      "plan_factor": 1.0895,
-      "otp": 0.8693,
-      "denial_rate": 0.046
+      "plan_factor": 1.0594,
+      "otp": 0.8584,
+      "denial_rate": 0.0465
+    },
+    {
+      "plan_factor": 1.0703,
+      "otp": 0.8565,
+      "denial_rate": 0.0415
+    },
+    {
+      "plan_factor": 1.0758,
+      "otp": 0.8688,
+      "denial_rate": 0.0449
+    },
+    {
+      "plan_factor": 1.0785,
+      "otp": 0.8977,
+      "denial_rate": 0.0418
     }
   ]
 }

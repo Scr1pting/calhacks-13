@@ -72,7 +72,7 @@ class Scheduler:
         promised_new = math.nan
         times = []
         for s in seq:
-            arr = t + self.plan_tt(km_scalar(lat, lon, s.lat, s.lon, cfg.detour_factor), t)
+            arr = t + self.plan_tt(self.travel.road_km(lat, lon, s.lat, s.lon), t)
             if s.kind == "P":
                 if s.ti == new_ti:
                     p = max(ta.neg_lo[s.ti], math.ceil((arr - into) / 5.0) * 5.0)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 
 import numpy as np
 
@@ -90,11 +91,71 @@ def km_scalar(lat1, lon1, lat2, lon2, detour):
     return 6371.0 * 2 * math.asin(math.sqrt(a)) * detour
 
 
+class RoadNetwork:
+    """Road km between any two points, from a precomputed anchor-to-anchor matrix.
+
+    Each point maps to the road anchor nearest its grid cell (points in the bay map
+    to the shore). The anchor distance is then corrected by how much closer or
+    farther apart the two points are than their anchors.
+    """
+
+    def __init__(self, path: str, detour: float):
+        z = np.load(path)
+        A, M = z["anchors"], z["km"]
+        self.dlat, self.dlon = (float(x) for x in z["cell_deg"])
+        self.detour = detour
+        H = haversine_km(A[:, None, 0], A[:, None, 1], A[None, :, 0], A[None, :, 1])
+        M = np.where(np.isnan(M), H * detour, M)
+        self.km_ab, self.hav_ab = M.tolist(), H.tolist()
+        lat0, lat1, lon0, lon1 = BBOX
+        self.lat0, self.lon0 = lat0, lon0
+        glat = lat0 + (np.arange(int((lat1 - lat0) / self.dlat) + 1) + 0.5) * self.dlat
+        glon = lon0 + (np.arange(int((lon1 - lon0) / self.dlon) + 1) + 0.5) * self.dlon
+        kx = math.cos(math.radians(lat0))
+        d = (glat[:, None, None] - A[None, None, :, 0]) ** 2 + ((glon[None, :, None] - A[None, None, :, 1]) * kx) ** 2
+        self.lut = d.argmin(axis=2).tolist()
+        self.ni, self.nj = len(glat) - 1, len(glon) - 1
+
+    def anchor(self, lat, lon):
+        i = min(self.ni, max(0, int((lat - self.lat0) / self.dlat)))
+        j = min(self.nj, max(0, int((lon - self.lon0) / self.dlon)))
+        return self.lut[i][j]
+
+    def km(self, lat1, lon1, lat2, lon2):
+        hav = km_scalar(lat1, lon1, lat2, lon2, 1.0)
+        a, b = self.anchor(lat1, lon1), self.anchor(lat2, lon2)
+        if a == b:
+            return hav * self.detour
+        return max(hav, self.km_ab[a][b] + self.detour * (hav - self.hav_ab[a][b]))
+
+
+def load_road_network(cfg: SimConfig) -> RoadNetwork | None:
+    path = cfg.road_network
+    if not path:
+        return None
+    if not os.path.exists(path):
+        from .routing import build_road_network
+        centers = [a[1:3] for a in AREAS] + [d[2:4] for d in DESTINATIONS] + [d[1:3] for d in cfg.depots]
+        try:
+            build_road_network(path, centers)
+        except Exception as e:
+            print(f"WARNING: could not build road network ({e}); using straight-line x detour distances")
+            return None
+    return RoadNetwork(path, cfg.detour_factor)
+
+
+_NETWORKS: dict = {}
+
+
 class TravelModel:
     """Median travel minutes and spread by distance and time of day."""
 
     def __init__(self, cfg: SimConfig):
         self.cfg = cfg
+        key = (cfg.road_network, cfg.detour_factor)
+        if key not in _NETWORKS:
+            _NETWORKS[key] = load_road_network(cfg)
+        self.net = _NETWORKS[key]
         speeds = list(DEFAULT_SPEED_MPH)
         sig = [cfg.sigma_peak if h in PEAK_HOURS else cfg.sigma_offpeak for h in range(24)]
         if cfg.speed_profile_csv:
@@ -109,7 +170,9 @@ class TravelModel:
         self._speed_arr = np.array(self.speed_kmh)
 
     def road_km(self, lat1, lon1, lat2, lon2):
-        return haversine_km(lat1, lon1, lat2, lon2) * self.cfg.detour_factor
+        if self.net is None:
+            return km_scalar(lat1, lon1, lat2, lon2, self.cfg.detour_factor)
+        return self.net.km(lat1, lon1, lat2, lon2)
 
     def median_scalar(self, km, t, weekend):
         c = self.cfg

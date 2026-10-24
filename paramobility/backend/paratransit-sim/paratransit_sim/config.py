@@ -66,7 +66,8 @@ class SimConfig:
     alight_mean: tuple = (1.5, 2.5, 5.0)
 
     # ---- Travel -------------------------------------------------------------
-    detour_factor: float = 1.30            # road km / straight-line km
+    road_network: str | None = "data/road_network.npz"  # OSRM road distances; built on first use, None = straight line
+    detour_factor: float = 1.30            # road km / straight-line km, for short hops and fallback
     curb_overhead_min: float = 1.0
     freeway_boost: float = 0.8             # long legs use 880/580/80: up to +80% speed
     freeway_km: float = 25.0               # leg length at which the boost saturates
