@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>East Bay Paratransit Sim</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root { --bg:#f6f5f2; --panel:#fff; --ink:#1d1d1b; --muted:#6b6a66; --ok:#2e7d4f; --warn:#c77d0a; --bad:#c0392b; --line:#e3e1dc; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 system-ui, -apple-system, sans-serif; color:var(--ink); background:var(--bg);
+         display:grid; grid-template-columns: 1fr 340px; height:100vh; }
+  #map { height:100vh; }
+  aside { background:var(--panel); border-left:1px solid var(--line); padding:16px; overflow:auto; }
+  h1 { font-size:15px; margin:0 0 2px; }
+  .muted { color:var(--muted); font-size:12px; }
+  #clock { font:600 34px/1 ui-monospace, monospace; margin:12px 0 4px; }
+  .card { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:12px 0; }
+  .card h2 { font-size:13px; margin:0 0 6px; }
+  .kv { display:flex; justify-content:space-between; gap:8px; font-size:13px; }
+  .pill { display:inline-block; padding:1px 7px; border-radius:99px; font-size:12px; color:#fff; }
+  #log { font-size:12px; max-height:38vh; overflow:auto; }
+  #log div { padding:3px 0; border-bottom:1px solid var(--line); }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin:0 4px 0 10px; }
+  @media (max-width: 760px) { body { grid-template-columns:1fr; grid-template-rows: 55vh auto; } #map { height:55vh; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<aside>
+  <h1>East Bay Paratransit, simulated day</h1>
+  <div class="muted" id="sub">loading...</div>
+  <div id="clock">--:--</div>
+  <div class="legend muted">vans: <span style="background:var(--ok)"></span>on plan
+    <span style="background:var(--warn)"></span>10+ min behind <span style="background:var(--bad)"></span>25+ min behind</div>
+  <div class="card" id="persona"><h2>Demo rider</h2><div class="muted">none selected</div></div>
+  <div class="card"><h2>Today so far</h2>
+    <div class="kv"><span>Pickups</span><b id="n">0</b></div>
+    <div class="kv"><span>On time (within 30-min window)</span><b id="otp">-</b></div>
+    <div class="kv"><span>No-shows</span><b id="ns">0</b></div>
+  </div>
+  <div class="card"><h2>Late pickups</h2><div id="log"></div></div>
+  <div class="muted">Simulated data calibrated to East Bay Paratransit's published on-time performance. Not real riders.</div>
+</aside>
+<script>
+const map = new maplibregl.Map({
+  container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
+  center: [-122.2, 37.78], zoom: 10, pitch: 60, bearing: -20, maxPitch: 80,
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch: true}));
+const vans = {}; let pickups = 0, onTime = 0, noShows = 0, persona = null, ready = false;
+const color = b => b >= 25 ? '#c0392b' : b >= 10 ? '#c77d0a' : '#2e7d4f';
+
+function renderVans() {
+  if (!ready) return;
+  map.getSource('vans').setData({type: 'FeatureCollection', features: Object.values(vans).map(v => ({
+    type: 'Feature', geometry: {type: 'Point', coordinates: [v.lon, v.lat]},
+    properties: {id: v.van_id, behind: v.behind_plan, color: color(v.behind_plan),
+                 persona: !!(persona && v.van_id === persona.van_id)}}))});
+}
+
+map.on('load', () => {
+  map.addSource('vans', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
+  map.addLayer({id: 'vans', type: 'circle', source: 'vans', paint: {
+    'circle-color': ['get', 'color'], 'circle-opacity': .9,
+    'circle-radius': ['case', ['get', 'persona'], 9, 6],
+    'circle-stroke-color': '#1d1d1b', 'circle-stroke-width': ['case', ['get', 'persona'], 3, 1]},
+    layout: {'circle-sort-key': ['case', ['get', 'persona'], 1, 0]}});
+  const popup = new maplibregl.Popup({closeButton: false, closeOnClick: false});
+  map.on('mousemove', 'vans', e => {
+    const p = e.features[0].properties;
+    map.getCanvas().style.cursor = 'pointer';
+    popup.setLngLat(e.lngLat).setText(`Van ${p.id}: ${p.behind > 0 ? p.behind + ' min behind plan' : 'on plan'}`).addTo(map);
+  });
+  map.on('mouseleave', 'vans', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
+  ready = true;
+  renderVans();
+});
+
+fetch('/meta').then(r => r.json()).then(m => {
+  const [[la0, lo0], [la1, lo1]] = m.bounds;
+  map.fitBounds([[lo0, la0], [lo1, la1]], {padding: 40, pitch: 60, bearing: -20, duration: 0});
+  document.getElementById('sub').textContent = `${m.weekday} - ${m.vans} vans - replayed live`;
+  persona = m.persona;
+  if (persona) {
+    document.getElementById('persona').innerHTML = `<h2>${persona.name} (${persona.mobility})</h2>
+      <div class="kv"><span>From</span><span>${persona.pickup}</span></div>
+      <div class="kv"><span>To</span><span>${persona.dropoff}</span></div>
+      <div class="kv"><span>Pickup window</span><b>${persona.window}</b></div>
+      ${persona.appointment ? `<div class="kv"><span>Appointment</span><b>${persona.appointment}</b></div>` : ''}
+      <div class="kv"><span>Van</span><span>#${persona.van_id}</span></div>
+      <div class="kv"><span>Status</span><b id="pstatus">waiting</b></div>`;
+  }
+});
+
+const es = new EventSource('/stream');
+es.onmessage = msg => {
+  const d = JSON.parse(msg.data);
+  document.getElementById('clock').textContent = d.clock;
+  for (const e of d.events) {
+    if (e.type === 'van_pos') {
+      vans[e.van_id] = e;
+    } else if (e.type === 'stop' && e.kind === 'P') {
+      pickups++; if (e.on_time) onTime++; if (e.status.startsWith('no_show')) noShows++;
+      if (!e.on_time) {
+        const causes = Object.keys(e.causes).map(c => c.replace('_min','').replaceAll('_',' ')).join(', ');
+        document.getElementById('log').insertAdjacentHTML('afterbegin',
+          `<div><b>${d.clock}</b> ${e.place}: ${e.minutes_past_window} min past window ${causes ? '(' + causes + ')' : ''}</div>`);
+      }
+      if (persona && e.trip_id === persona.trip_id) {
+        const s = document.getElementById('pstatus');
+        s.innerHTML = e.on_time ? `<span class="pill" style="background:#2e7d4f">picked up ${d.clock}</span>`
+                                : `<span class="pill" style="background:#c0392b">picked up ${d.clock}, ${e.minutes_past_window} min late</span>`;
+      }
+    }
+  }
+  renderVans();
+  document.getElementById('n').textContent = pickups;
+  document.getElementById('otp').textContent = pickups ? (100 * onTime / pickups).toFixed(1) + '%' : '-';
+  document.getElementById('ns').textContent = noShows;
+};
+</script>
+</body>
+</html>

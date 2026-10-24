@@ -1,0 +1,41 @@
+{
+  "days": 14,
+  "trips": 26784,
+  "denial_rate": 0.03225806451612903,
+  "otp": 0.8796296296296297,
+  "no_show_rate": 0.0220679012345679,
+  "share_over_60_late": 0.002700617283950617,
+  "mean_minutes_past_window_when_late": 16.61135574885378,
+  "avg_trip_miles": 9.21447056263817,
+  "revenue_miles_per_passenger": 6.610055199605266,
+  "avg_ride_minutes": 52.03590758105733,
+  "revenue_minutes_per_passenger": 46.55508325173383,
+  "otp_by_hour": {
+    "4": 1.0,
+    "5": 0.977,
+    "6": 0.963,
+    "7": 0.949,
+    "8": 0.921,
+    "9": 0.895,
+    "10": 0.849,
+    "11": 0.825,
+    "12": 0.844,
+    "13": 0.884,
+    "14": 0.888,
+    "15": 0.892,
+    "16": 0.816,
+    "17": 0.796,
+    "18": 0.828,
+    "19": 0.867,
+    "20": 0.956,
+    "21": 0.919
+  },
+  "reference_ebp_dec_2019": {
+    "otp_ytd": 0.879,
+    "otp_standard": 0.91,
+    "over_60_late_ytd": 0.002,
+    "rider_no_show_ytd": 0.026,
+    "revenue_miles_per_passenger": 9.8,
+    "minutes_per_passenger": 42.0
+  }
+}
