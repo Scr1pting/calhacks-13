@@ -36,3 +36,14 @@ cp .env.example .env    # or put the values in the repo-root .env
 .venv/bin/uvicorn app.main:app --reload
 .venv/bin/pytest
 ```
+
+## Running the rider app
+
+```bash
+cd paramobility/frontend/rider
+cp .env.example .env.local   # set VITE_API_KEY; VITE_DEMO_CLINIC_PHONE to hear the agent call
+npm install
+npm run dev
+```
+
+The app talks to the deployed backend by default. The calendar and the East Bay Paratransit booking call are mocks (`src/mocks/`); planning, monitoring, calls to the clinic and chat are real. The side panel sends simulated ride updates, such as a late van.

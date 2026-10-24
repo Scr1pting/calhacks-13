@@ -8,9 +8,7 @@ import './RiderDecisionScreen.css'
 export default function RiderDecisionScreen({ decision }) {
   return (
     <>
-      <Headline lead="Kaiser can't see you late today.">
-        Dr. Patel's next opening is Thursday at 9:00 AM. Here's what I'd do.
-      </Headline>
+      <Headline lead={decision.headlineLead}>{decision.headlineGray}</Headline>
 
       <div role="radiogroup" aria-label="Options" className="lw-decision-options">
         {decision.options.map((option) => (

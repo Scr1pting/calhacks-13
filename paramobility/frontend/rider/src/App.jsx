@@ -13,6 +13,7 @@ import CallingClinicScreen from './screens/CallingClinicScreen.jsx'
 import OutcomeScreen from './screens/OutcomeScreen.jsx'
 import RiderDecisionScreen from './screens/RiderDecisionScreen.jsx'
 import ChatScreen from './screens/ChatScreen.jsx'
+import Headline from './components/Headline.jsx'
 
 function renderScreen(flow) {
   switch (flow.screen) {
@@ -36,6 +37,8 @@ function renderScreen(flow) {
       return <RiderDecisionScreen decision={flow.decision} />
     case 'chat':
       return <ChatScreen chat={flow.chat} />
+    case 'loading':
+      return <Headline lead="One moment.">Getting your rides.</Headline>
     default:
       return null
   }
@@ -65,9 +68,17 @@ export default function App() {
         onBack={flow.onCloseChat}
         bottomBar={bottomBar}
       >
+        {flow.error && (
+          <div className="lw-error" role="alert">
+            <span>Something went wrong: {flow.error}</span>
+            <button type="button" onClick={flow.onDismissError} aria-label="Dismiss">
+              ×
+            </button>
+          </div>
+        )}
         {renderScreen(flow)}
       </PhoneShell>
-      <DemoPanel stepGroups={flow.stepGroups} simulate={flow.simulate} />
+      <DemoPanel demo={flow.demo} />
     </div>
   )
 }

@@ -74,6 +74,7 @@ es.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
 {
   "rider": {"name": "Maya"},       // "phone" optional, currently unused
   "appointment": {"name": "Eastside Clinic", "phone": "+14155550199"},
+  "title": "Neurology",            // what the appointment is for; optional
   "origin": "1200 Market St, San Francisco",
   "dest": "Eastside Clinic, Oakland",
   "arrive_by": "2026-11-03T14:00:00-08:00",
@@ -115,4 +116,15 @@ es.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
 {"id": "evt_…", "trip_id": "trip_…", "at": "…", "kind": "plan_ready", "message": "…", "data": {}}
 ```
 
-Event kinds: `planning`, `plan_ready`, `planning_failed`, `policy_learned`, `policy_set`, `permissions_changed`, `appointment_moved`, `booked`, `van_eta`, `picked_up`, `arrived`, `running_late`, `late_handled`, `message_requested`, `call_started`, `call_ended`, `call_failed`, `call_skipped`.
+Event kinds: `planning`, `plan_ready`, `planning_failed`, `policy_learned`, `policy_set`, `permissions_changed`, `appointment_moved`, `booked`, `van_eta`, `picked_up`, `arrived`, `running_late`, `late_handled`, `message_requested`, `call_started`, `call_progress`, `call_ended`, `call_failed`, `call_skipped`.
+
+### Call events
+
+Calls to the appointment show up live in the activity log, so the app can show a call as it happens:
+
+- `call_started`: `data.call_kind` is `policy_inquiry` (planner asking about the grace period), `late_notice` (the rider is running late) or `rider_message` (passing on a message the rider asked for).
+- `call_progress`: sent while the call runs, about every 2 seconds when something new was said. `data.lines` holds only the new lines, each `{"role": "agent" | "callee", "text": "…"}`.
+- `call_ended`: `data.result` is what the phone agent recorded, `data.transcript` the whole conversation in the same line format, and `data.summary` Cartesia's summary.
+  - For `late_notice`: `{reached_someone, acknowledged, appointment_held, notes}`. `appointment_held: false` means the rider can't be seen late.
+  - For `policy_inquiry`: `{reached_someone, grace_minutes, can_reschedule, alternative_times, notes}`.
+  - For `rider_message`: `{reached_someone, delivered, response}`.

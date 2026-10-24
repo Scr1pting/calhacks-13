@@ -37,6 +37,7 @@ def trip_state(trip: Trip) -> dict:
         "status": trip.status,
         "rider": trip.rider.name,
         "appointment": trip.appointment.name,
+        "appointment_for": trip.title,
         "arrive_by": trip.arrive_by.isoformat(),
         "origin": trip.origin,
         "destination": trip.dest,

@@ -15,7 +15,7 @@ from app.core.store import get_store
 from .cartesia import CartesiaClient, CartesiaError
 
 log = logging.getLogger(__name__)
-POLL_SECONDS = 5
+POLL_SECONDS = 2
 
 
 def _agent_id(kind: VoiceTaskKind) -> str:
@@ -55,9 +55,9 @@ async def run_voice_task(trip: Trip, kind: VoiceTaskKind, variables: dict) -> Vo
         task.status = "started"
         store.put_voice_task(task)
         store.log(trip.id, "call_started", f"Calling {trip.appointment.name}.",
-                  call_id=task.call_id)
+                  call_id=task.call_id, call_kind=kind)
 
-        call = await _wait_for_end(cartesia, task.call_id, settings.call_timeout_seconds)
+        call = await _wait_for_end(cartesia, task, settings.call_timeout_seconds)
 
     # The webhook may have written a result while the call was running.
     task = store.get_voice_task(task.id) or task
@@ -71,21 +71,40 @@ async def run_voice_task(trip: Trip, kind: VoiceTaskKind, variables: dict) -> Vo
         "call_ended",
         f"Call with {trip.appointment.name} ended.",
         call_id=task.call_id,
+        call_kind=kind,
         status=task.status,
         summary=call.get("summary"),
         result=task.result,
+        transcript=_lines(task.transcript),
     )
     return task
 
 
-async def _wait_for_end(cartesia: CartesiaClient, call_id: str, timeout: int) -> dict:
+def _lines(transcript: list[dict]) -> list[dict]:
+    """The spoken lines, for the rider app: role is "agent" or "callee"."""
+    return [
+        {"role": "agent" if t.get("role") == "assistant" else "callee", "text": t["text"]}
+        for t in transcript
+        if t.get("role") in ("assistant", "user") and t.get("text")
+    ]
+
+
+async def _wait_for_end(cartesia: CartesiaClient, task: VoiceTask, timeout: int) -> dict:
+    """Poll the call until it ends, logging new transcript lines so the app can show them live."""
+    store = get_store()
     call: dict = {}
+    shown = 0
     for _ in range(timeout // POLL_SECONDS):
         try:
-            call = await cartesia.get_call(call_id)
+            call = await cartesia.get_call(task.call_id)
         except CartesiaError:
-            log.warning("polling call %s failed", call_id, exc_info=True)
+            log.warning("polling call %s failed", task.call_id, exc_info=True)
         if call.get("status") in ("completed", "failed"):
             return call
+        lines = _lines(call.get("transcript") or [])
+        if len(lines) > shown:
+            store.log(task.trip_id, "call_progress", "Call in progress.", call_id=task.call_id,
+                      call_kind=task.kind, lines=lines[shown:])
+            shown = len(lines)
         await asyncio.sleep(POLL_SECONDS)
     return call

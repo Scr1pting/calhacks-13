@@ -10,8 +10,8 @@ export default function EverydayHomeScreen({ everyday }) {
   return (
     <>
       <Headline lead="Your rides are taken care of.">
-        Next up is {everyday.next.title.toLowerCase()} on Tuesday. I'll
-        remind you the night before.
+        Next up is {everyday.next.title.toLowerCase()} on {everyday.next.day}.
+        I'll watch the trip for you.
       </Headline>
 
       <Card>
@@ -29,6 +29,7 @@ export default function EverydayHomeScreen({ everyday }) {
         <KeyValueRow label="Pickup window" value={everyday.next.pickupWindow} />
       </Card>
 
+      {everyday.alsoBooked.length > 0 && (
       <div className="lw-also-booked">
         <EyebrowLabel>Also booked</EyebrowLabel>
         <div className="lw-also-booked-list" role="list">
@@ -46,6 +47,7 @@ export default function EverydayHomeScreen({ everyday }) {
           ))}
         </div>
       </div>
+      )}
     </>
   )
 }

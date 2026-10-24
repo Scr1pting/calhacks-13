@@ -25,16 +25,17 @@ const PhoneIcon = (
   </svg>
 )
 
-// Screens 5 / 6c: "Outcome" (rescheduled, or moved to Thursday).
+// Screens 5 / 6c: "Outcome" of a call to the appointment: rescheduled, still
+// on, or unclear (`outcome.pill`). "Hear the call" shows the call transcript.
 export default function OutcomeScreen({ outcome }) {
   return (
     <>
       <Headline lead={outcome.headlineLead}>{outcome.headlineGray}</Headline>
 
       <Card>
-        <StatusPill tone="green">Rescheduled</StatusPill>
+        <StatusPill tone="green">{outcome.pill || 'Rescheduled'}</StatusPill>
         <div className="lw-outcome-times">
-          <span className="lw-outcome-was">{outcome.was}</span>
+          {outcome.was && <span className="lw-outcome-was">{outcome.was}</span>}
           <span className="lw-outcome-now">{outcome.now}</span>
         </div>
         <p className="lw-outcome-detail">{outcome.detail}</p>
@@ -55,10 +56,30 @@ export default function OutcomeScreen({ outcome }) {
         <Button variant="compact-outline" icon={CalendarIcon} onClick={outcome.onFirst}>
           {outcome.firstLabel}
         </Button>
-        <Button variant="compact-outline" icon={PhoneIcon}>
-          Hear the call
-        </Button>
+        {outcome.transcript?.length > 0 && (
+          <Button variant="compact-outline" icon={PhoneIcon} onClick={outcome.onToggleTranscript}>
+            {outcome.showTranscript ? 'Hide the call' : 'Hear the call'}
+          </Button>
+        )}
       </div>
+
+      {outcome.showTranscript && (
+        <Card>
+          <div className="lw-outcome-transcript" aria-label="Call transcript">
+            {outcome.transcript.map((line, i) => (
+              <div key={i}>
+                <div
+                  className="lw-outcome-transcript-who"
+                  style={{ color: line.who === 'LEEWAY' ? 'var(--lw-accent)' : 'var(--lw-text-secondary)' }}
+                >
+                  {line.who}
+                </div>
+                <div>{line.t}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </>
   )
 }

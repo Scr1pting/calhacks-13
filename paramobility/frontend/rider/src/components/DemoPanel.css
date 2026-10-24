@@ -55,30 +55,56 @@
   text-align: left;
 }
 
-.lw-demo-step-button {
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--lw-ink);
-  border: none;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.lw-demo-sim-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.lw-demo-panel-warn {
+  color: #8a5a00;
+}
+
+.lw-demo-trip-title {
   font-size: var(--lw-fs-secondary);
-  cursor: pointer;
-  text-align: left;
+  font-weight: 500;
 }
 
-.lw-demo-step-button-active {
-  background: var(--lw-ink);
-  color: #ffffff;
+.lw-demo-rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--lw-fs-secondary);
 }
 
-.lw-demo-step-num {
-  font-size: var(--lw-fs-eyebrow);
-  opacity: 0.6;
-  width: 22px;
-  flex: none;
+.lw-demo-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lw-demo-row dt {
+  color: #5c6168;
+}
+
+.lw-demo-row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lw-demo-activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+}
+
+.lw-demo-activity-time {
+  color: #5c6168;
+  margin-right: 8px;
+  font-variant-numeric: tabular-nums;
 }

@@ -5,7 +5,8 @@ import Divider from '../components/Divider.jsx'
 import Button from '../components/Button.jsx'
 import './CallingClinicScreen.css'
 
-// Screens 4 / 4b: "Calling the clinic".
+// Screens 4 / 4b: "Calling the clinic". `call.onToggleListen` is optional:
+// listening in needs live call audio the backend doesn't expose yet.
 export default function CallingClinicScreen({ call }) {
   return (
     <>
@@ -39,13 +40,15 @@ export default function CallingClinicScreen({ call }) {
         <Divider />
         <p className="lw-call-waiting">{call.waitingFor}</p>
 
-        <Button
-          variant="secondary"
-          background={call.listening ? 'var(--lw-accent-bg)' : undefined}
-          onClick={call.onToggleListen}
-        >
-          {call.listenLabel}
-        </Button>
+        {call.onToggleListen && (
+          <Button
+            variant="secondary"
+            background={call.listening ? 'var(--lw-accent-bg)' : undefined}
+            onClick={call.onToggleListen}
+          >
+            {call.listenLabel}
+          </Button>
+        )}
       </Card>
     </>
   )
