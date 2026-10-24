@@ -238,7 +238,6 @@ export default function App() {
   return (
     <div className="app">
       <div ref={mapEl} className="map" />
-      <div className="vignette" />
       {error && <div className="error">{error}</div>}
       {fleet && <Hud fleet={fleet} view={view} controls={controls} maria={mariaTrip(fleet)} />}
       {!fleet && !error && <div className="loading">Loading the simulated day…</div>}

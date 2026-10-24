@@ -11,11 +11,12 @@ export const CAUSE_LABELS = {
   breakdown_min: 'Breakdown',
 }
 
-// Behind-plan bands, in minutes: on plan, slipping, late.
+// Behind-plan bands, in minutes: on plan, slipping, late. Leeway's green
+// (--lw-map-pin), with an amber and a red in the same muted register.
 export const BANDS = [
-  { max: 5, color: [52, 227, 199], label: 'On plan' },
-  { max: 15, color: [255, 196, 92], label: '5–15 min behind' },
-  { max: Infinity, color: [255, 99, 120], label: '15+ min behind' },
+  { max: 5, color: [47, 163, 107], label: 'On plan' },
+  { max: 15, color: [217, 154, 30], label: '5–15 min behind' },
+  { max: Infinity, color: [200, 72, 60], label: '15+ min behind' },
 ]
 export const bandColor = (behind) => BANDS.find((b) => behind < b.max).color
 
