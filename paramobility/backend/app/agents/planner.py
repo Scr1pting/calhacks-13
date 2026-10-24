@@ -1,0 +1,172 @@
+"""Planner agent (Sonnet): learns the appointment's policy and picks a pickup time.
+
+Claude decides what to find out and which option fits the rider, but every
+probability and wait time comes from the delay model. submit_plan only accepts
+pickup times the model has scored and stores the model's numbers, not Claude's.
+"""
+
+import json
+import logging
+from datetime import datetime
+
+from anthropic import beta_async_tool
+
+from app.core import prompts
+from app.core.config import get_settings
+from app.core.llm import FALLBACK_BETA, final_text, get_client
+from app.core.schemas import Plan, Trip, TripOption, TripStatus
+from app.core.store import get_store
+from app.tools import actions, model_tools
+from app.tools.model_tools import ModelUnavailable
+
+log = logging.getLogger(__name__)
+
+
+def _rows(opts: list[TripOption]) -> str:
+    return json.dumps([o.model_dump(mode="json") for o in opts])
+
+
+def trip_brief(trip: Trip) -> str:
+    p = trip.permissions
+    return json.dumps(
+        {
+            "rider": trip.rider.name,
+            "appointment": trip.appointment.name,
+            "origin": trip.origin,
+            "destination": trip.dest,
+            "arrive_by": trip.arrive_by.isoformat(),
+            "certainty_wanted": trip.certainty,
+            "rider_notes": trip.notes,
+            "known_policy": trip.policy.model_dump() if trip.policy else None,
+            "rider_allows": {
+                "calling_the_appointment": p.may_call_appointment,
+                "calls_left": p.max_calls - trip.calls_used,
+            },
+        },
+        indent=2,
+    )
+
+
+def build_tools(trip_id: str):
+    store = get_store()
+    scored: dict[datetime, TripOption] = {}
+
+    def remember(opts: list[TripOption]) -> list[TripOption]:
+        for o in opts:
+            scored[o.pickup_time] = o
+        return opts
+
+    @beta_async_tool
+    async def get_tradeoff() -> str:
+        """Score candidate pickup times with the delay model.
+
+        Returns pickup_time, p_on_time (chance of arriving by the appointment
+        time plus its grace period) and expected_wait_minutes (time spent
+        waiting at the appointment) for each candidate. Uses the known grace
+        period, so call it again after the policy changes.
+        """
+        try:
+            return _rows(remember(model_tools.tradeoff(store.get_trip(trip_id))))
+        except ModelUnavailable as e:
+            return f"Error: {e}"
+
+    @beta_async_tool
+    async def get_options(certainty: float) -> str:
+        """Best pickup times that reach the given chance of arriving on time.
+
+        Args:
+            certainty: Required chance of arriving on time, between 0.5 and 0.99.
+        """
+        try:
+            return _rows(remember(model_tools.options(store.get_trip(trip_id), certainty)))
+        except ModelUnavailable as e:
+            return f"Error: {e}"
+
+    @beta_async_tool
+    async def call_appointment_for_policy(questions: str) -> str:
+        """Phone the appointment to learn how late the rider can arrive.
+
+        A voice agent asks about the grace period, whether the appointment can
+        be moved, and anything in questions. Takes a few minutes. Counts toward
+        the rider's call limit.
+
+        Args:
+            questions: Extra questions for this call, in plain language. May be empty.
+        """
+        try:
+            policy = await actions.inquire_policy(trip_id, questions)
+        except actions.NotAllowed as e:
+            return f"Not allowed: {e}"
+        if policy is None:
+            return "The call did not produce a usable answer. Plan without a grace period."
+        store.log(trip_id, "policy_learned", "Learned the appointment's late policy by phone.",
+                  policy=policy.model_dump())
+        return f"Policy saved: {policy.model_dump_json()}"
+
+    @beta_async_tool
+    async def submit_plan(pickup_time: str, explanation: str) -> str:
+        """Save the recommended pickup time for the rider. Call exactly once, at the end.
+
+        Args:
+            pickup_time: A pickup_time from get_tradeoff or get_options, copied
+                exactly.
+            explanation: Two or three plain sentences for the rider on why this
+                time. Leave out probabilities and minutes; the app shows the
+                model's numbers next to it.
+        """
+        try:
+            chosen = scored[datetime.fromisoformat(pickup_time)]
+        except (KeyError, ValueError):
+            return "Error: copy pickup_time exactly from a get_tradeoff or get_options row."
+        trip = store.get_trip(trip_id)
+        try:
+            plan = Plan(
+                recommended=chosen,
+                options=model_tools.options(trip, trip.certainty),
+                tradeoff=model_tools.tradeoff(trip),
+                explanation=explanation,
+            )
+        except ModelUnavailable as e:
+            return f"Error: {e}"
+
+        def save(t: Trip):
+            t.plan = plan
+            t.status = TripStatus.planned
+            t.error = ""
+
+        store.update_trip(trip_id, save)
+        store.log(trip_id, "plan_ready", explanation, recommended=chosen.model_dump(mode="json"))
+        return "Plan saved."
+
+    return [get_tradeoff, get_options, call_appointment_for_policy, submit_plan]
+
+
+async def plan_trip(trip_id: str) -> None:
+    store = get_store()
+    trip = store.get_trip(trip_id)
+    store.log(trip_id, "planning", "Planning started.")
+    try:
+        runner = get_client().beta.messages.tool_runner(
+            model=get_settings().planner_model,
+            max_tokens=16000,
+            output_config={"effort": "medium"},
+            betas=[FALLBACK_BETA],
+            fallbacks="default",
+            system=prompts.load("planner"),
+            tools=build_tools(trip_id),
+            messages=[{"role": "user", "content": f"<trip>\n{trip_brief(trip)}\n</trip>"}],
+        )
+        final = await runner.until_done()
+        summary = final_text(final)
+    except Exception as e:  # any failure should leave the trip marked failed, not stuck
+        log.exception("planner failed for %s", trip_id)
+        summary = f"Planner error: {e}"
+
+    trip = store.get_trip(trip_id)
+    if trip.status != TripStatus.planned:
+        def fail(t: Trip):
+            t.status = TripStatus.failed
+            t.error = summary or "The planner finished without a plan."
+
+        store.update_trip(trip_id, fail)
+        store.log(trip_id, "planning_failed", "Could not make a plan.", detail=summary)

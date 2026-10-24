@@ -15,7 +15,24 @@ The rider always stays in control. The agent only acts within limits the rider s
 
 ## Structure
 
+All of it lives in `paramobility/`:
+
 - `backend/`: API, agents, delay model
+  - `app/model/`: the delay model (interface stubs; `app/tools/fake_model.py` stands in until it's implemented)
+  - `app/agents/`: planner and late-notice agents (Claude Sonnet), transcript extraction (Claude Haiku)
+  - `app/voice/`: Cartesia phone agents (Claude Haiku)
+  - `prompts/`: every prompt the agents use
 - `frontend/rider/`: rider app
 - `frontend/dashboard/`: model and agent showcase
-- `docs/`: interface spec (`INTERFACES.md`)
+- `deploy/`: Docker Compose, Caddy, and the GitHub webhook that redeploys after CI passes
+- `docs/`: API spec ([`INTERFACES.md`](paramobility/docs/INTERFACES.md)) and deployment ([`DEPLOY.md`](paramobility/docs/DEPLOY.md))
+
+## Running the backend locally
+
+```bash
+cd paramobility/backend
+python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # Windows: .venv\Scripts\
+cp .env.example .env    # or put the values in the repo-root .env
+.venv/bin/uvicorn app.main:app --reload
+.venv/bin/pytest
+```

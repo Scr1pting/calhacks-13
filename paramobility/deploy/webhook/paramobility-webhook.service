@@ -1,0 +1,13 @@
+[Unit]
+Description=Paramobility GitHub webhook (redeploys after CI passes on main)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/opt/paramobility/webhook.env
+ExecStart=/usr/bin/python3 /opt/paramobility/repo/paramobility/deploy/webhook/github_webhook.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Deploy a commit of main on the server: check it out, rebuild, restart.
+# Started by the GitHub webhook; can also be run by hand:
+#   /opt/paramobility/repo/paramobility/deploy/deploy.sh [sha]
+set -euo pipefail
+
+ROOT=/opt/paramobility
+REPO=$ROOT/repo
+SHA=${1:-origin/main}
+exec 9>"$ROOT/deploy.lock"
+flock 9  # one deploy at a time; a newer one waits for the current one
+exec > >(tee -a "$ROOT/deploy.log") 2>&1
+
+echo "=== $(date -Is) deploying $SHA"
+cd "$REPO"
+git fetch --quiet origin main
+if ! git merge-base --is-ancestor "$SHA" origin/main; then
+    echo "$SHA is not on origin/main, refusing to deploy"
+    exit 1
+fi
+git reset --quiet --hard "$SHA"
+echo "checked out $(git log -1 --format='%h %s')"
+
+cd "$REPO/paramobility/deploy"
+export PARAMOBILITY_ENV_FILE=$ROOT/.env
+docker compose build api
+docker compose up -d --remove-orphans
+docker image prune -f >/dev/null
+
+for _ in $(seq 1 30); do
+    if [ "$(docker compose ps api --format '{{.Health}}')" = healthy ]; then
+        echo "=== $(date -Is) deployed $(git rev-parse --short HEAD), api healthy"
+        # Pick up changes to the webhook listener itself.
+        systemctl restart paramobility-webhook
+        exit 0
+    fi
+    sleep 2
+done
+echo "=== api did not become healthy"
+docker compose logs --tail 50 api
+exit 1

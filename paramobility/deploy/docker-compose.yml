@@ -1,0 +1,39 @@
+# Production stack. On the server this runs from the git checkout in
+# /opt/paramobility/repo via deploy.sh, which points PARAMOBILITY_ENV_FILE at
+# /opt/paramobility/.env (the secrets, never in git).
+name: paramobility
+
+services:
+  api:
+    build: ../backend
+    image: paramobility-backend:local
+    restart: unless-stopped
+    env_file: ${PARAMOBILITY_ENV_FILE:-.env}
+    environment:
+      DATABASE_PATH: /data/paramobility.db
+    volumes:
+      - api-data:/data
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-api.cal.fuzz.li}
+      HOOKS_DOMAIN: ${HOOKS_DOMAIN:-hooks.cal.fuzz.li}
+    extra_hosts:
+      # The GitHub webhook listener runs on the host, not in a container.
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  api-data:
+  caddy-data:
+  caddy-config:

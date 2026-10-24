@@ -1,0 +1,28 @@
+# The server's GitHub webhook redeploys main after this workflow succeeds on a
+# push, so keep the name "CI" in sync with DEPLOY_WORKFLOW in its webhook.env.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: paramobility/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: paramobility/backend/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -q
+      - name: Check the deploy webhook listener
+        run: python -m py_compile ../deploy/webhook/github_webhook.py
