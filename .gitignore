@@ -7,3 +7,5 @@ __pycache__/
 *.db
 *.sqlite3
 *.egg-info/
+drive_cache.json
+drive_cache.tmp
