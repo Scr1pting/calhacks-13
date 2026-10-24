@@ -47,3 +47,16 @@ npm run dev
 ```
 
 The app talks to the deployed backend by default. The calendar and the East Bay Paratransit booking call are mocks (`src/mocks/`); planning, monitoring, calls to the clinic and chat are real. Hold the mic on the Ask Leeway bar to talk to Leeway: ask what's coming up, or tell it about a new appointment and it plans the ride. The side panel sends simulated ride updates, such as a late van.
+
+## Fleet dashboard
+
+A 3D view of the simulated East Bay Paratransit day (`paramobility/backend/paratransit-sim`): every van drives its real road routes through an extruded 3D city, coloured by how far behind plan it is. It shows live counts, late pickups with their causes, and a chase camera that follows Maria, the demo rider.
+
+```bash
+cd paramobility/frontend/dashboard
+npm install --legacy-peer-deps   # plain npm install trips an npm peer-dependency bug
+npm run dev                      # http://localhost:5174
+npm run data                     # rebuild public/data/fleet.json after re-running the simulator
+```
+
+Handy links: `?t=10:15` starts at that time, and `?follow=maria` opens on Maria's ride. Map data is open and needs no keys: buildings, roads and water come from OpenStreetMap via OpenFreeMap, and hillshading from AWS Terrain Tiles.

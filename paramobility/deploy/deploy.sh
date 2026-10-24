@@ -24,6 +24,11 @@ echo "checked out $(git log -1 --format='%h %s')"
 cd "$REPO/paramobility/deploy"
 export PARAMOBILITY_ENV_FILE=$ROOT/.env
 docker compose build api
+
+# The fleet dashboard is a static site: build it in a throwaway Node container.
+docker run --rm -v "$REPO/paramobility/frontend/dashboard:/app" -w /app node:22-slim \
+    sh -c 'npm ci --legacy-peer-deps --no-audit --no-fund && npm run build'
+
 docker compose up -d --remove-orphans
 docker image prune -f >/dev/null
 

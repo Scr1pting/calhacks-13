@@ -4,6 +4,15 @@
 	reverse_proxy api:8000
 }
 
+# The fleet dashboard (frontend/dashboard), a static site built by deploy.sh.
+{$DASHBOARD_DOMAIN} {
+	encode gzip zstd
+	root * /srv/dashboard
+	header /data/* Cache-Control "public, max-age=600"
+	try_files {path} /index.html
+	file_server
+}
+
 # GitHub webhook listener on the host (deploy/webhook/github_webhook.py).
 {$HOOKS_DOMAIN} {
 	reverse_proxy host.docker.internal:9000
