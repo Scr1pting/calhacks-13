@@ -1,0 +1,78 @@
+.lw-select-row {
+  background: var(--lw-card-bg);
+  border-radius: var(--lw-radius-row);
+  border: 1.5px solid #ffffff;
+  box-sizing: border-box;
+  display: flex;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.lw-select-row-selected {
+  border-color: var(--lw-ink);
+}
+
+.lw-select-row-checkbox {
+  min-height: 76px;
+  padding: 14px 18px;
+  align-items: center;
+}
+
+.lw-select-row-radio {
+  padding: 14px 16px;
+  align-items: flex-start;
+}
+
+.lw-checkbox-indicator {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 13px;
+  border: 2px solid var(--lw-ink);
+  box-sizing: border-box;
+  background: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lw-checkbox-indicator-on {
+  background: var(--lw-ink);
+}
+
+.lw-radio-indicator {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  margin-top: 1px;
+  border-radius: 12px;
+  border: 2px solid var(--lw-ink);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lw-radio-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.lw-radio-dot-on {
+  background: var(--lw-ink);
+}
+
+.lw-select-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.lw-select-row-radio .lw-select-content {
+  gap: 4px;
+}

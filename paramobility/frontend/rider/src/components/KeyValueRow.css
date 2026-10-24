@@ -1,0 +1,16 @@
+.lw-kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lw-kv-label {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-kv-value {
+  font-size: var(--lw-fs-body);
+  font-weight: 400;
+}

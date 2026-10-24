@@ -1,0 +1,41 @@
+.lw-call-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lw-call-time {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.lw-call-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lw-call-line {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lw-call-who {
+  font-size: var(--lw-fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.lw-call-text {
+  font-size: var(--lw-fs-body);
+  line-height: 1.35;
+}
+
+.lw-call-waiting {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+}

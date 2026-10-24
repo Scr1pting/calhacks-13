@@ -1,0 +1,84 @@
+.lw-demo-panel {
+  width: 340px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding-top: 8px;
+}
+
+.lw-demo-panel-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lw-demo-panel-title {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.lw-demo-panel-desc {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.45;
+  color: #5c6168;
+}
+
+.lw-demo-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lw-demo-panel-heading {
+  font-size: var(--lw-fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #5c6168;
+  padding-bottom: 4px;
+}
+
+.lw-demo-sim-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #d3d1cb;
+  background: #f7f6f2;
+  font-family: inherit;
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-ink);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lw-demo-step-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--lw-ink);
+  border: none;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--lw-fs-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lw-demo-step-button-active {
+  background: var(--lw-ink);
+  color: #ffffff;
+}
+
+.lw-demo-step-num {
+  font-size: var(--lw-fs-eyebrow);
+  opacity: 0.6;
+  width: 22px;
+  flex: none;
+}

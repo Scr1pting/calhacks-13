@@ -1,0 +1,84 @@
+.lw-phone {
+  width: 390px;
+  height: 844px;
+  flex: none;
+  border-radius: var(--lw-radius-device);
+  background: var(--lw-screen-bg);
+  border: 1px solid #dedcd7;
+  box-shadow: 0 40px 80px -40px rgba(35, 38, 42, 0.35);
+  overflow: hidden;
+  position: relative;
+  font-family: var(--lw-font);
+  color: var(--lw-ink);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.lw-status-bar {
+  height: 54px;
+  flex: none;
+}
+
+.lw-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 20px 0 26px;
+  flex: none;
+}
+
+.lw-menu-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--lw-card-bg);
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.lw-menu-button span {
+  width: 14px;
+  height: 1.8px;
+  background: var(--lw-ink);
+}
+
+.lw-back-button {
+  width: 44px;
+  height: 44px;
+  margin-left: -6px;
+  border-radius: 22px;
+  background: var(--lw-card-bg);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.lw-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden auto;
+  padding: 26px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lw-home-indicator {
+  position: absolute;
+  left: 128px;
+  bottom: 8px;
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--lw-ink);
+}

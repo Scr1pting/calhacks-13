@@ -1,0 +1,79 @@
+.lw-location-card {
+  padding: 14px 14px 14px 18px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.lw-location-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lw-location-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-location-address {
+  font-size: var(--lw-fs-caption);
+  color: var(--lw-text-secondary);
+}
+
+.lw-map-thumb {
+  width: 84px;
+  height: 58px;
+  flex: none;
+  border-radius: var(--lw-radius-map);
+  background: var(--lw-map-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.lw-map-road {
+  position: absolute;
+  background: var(--lw-map-road);
+}
+
+.lw-map-road-1 {
+  left: -10px;
+  top: 30px;
+  width: 120px;
+  height: 5px;
+  transform: rotate(-18deg);
+}
+
+.lw-map-road-2 {
+  left: 48px;
+  top: -10px;
+  width: 5px;
+  height: 90px;
+  transform: rotate(12deg);
+}
+
+.lw-map-patch {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 30px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--lw-map-green-patch);
+}
+
+.lw-map-pin {
+  position: absolute;
+  left: 34px;
+  top: 20px;
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--lw-map-pin);
+  box-shadow: 0 0 0 3px var(--lw-card-bg);
+}

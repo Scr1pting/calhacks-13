@@ -1,0 +1,48 @@
+.lw-forecast-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lw-forecast-note {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-monitor-text {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+  padding: 0 4px;
+}
+
+.lw-secondary-row {
+  min-height: 64px;
+  padding: 10px 10px 10px 18px;
+  box-sizing: border-box;
+  border-radius: var(--lw-radius-row);
+  border: 1px solid var(--lw-border-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lw-secondary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lw-secondary-title {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-secondary-sub {
+  font-size: var(--lw-fs-caption);
+  color: var(--lw-text-secondary);
+}

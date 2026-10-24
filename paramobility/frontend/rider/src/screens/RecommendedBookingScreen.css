@@ -1,0 +1,55 @@
+.lw-recommend-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.lw-recommend-headline {
+  font-size: var(--lw-fs-headline);
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+}
+
+.lw-recommend-headline-gray {
+  color: var(--lw-text-secondary);
+}
+
+.lw-recommend-window {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lw-recommend-day {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-recommend-odds {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lw-recommend-odds-label {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-recommend-odds-value {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--lw-success);
+}
+
+.lw-recommend-explanation {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+}
