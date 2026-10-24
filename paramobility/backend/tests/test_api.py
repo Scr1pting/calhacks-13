@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 
 import pytest
@@ -18,6 +19,19 @@ async def fake_plan_trip(trip_id: str) -> None:
     await tools["submit_plan"].func(
         pickup_time=opts[0].pickup_time.isoformat(), explanation="Leaves time for detours."
     )
+
+
+def eventually(check, timeout=15):
+    """Wait for background work (planner, monitor) on the app's loop, as a client would."""
+    deadline = time.time() + timeout
+    while not check():
+        assert time.time() < deadline, "timed out waiting for background work"
+        time.sleep(0.05)
+
+
+def planned(client, trip_id):
+    eventually(lambda: client.get(f"/trips/{trip_id}").json()["status"] != "planning")
+    return client.get(f"/trips/{trip_id}").json()
 
 
 @pytest.fixture
@@ -43,7 +57,7 @@ def test_plan_book_and_ride(client, trip_request, notified, store):
     assert r.status_code == 202
     trip_id = r.json()["id"]
 
-    trip = client.get(f"/trips/{trip_id}").json()
+    trip = planned(client, trip_id)
     assert trip["status"] == "planned"
     pickup = trip["plan"]["recommended"]["pickup_time"]
     assert trip["plan"]["recommended"]["p_on_time"] >= 0.9
@@ -56,7 +70,8 @@ def test_plan_book_and_ride(client, trip_request, notified, store):
     r = client.post(f"/trips/{trip_id}/status",
                     json={"kind": "picked_up", "at": (booked + timedelta(hours=1)).isoformat()})
     assert r.json()["status"] == "riding"
-    assert notified and notified[0].minutes_late > 0
+    eventually(lambda: notified)
+    assert notified[0].minutes_late > 0
     assert store.get_trip(trip_id).outlook.p_on_time < 0.5
 
     r = client.post(f"/trips/{trip_id}/status",
@@ -73,6 +88,7 @@ def test_plan_book_and_ride(client, trip_request, notified, store):
 
 def test_booking_requires_a_scored_time(client, trip_request):
     trip_id = client.post("/trips", json=trip_request.model_dump(mode="json")).json()["id"]
+    planned(client, trip_id)
     r = client.post(f"/trips/{trip_id}/book", json={"pickup_time": "2026-11-03T09:07:00Z"})
     assert r.status_code == 422
 

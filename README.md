@@ -46,4 +46,4 @@ npm install
 npm run dev
 ```
 
-The app talks to the deployed backend by default. The calendar and the East Bay Paratransit booking call are mocks (`src/mocks/`); planning, monitoring, calls to the clinic and chat are real. The side panel sends simulated ride updates, such as a late van.
+The app talks to the deployed backend by default. The calendar and the East Bay Paratransit booking call are mocks (`src/mocks/`); planning, monitoring, calls to the clinic and chat are real. Hold the mic on the Ask Leeway bar to talk to Leeway: ask what's coming up, or tell it about a new appointment and it plans the ride. The side panel sends simulated ride updates, such as a late van.

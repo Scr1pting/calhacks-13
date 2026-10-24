@@ -43,7 +43,7 @@ async def check_trip(trip_id: str) -> DelayAssessment | None:
         if trip is None or trip.status not in ACTIVE or trip.booked_pickup is None:
             return None
         try:
-            a = model_tools.assess_delay(trip, now())
+            a = await asyncio.to_thread(model_tools.assess_delay, trip, now())
         except ModelUnavailable:
             log.warning("delay model unavailable, skipping check for %s", trip_id)
             return None

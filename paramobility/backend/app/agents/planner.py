@@ -5,6 +5,7 @@ probability and wait time comes from the delay model. submit_plan only accepts
 pickup times the model has scored and stores the model's numbers, not Claude's.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -68,7 +69,8 @@ def build_tools(trip_id: str):
         period, so call it again after the policy changes.
         """
         try:
-            return _rows(remember(model_tools.tradeoff(store.get_trip(trip_id))))
+            trip = store.get_trip(trip_id)
+            return _rows(remember(await asyncio.to_thread(model_tools.tradeoff, trip)))
         except ModelUnavailable as e:
             return f"Error: {e}"
 
@@ -80,7 +82,9 @@ def build_tools(trip_id: str):
             certainty: Required chance of arriving on time, between 0.5 and 0.99.
         """
         try:
-            return _rows(remember(model_tools.options(store.get_trip(trip_id), certainty)))
+            trip = store.get_trip(trip_id)
+            opts = await asyncio.to_thread(model_tools.options, trip, certainty)
+            return _rows(remember(opts))
         except ModelUnavailable as e:
             return f"Error: {e}"
 
@@ -124,8 +128,8 @@ def build_tools(trip_id: str):
         try:
             plan = Plan(
                 recommended=chosen,
-                options=model_tools.options(trip, trip.certainty),
-                tradeoff=model_tools.tradeoff(trip),
+                options=await asyncio.to_thread(model_tools.options, trip, trip.certainty),
+                tradeoff=await asyncio.to_thread(model_tools.tradeoff, trip),
                 explanation=explanation,
             )
         except ModelUnavailable as e:
@@ -140,7 +144,8 @@ def build_tools(trip_id: str):
         store.log(trip_id, "plan_ready", explanation, recommended=chosen.model_dump(mode="json"))
         # The numbers in the notice come from the model, not from Claude.
         notify_rider(trip_id, (
-            f"Your plan is ready: pickup at {actions.clock(chosen.pickup_time, trip.arrive_by)}, "
+            f"Your plan{f' for {trip.title.lower()}' if trip.title else ''} is ready: pickup at "
+            f"{actions.clock(chosen.pickup_time, trip.arrive_by)}, "
             f"with a {chosen.p_on_time:.0%} chance of arriving on time and about "
             f"{chosen.expected_wait_minutes:.0f} min of waiting. {explanation}"
         ))

@@ -1,10 +1,17 @@
-import { useState } from 'react'
 import './AskLeewayBar.css'
 
 // The bottom bar. In `mode="button"` (every screen except chat) it's a
-// button that opens chat, with a hold-to-talk mic. In `mode="input"` (the
-// chat screen) it becomes a real text field, and the mic becomes a send
-// button once there's a draft.
+// button that opens chat. In `mode="input"` (the chat screen) it becomes a
+// real text field, and the mic becomes a send button once there's a draft.
+//
+// The mic is hold-to-talk: press and hold (or hold Space/Enter on it), speak,
+// let go. `voice.state` is idle | listening | thinking | speaking.
+const STATUS = {
+  listening: 'Listening…',
+  thinking: 'Thinking…',
+  speaking: 'Leeway is speaking…',
+}
+
 export default function AskLeewayBar({
   mode = 'button',
   onOpenChat,
@@ -12,15 +19,33 @@ export default function AskLeewayBar({
   onChange,
   onKeyDown,
   onSend,
+  voice = { state: 'idle' },
 }) {
-  const [listening, setListening] = useState(false)
-  const hasDraft = mode === 'input' && value.trim().length > 0
+  const listening = voice.state === 'listening'
+  const status = STATUS[voice.state]
+  const hasDraft = mode === 'input' && value.trim().length > 0 && !status
+
+  const hold = {
+    onPointerDown: (e) => {
+      e.preventDefault()
+      voice.onHoldStart?.()
+    },
+    onPointerUp: () => voice.onHoldEnd?.(),
+    onPointerLeave: () => listening && voice.onHoldEnd?.(),
+    onKeyDown: (e) => {
+      if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) {
+        e.preventDefault()
+        voice.onHoldStart?.()
+      }
+    },
+    onKeyUp: (e) => {
+      if (e.key === ' ' || e.key === 'Enter') voice.onHoldEnd?.()
+    },
+  }
 
   return (
-    <div
-      className={`lw-ask-bar ${listening ? 'lw-ask-bar-listening' : ''}`}
-    >
-      {mode === 'input' ? (
+    <div className={`lw-ask-bar ${listening ? 'lw-ask-bar-listening' : ''}`}>
+      {mode === 'input' && !status ? (
         <input
           aria-label="Message Leeway"
           placeholder="Ask Leeway"
@@ -30,8 +55,8 @@ export default function AskLeewayBar({
           className="lw-ask-input"
         />
       ) : (
-        <button type="button" className="lw-ask-text" onClick={onOpenChat}>
-          {listening ? 'Listening…' : 'Ask Leeway'}
+        <button type="button" className="lw-ask-text" onClick={onOpenChat} aria-live="polite">
+          {status || 'Ask Leeway'}
         </button>
       )}
 
@@ -57,10 +82,10 @@ export default function AskLeewayBar({
         <button
           type="button"
           className="lw-mic-button"
-          aria-label="Hold to talk"
-          onPointerDown={() => setListening(true)}
-          onPointerUp={() => setListening(false)}
-          onPointerLeave={() => setListening(false)}
+          aria-label="Hold to talk to Leeway"
+          aria-pressed={listening}
+          disabled={voice.state === 'thinking'}
+          {...hold}
         >
           <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true">
             <rect x="5" y="1" width="6" height="11" rx="3" fill="#FFFFFF" />

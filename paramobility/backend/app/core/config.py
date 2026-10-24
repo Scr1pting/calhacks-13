@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     cartesia_late_agent_id: str = ""
     cartesia_message_agent_id: str = ""
     chat_model: str = "claude-haiku-5-5"
+    tts_model: str = "sonic-3.6"
+    # Leeway's voice in the app; the same one the phone agents use.
+    cartesia_voice_id: str = "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4"
     voice_webhook_secret: str = ""
     call_timeout_seconds: int = 600
 

@@ -1,17 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, API_BASE, streamTrip } from '../api/client.js'
+import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
 import { DEMO_CLINIC_PHONE, RIDER, SKIPPED_EVENTS, upcomingAppointments } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
+import { playAudio, startRecording } from '../lib/recorder.js'
 import { addMinutes, clock, clockShort, isToday, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
 
-// The rider app's logic, now backed by the Paramobility API. Screens stay
-// presentational: this hook turns backend trips, activity events and chat
-// messages into the view objects they render. The calendar and the EBP
-// booking call are mocks (src/mocks); everything else is the real backend.
+// The rider app's logic, backed by the Paramobility API. Screens stay
+// presentational: this hook turns the rider's trips, activity events and
+// conversation with Leeway into the view objects they render. The calendar
+// and the EBP booking call are mocks (src/mocks); everything else is the real
+// backend, including talking to Leeway by voice.
 
 const WINDOW_MINUTES = 30 // EBP pickup windows are 30 minutes long
-const STORAGE_KEY = 'leeway.v1'
+const STORAGE_KEY = 'leeway.v2'
 const ACTIVE = ['booked', 'riding']
+const WAITING = ['planning', 'planned', 'failed']
+
+const newRiderId = () => `rider_${Math.random().toString(36).slice(2, 12)}`
+
+// The rider profile the backend keeps: who they are, where pickups start,
+// and their (mock) calendar, so Leeway can talk about all of it.
+function riderProfile(calendar) {
+  return {
+    name: RIDER.name,
+    home: RIDER.home,
+    time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    calendar: calendar.map((a) => ({
+      id: a.id,
+      title: a.title,
+      start: toLocalISO(a.start),
+      place_name: a.location.name,
+      place_address: a.location.address,
+      place_phone: a.location.phone,
+    })),
+    permissions: { may_call_appointment: !!DEMO_CLINIC_PHONE, share_rider_name: true, max_calls: 3 },
+  }
+}
 
 function loadSaved() {
   try {
@@ -50,8 +74,8 @@ const INIT = {
   outcome: null, // {tripId, kind: held | moved | unclear, was}
   decision: { tripId: null, choice: 'offer' },
   showTranscript: false,
-  chatTripId: null,
   back: 'home',
+  voice: 'idle', // idle | listening | thinking | speaking
   draft: '',
   sending: false,
   error: '',
@@ -60,7 +84,16 @@ const INIT = {
 export function useLeewayFlow() {
   const [s, setS] = useState(INIT)
   const [calendar] = useState(upcomingAppointments)
-  const [saved, setSaved] = useState(() => ({ links: {}, confirmations: {}, ...loadSaved() }))
+  const [saved, setSaved] = useState(() => {
+    const data = { confirmations: {}, ...loadSaved() }
+    if (!data.riderId) {
+      data.riderId = newRiderId()
+      save(data)
+    }
+    return data
+  })
+  const riderId = saved.riderId
+  const voiceRef = useRef({ stop: null, stopAudio: null })
   const [trips, setTrips] = useState({})
   const [events, setEvents] = useState({})
   const [messages, setMessages] = useState({})
@@ -87,41 +120,32 @@ export function useLeewayFlow() {
 
   // ---- loading and live updates -------------------------------------------
 
-  const linkedIds = Object.values(saved.links)
+  const tripIds = Object.keys(trips)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const loaded = {}
-      for (const id of Object.values(saved.links)) {
-        try {
-          loaded[id] = await api.getTrip(id)
-          const [ev, msgs] = await Promise.all([api.events(id), api.messages(id)])
-          if (cancelled) return
-          setEvents((prev) => ({ ...prev, [id]: ev }))
-          setMessages((prev) => ({ ...prev, [id]: msgs }))
-        } catch (e) {
-          if (e.status !== 404) return !cancelled && fail(e)
-          // the trip is gone from the backend: forget it
-          updateSaved((prev) => ({
-            ...prev,
-            links: Object.fromEntries(Object.entries(prev.links).filter(([, t]) => t !== id)),
-          }))
-        }
+      try {
+        // Sync the profile and calendar, then load everything Leeway knows.
+        await api.putRider(riderId, riderProfile(calendar))
+        const [list, thread] = await Promise.all([api.riderTrips(riderId), api.riderMessages(riderId)])
+        const evs = await Promise.all(list.map((t) => api.events(t.id)))
+        if (cancelled) return
+        setEvents(Object.fromEntries(list.map((t, i) => [t.id, evs[i]])))
+        setMessages({ [riderId]: thread })
+        setTrips(Object.fromEntries(list.map((t) => [t.id, t])))
+        // Pick up where the rider left off: plans still waiting to be booked first.
+        const waiting = list.filter((t) => WAITING.includes(t.status)).map((t) => t.id)
+        if (waiting.length) go('recommend', { queue: waiting, qi: 0 })
+        else go(list.length ? 'home' : 'discover')
+      } catch (e) {
+        if (!cancelled) fail(e)
       }
-      if (cancelled) return
-      setTrips(loaded)
-      // Pick up where the rider left off: plans still waiting to be booked first.
-      const waiting = Object.values(loaded)
-        .filter((t) => ['planning', 'planned', 'failed'].includes(t.status))
-        .map((t) => t.id)
-      if (waiting.length) go('recommend', { queue: waiting, qi: 0 })
-      else go(Object.keys(loaded).length ? 'home' : 'discover')
     })()
     return () => {
       cancelled = true
     }
-  }, []) // load once; later changes arrive through the streams below
+  }, [riderId, calendar]) // later changes arrive through the streams below
 
   // What a new activity event means for the screen the rider is on.
   const onTripEvent = useCallback(
@@ -164,23 +188,26 @@ export function useLeewayFlow() {
     [refreshTrip],
   )
 
-  const onTripMessage = useCallback((tripId, msg) => {
+  const onMessage = useCallback((msg) => {
     setMessages((prev) => {
-      const list = prev[tripId] || []
-      return list.some((m) => m.id === msg.id) ? prev : { ...prev, [tripId]: [...list, msg] }
+      const list = prev[msg.thread_id] || []
+      return list.some((m) => m.id === msg.id) ? prev : { ...prev, [msg.thread_id]: [...list, msg] }
     })
   }, [])
 
-  const streamKey = linkedIds.join(',')
+  // Trips appear here when the app creates them, or when Leeway schedules one in chat.
+  const onTrip = useCallback((trip) => {
+    setTrips((prev) => (prev[trip.id] ? prev : { ...prev, [trip.id]: trip }))
+    setEvents((prev) => (prev[trip.id] ? prev : { ...prev, [trip.id]: [] }))
+  }, [])
+
+  useEffect(() => streamRider(riderId, { onMessage, onTrip }), [riderId, onMessage, onTrip])
+
+  const streamKey = tripIds.join(',')
   useEffect(() => {
-    const closers = linkedIds.map((id) =>
-      streamTrip(id, {
-        onEvent: (ev) => onTripEvent(id, ev),
-        onMessage: (msg) => onTripMessage(id, msg),
-      }),
-    )
+    const closers = tripIds.map((id) => streamTrip(id, { onEvent: (ev) => onTripEvent(id, ev) }))
     return () => closers.forEach((close) => close())
-  }, [streamKey, onTripEvent, onTripMessage]) // streamKey stands in for linkedIds
+  }, [streamKey, onTripEvent]) // streamKey stands in for tripIds
 
   // A clock for the call timer.
   useEffect(() => {
@@ -195,8 +222,10 @@ export function useLeewayFlow() {
       appointments.map((a) =>
         api.createTrip({
           rider: { name: RIDER.name },
-          appointment: { name: a.location.name, phone: a.location.phone || '+10000000000' },
+          appointment: { name: a.location.name, phone: a.location.phone },
           title: a.title,
+          rider_id: riderId,
+          calendar_event_id: a.id,
           origin: RIDER.home,
           dest: a.location.address,
           arrive_by: toLocalISO(a.start),
@@ -205,11 +234,7 @@ export function useLeewayFlow() {
         }),
       ),
     )
-    setTrips((prev) => ({ ...prev, ...Object.fromEntries(created.map((t) => [t.id, t])) }))
-    updateSaved((prev) => ({
-      ...prev,
-      links: { ...prev.links, ...Object.fromEntries(appointments.map((a, i) => [a.id, created[i].id])) },
-    }))
+    created.forEach(onTrip)
     return created.map((t) => t.id)
   }
 
@@ -239,12 +264,12 @@ export function useLeewayFlow() {
     }
   }
 
-  async function sendTo(tripId, text) {
-    if (!text.trim() || !tripId) return
+  async function send(text) {
+    if (!text.trim() || s.sending) return
     setS((prev) => ({ ...prev, draft: '', sending: true }))
     try {
-      const msgs = await api.sendMessage(tripId, text)
-      msgs.forEach((m) => onTripMessage(tripId, m))
+      const msgs = await api.sendRiderMessage(riderId, text)
+      msgs.forEach(onMessage)
     } catch (e) {
       fail(e)
     } finally {
@@ -252,14 +277,59 @@ export function useLeewayFlow() {
     }
   }
 
-  const send = (text) => !s.sending && sendTo(s.chatTripId, text)
+  // ---- talking to Leeway: hold the mic, speak, let go -----------------------
+
+  const setVoice = (voice) => setS((prev) => ({ ...prev, voice }))
+
+  async function holdStart() {
+    voiceRef.current.stopAudio?.()
+    if (voiceRef.current.stop || s.voice === 'thinking') return
+    try {
+      voiceRef.current.stop = await startRecording()
+      setVoice('listening')
+    } catch (e) {
+      voiceRef.current.stop = null
+      fail(new Error(`I can't use the microphone: ${e.message}`))
+    }
+  }
+
+  async function holdEnd() {
+    const stop = voiceRef.current.stop
+    if (!stop) return
+    voiceRef.current.stop = null
+    const { blob, seconds } = await stop()
+    if (seconds < 0.4) return setVoice('idle') // a tap, not speech
+    openChat()
+    setS((prev) => ({ ...prev, voice: 'thinking', sending: true }))
+    try {
+      const turn = await api.sendVoice(riderId, blob)
+      turn.messages.forEach(onMessage)
+      const answer = turn.messages.findLast((m) => m.sender === 'agent')
+      if (!turn.transcript || !answer) {
+        if (!turn.transcript) fail(new Error('I didn’t catch that. Hold the mic and try again.'))
+        return setS((prev) => ({ ...prev, voice: 'idle', sending: false }))
+      }
+      setS((prev) => ({ ...prev, voice: 'speaking', sending: false }))
+      const audio = await api.speech(answer.text)
+      voiceRef.current.stopAudio = playAudio(audio, () => {
+        voiceRef.current.stopAudio = null
+        setVoice('idle')
+      })
+    } catch (e) {
+      fail(e)
+      setS((prev) => ({ ...prev, voice: 'idle', sending: false }))
+    }
+  }
 
   // ---- derived state --------------------------------------------------------
 
-  const linked = linkedIds.map((id) => trips[id]).filter(Boolean)
+  const linked = Object.values(trips)
   const byTime = (a, b) => new Date(a.arrive_by) - new Date(b.arrive_by)
   const booked = linked.filter((t) => ACTIVE.includes(t.status)).sort(byTime)
-  const unplanned = calendar.filter((a) => !saved.links[a.id])
+  const waiting = linked.filter((t) => WAITING.includes(t.status)).sort(byTime)
+  const unplanned = calendar.filter(
+    (a) => a.start > Date.now() && !linked.some((t) => t.calendar_event_id === a.id),
+  )
   const current = booked[0] || linked.filter((t) => t.status !== 'completed').sort(byTime)[0]
   const tripEvents = (t) => (t ? events[t.id] || [] : [])
 
@@ -289,17 +359,28 @@ export function useLeewayFlow() {
     onArrange: () => selectedApps.length && arrange(selectedApps),
   }
 
+  // ---- which home screen ------------------------------------------------------
+
+  let homeScreen = 'home'
+  if (!booked.length) homeScreen = waiting.length ? 'recommend' : unplanned.length ? 'discover' : 'empty'
+  else if (booked.length > 1 && !isToday(booked[0].arrive_by) && booked[0].status !== 'riding') homeScreen = 'everyday'
+  const viewScreen = s.screen === 'home' ? homeScreen : s.screen
+
   // ---- recommend (and planning, which shows as "working") ------------------
 
-  const recTrip = trips[s.queue[s.qi]]
+  // From home, a plan that's waiting to be booked: show the next one.
+  const fromQueue = s.screen === 'recommend' && s.queue.length > 0
+  const queue = fromQueue ? s.queue : waiting.map((t) => t.id)
+  const qi = fromQueue ? s.qi : 0
+  const recTrip = trips[queue[qi]]
   let recommend = null
   let planning = null
-  if (s.screen === 'recommend' && recTrip) {
+  if (viewScreen === 'recommend' && recTrip) {
     if (recTrip.status === 'planned' && recTrip.plan) {
       const w = pickupWindow(recTrip)
       const arrive = clock(recTrip.arrive_by)
       recommend = {
-        stepLabel: s.queue.length > 1 ? `APPOINTMENT ${s.qi + 1} OF ${s.queue.length}` : 'APPOINTMENT',
+        stepLabel: queue.length > 1 ? `APPOINTMENT ${qi + 1} OF ${queue.length}` : 'APPOINTMENT',
         headlineGray: `For ${titleOf(recTrip).toLowerCase()} on ${shortDate(recTrip.arrive_by).replace(',', '')} at ${arrive}, this gives you the best chance of arriving on time.`,
         locationName: recTrip.appointment.name,
         locationAddress: recTrip.dest,
@@ -308,7 +389,10 @@ export function useLeewayFlow() {
         oddsLabel: `Chance of arriving by ${arrive}`,
         oddsValue: percent(recTrip.plan.recommended.p_on_time),
         explanation: recTrip.plan.explanation,
-        onConfirm: () => startBooking(recTrip),
+        onConfirm: () => {
+          if (!fromQueue) go('recommend', { queue, qi })
+          startBooking(recTrip)
+        },
       }
     } else {
       const ev = tripEvents(recTrip)
@@ -389,9 +473,6 @@ export function useLeewayFlow() {
   // ---- home -----------------------------------------------------------------
 
   const lastTripDone = linked.filter((t) => t.status === 'completed').sort(byTime).at(-1)
-  let homeScreen = 'home'
-  if (!booked.length) homeScreen = unplanned.length ? 'discover' : 'empty'
-  else if (booked.length > 1 && !isToday(booked[0].arrive_by) && booked[0].status !== 'riding') homeScreen = 'everyday'
 
   let home = null
   if (current && pickupWindow(current)) {
@@ -399,7 +480,23 @@ export function useLeewayFlow() {
     const riding = current.status === 'riding'
     const today = isToday(current.arrive_by)
     const appt = current.appointment.name
-    const secondary = unplanned[0]
+    // Another appointment that needs attention: a plan to review, or one with no ride yet.
+    const review = waiting.find((t) => t.status === 'planned')
+    const secondary = review
+      ? {
+          visitReason: titleOf(review),
+          date: shortDate(review.arrive_by),
+          sub: 'Plan ready',
+          action: 'Review',
+          onClick: () => go('recommend', { queue: [review.id], qi: 0 }),
+        }
+      : unplanned[0] && {
+          visitReason: unplanned[0].title,
+          date: shortDate(unplanned[0].start),
+          sub: 'Needs a ride',
+          action: 'Plan',
+          onClick: () => arrange([unplanned[0]]),
+        }
     home = {
       today,
       headlineLead: riding
@@ -420,9 +517,9 @@ export function useLeewayFlow() {
       monitorText: riding || today
         ? `I’m watching this trip. If it starts to look late, I’ll call ${firstWord(appt)} for you.`
         : `I’ll watch the trip on ${weekday(current.arrive_by)}.`,
-      hasSecondary: !!secondary && !today,
-      secondary: secondary && { visitReason: secondary.title, date: shortDate(secondary.start) },
-      onPlanSecondary: () => secondary && arrange([secondary]),
+      hasSecondary: !!secondary && !riding,
+      secondary,
+      onPlanSecondary: () => secondary?.onClick(),
     }
   }
 
@@ -564,7 +661,8 @@ export function useLeewayFlow() {
         tag: 'Recommended',
         sub: 'I’ll call them back to confirm it, then update your trip.',
         label: 'Confirm',
-        approve: () => openChat(decTrip.id, 'Please tell them I’ll take the time they offered.'),
+        approve: () =>
+          openChat(`Please tell ${appt} I’ll take the time they offered for my ${titleOf(decTrip).toLowerCase()} appointment.`),
       },
       {
         key: 'keep',
@@ -580,7 +678,7 @@ export function useLeewayFlow() {
         tag: '',
         sub: 'Ask about other times or anything else first.',
         label: 'Open chat',
-        approve: () => openChat(decTrip.id),
+        approve: () => openChat(),
       },
     ]
     const chosen = options.find((o) => o.key === s.decision.choice) || options[0]
@@ -599,19 +697,17 @@ export function useLeewayFlow() {
 
   // ---- chat --------------------------------------------------------------------
 
-  function openChat(tripId = current?.id, text) {
-    if (!tripId) return go('discover')
+  function openChat(text) {
     setS((prev) => ({
       ...prev,
       screen: 'chat',
-      chatTripId: tripId,
       back: prev.screen === 'chat' ? prev.back : prev.screen,
       draft: '',
     }))
-    if (text) sendTo(tripId, text)
+    if (text) send(text)
   }
 
-  const thread = messages[s.chatTripId] || []
+  const thread = messages[riderId] || []
   const chat = {
     isEmpty: !thread.length && !s.sending,
     messages: thread.map((m) => ({
@@ -623,9 +719,9 @@ export function useLeewayFlow() {
     })),
     typing: s.sending,
     suggestions: [
+      'What’s coming up for me?',
+      'I have a new appointment',
       'When should I be ready?',
-      'What if I want to be more sure?',
-      'Please don’t use my name when you call',
     ].map((q) => ({ text: q, onClick: () => send(q) })),
     draft: s.draft,
     onDraftChange: (value) => setS((prev) => ({ ...prev, draft: value })),
@@ -639,7 +735,8 @@ export function useLeewayFlow() {
   // ---- demo panel: live state and simulated ride updates -----------------------
 
   const restart = () => {
-    updateSaved(() => ({ links: {}, confirmations: {} }))
+    voiceRef.current.stopAudio?.()
+    updateSaved(() => ({ riderId: newRiderId(), confirmations: {} }))
     setTrips({})
     setEvents({})
     setMessages({})
@@ -681,8 +778,7 @@ export function useLeewayFlow() {
 
   // ---- which screen to show ----------------------------------------------------
 
-  let screen = s.screen
-  if (screen === 'home') screen = homeScreen
+  let screen = viewScreen
   if (screen === 'recommend' && (planning || !recommend)) screen = recTrip ? 'working' : 'loading'
   if (screen === 'home' && !home) screen = 'loading'
   if (screen === 'everyday' && !everyday) screen = 'loading'
@@ -695,6 +791,11 @@ export function useLeewayFlow() {
     topBar: screen === 'chat' ? 'back' : 'logo',
     onOpenChat: () => openChat(),
     onCloseChat: closeChat,
+    voice: {
+      state: s.voice,
+      onHoldStart: holdStart,
+      onHoldEnd: holdEnd,
+    },
     discover,
     recommend,
     working,

@@ -39,10 +39,10 @@ export default function HomeScreen({ home }) {
             <span className="lw-secondary-title">
               {home.secondary.visitReason} {'·'} {home.secondary.date}
             </span>
-            <span className="lw-secondary-sub">Needs a ride</span>
+            <span className="lw-secondary-sub">{home.secondary.sub}</span>
           </div>
           <Button variant="compact-solid" onClick={home.onPlanSecondary}>
-            Plan
+            {home.secondary.action}
           </Button>
         </div>
       )}

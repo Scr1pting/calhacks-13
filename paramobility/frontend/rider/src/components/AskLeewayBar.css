@@ -61,3 +61,15 @@
 .lw-ask-bar-listening .lw-mic-button {
   background: var(--lw-accent);
 }
+
+/* Hold-to-talk: no long-press menu or text selection while holding. */
+.lw-mic-button {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.lw-mic-button:disabled {
+  opacity: 0.5;
+}
