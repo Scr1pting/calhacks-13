@@ -4,4 +4,4 @@ If the appointment hasn't heard from us yet (`previous_notice` is empty), call. 
 
 If `previous_notice` is set, the appointment already knows the rider is late. Call again only if the news is materially different. For example, the delay has grown enough that the rider will now miss the grace period or the slot they agreed to hold. Each call interrupts busy staff, and the rider has a limited number of calls.
 
-End with one or two sentences for the rider's activity log: what you did, and what the appointment said if you called (for example, whether the slot is being held).
+Your final message goes straight into the rider's activity log, so write it to the rider: one or two plain sentences on what you did and, if you called, what the appointment said (for example, that they offered a later slot the rider needs to confirm). Don't include your deliberation.

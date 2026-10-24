@@ -60,13 +60,13 @@ ssh root@2.29.114.245 'cd /opt/paramobility/repo/paramobility/deploy && PARAMOBI
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Planner and late-notice agent (Sonnet), transcript extraction (Haiku) |
+| `ANTHROPIC_API_KEY` | Planner and late-notice agent (Sonnet), rider chat and transcript extraction (Haiku) |
 | `API_KEY` | Clients must send this as `X-API-Key` |
 | `PUBLIC_BASE_URL` | `https://api.cal.fuzz.li`; the base URL for the voice webhooks |
 | `MODEL_BACKEND` | `fake` until `app/model` is implemented, then `real` |
 | `CARTESIA_API_KEY` | Cartesia voice |
 | `CARTESIA_FROM_NUMBER_ID` | The number calls come from (its `ap_…` id, or the `+1…` number) |
-| `CARTESIA_POLICY_AGENT_ID`, `CARTESIA_LATE_AGENT_ID` | Printed by `python -m app.voice.setup` |
+| `CARTESIA_POLICY_AGENT_ID`, `CARTESIA_LATE_AGENT_ID`, `CARTESIA_MESSAGE_AGENT_ID` | Printed by `python -m app.voice.setup` |
 | `VOICE_WEBHOOK_SECRET` | Bearer token Cartesia sends to `/voice/webhooks/*` |
 
 The webhook listener's own settings are in `/opt/paramobility/webhook.env`: `GITHUB_WEBHOOK_SECRET`, `DEPLOY_BRANCH`, and `DEPLOY_WORKFLOW` (must match the workflow's `name:`).
@@ -75,8 +75,8 @@ The webhook listener's own settings are in `/opt/paramobility/webhook.env`: `GIT
 
 `python -m app.voice.setup`, run from `paramobility/backend` with the same `CARTESIA_API_KEY`, `PUBLIC_BASE_URL` and `VOICE_WEBHOOK_SECRET` as the server, creates or updates:
 
-- the webhook tools `record_policy` and `record_late_notice`,
-- the agents "Paramobility policy inquiry" and "Paramobility late notice" on `claude-haiku-5.5`.
+- the webhook tools `record_policy`, `record_late_notice` and `record_message_outcome`,
+- the agents "Paramobility policy inquiry", "Paramobility late notice" and "Paramobility rider message" on `claude-haiku-5.5`.
 
 Re-run it after editing `prompts/voice_*.md` or rotating `VOICE_WEBHOOK_SECRET`. It updates the existing tools and agents in place.
 

@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     cartesia_from_number_id: str = ""
     cartesia_policy_agent_id: str = ""
     cartesia_late_agent_id: str = ""
+    cartesia_message_agent_id: str = ""
+    chat_model: str = "claude-haiku-5-5"
     voice_webhook_secret: str = ""
     call_timeout_seconds: int = 600
 

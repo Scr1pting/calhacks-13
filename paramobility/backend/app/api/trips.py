@@ -1,24 +1,38 @@
 """Trip API used by the rider app and the dashboard."""
 
+import asyncio
 import secrets
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.agents import monitor, planner
+from app.agents import chat, monitor, planner
+from app.core import bus
 from app.core.config import get_settings
 from app.core.jobs import spawn
-from app.core.schemas import AppointmentPolicy, Event, Trip, TripRequest, TripStatus, now
+from app.core.schemas import (
+    AppointmentPolicy,
+    ChatMessage,
+    Event,
+    Trip,
+    TripRequest,
+    TripStatus,
+    now,
+)
 from app.core.store import get_store
-from app.tools import model_tools
+from app.tools import model_tools, trip_ops
 from app.tools.model_tools import ModelUnavailable
+from app.tools.trip_ops import TripOpError
 
 
-def require_api_key(x_api_key: str = Header("")) -> None:
+def require_api_key(x_api_key: str = Header(""), api_key: str = Query("")) -> None:
+    """Normally a header; ?api_key= is for EventSource, which can't set headers."""
     expected = get_settings().api_key
-    if expected and not secrets.compare_digest(x_api_key, expected):
+    given = x_api_key or api_key
+    if expected and not secrets.compare_digest(given, expected):
         raise HTTPException(401, "invalid API key")
 
 
@@ -26,21 +40,24 @@ router = APIRouter(dependencies=[Depends(require_api_key)])
 
 
 def _trip(trip_id: str) -> Trip:
-    trip = get_store().get_trip(trip_id)
-    if trip is None:
-        raise HTTPException(404, "trip not found")
-    return trip
+    try:
+        return trip_ops.get(trip_id)
+    except TripOpError as e:
+        raise HTTPException(e.status, str(e)) from e
 
 
-def _start_planning(trip_id: str) -> None:
-    spawn(planner.plan_trip(trip_id), name=f"plan:{trip_id}")
+def _op(fn, *args, **kwargs) -> Trip:
+    try:
+        return fn(*args, **kwargs)
+    except TripOpError as e:
+        raise HTTPException(e.status, str(e)) from e
 
 
 @router.post("/trips", status_code=202)
 async def create_trip(request: TripRequest) -> Trip:
     trip = Trip(**request.model_dump())
     get_store().put_trip(trip)
-    _start_planning(trip.id)
+    spawn(planner.plan_trip(trip.id), name=f"plan:{trip.id}")
     return trip
 
 
@@ -66,29 +83,34 @@ class ReplanRequest(BaseModel):
 
 @router.post("/trips/{trip_id}/plan", status_code=202)
 async def replan(trip_id: str, body: ReplanRequest) -> Trip:
-    trip = _trip(trip_id)
-    if trip.status not in (TripStatus.planned, TripStatus.failed):
-        raise HTTPException(409, f"cannot replan a trip that is {trip.status}")
-
-    def change(t: Trip):
-        t.status = TripStatus.planning
-        if body.certainty is not None:
-            t.certainty = body.certainty
-
-    trip = get_store().update_trip(trip_id, change)
-    _start_planning(trip_id)
-    return trip
+    return _op(trip_ops.start_planning, trip_id, body.certainty)
 
 
 @router.put("/trips/{trip_id}/policy")
 async def set_policy(trip_id: str, policy: AppointmentPolicy) -> Trip:
     """The rider already knows the appointment's late policy. Replan afterwards to use it."""
-    _trip(trip_id)
-    policy.source = "rider"
-    trip = get_store().update_trip(trip_id, lambda t: setattr(t, "policy", policy))
-    get_store().log(trip_id, "policy_set", "Rider entered the appointment's late policy.",
-                    policy=policy.model_dump())
-    return trip
+    return _op(trip_ops.set_policy, trip_id, policy)
+
+
+class PermissionsUpdate(BaseModel):
+    may_call_appointment: bool | None = None
+    share_rider_name: bool | None = None
+    max_calls: int | None = Field(None, ge=0)
+
+
+@router.patch("/trips/{trip_id}/permissions")
+async def update_permissions(trip_id: str, body: PermissionsUpdate) -> Trip:
+    return _op(trip_ops.update_permissions, trip_id, **body.model_dump())
+
+
+class AppointmentTime(BaseModel):
+    arrive_by: datetime
+
+
+@router.put("/trips/{trip_id}/appointment-time", status_code=202)
+async def change_appointment_time(trip_id: str, body: AppointmentTime) -> Trip:
+    """The appointment moved. Before pickup this replans and clears the booking."""
+    return _op(trip_ops.change_appointment_time, trip_id, body.arrive_by)
 
 
 class BookRequest(BaseModel):
@@ -98,20 +120,7 @@ class BookRequest(BaseModel):
 @router.post("/trips/{trip_id}/book")
 async def book(trip_id: str, body: BookRequest) -> Trip:
     """The rider confirms a pickup time. It must be one the model scored."""
-    trip = _trip(trip_id)
-    if trip.plan is None:
-        raise HTTPException(409, "trip has no plan yet")
-    scored = {o.pickup_time for o in trip.plan.tradeoff + trip.plan.options}
-    if body.pickup_time not in scored:
-        raise HTTPException(422, "pickup_time must be one of the plan's options")
-
-    def change(t: Trip):
-        t.booked_pickup = body.pickup_time
-        t.status = TripStatus.booked
-
-    trip = get_store().update_trip(trip_id, change)
-    get_store().log(trip_id, "booked", f"Booked pickup for {body.pickup_time.isoformat()}.")
-    return trip
+    return _op(trip_ops.book, trip_id, body.pickup_time)
 
 
 class StatusUpdate(BaseModel):
@@ -144,6 +153,55 @@ async def update_status(trip_id: str, body: StatusUpdate) -> Trip:
     else:
         spawn(monitor.check_trip(trip_id), name=f"check:{trip_id}")
     return trip
+
+
+# Chat with the agent
+
+
+@router.get("/trips/{trip_id}/messages")
+async def list_messages(trip_id: str) -> list[ChatMessage]:
+    _trip(trip_id)
+    return get_store().messages(trip_id)
+
+
+class RiderMessage(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@router.post("/trips/{trip_id}/messages")
+async def send_message(trip_id: str, body: RiderMessage) -> list[ChatMessage]:
+    """The rider writes to the agent. Returns their message and the agent's reply."""
+    _trip(trip_id)
+    return await chat.reply(trip_id, body.text)
+
+
+@router.get("/trips/{trip_id}/stream")
+async def stream(trip_id: str, request: Request) -> StreamingResponse:
+    """Server-sent events: `messages` for the chat thread, `events` for the activity log."""
+    _trip(trip_id)
+    queue = bus.subscribe(trip_id)
+
+    async def events():
+        try:
+            yield ": connected\n\n"
+            while not await request.is_disconnected():
+                try:
+                    kind, data = await asyncio.wait_for(queue.get(), timeout=15)
+                except TimeoutError:
+                    yield ": keep-alive\n\n"
+                    continue
+                yield f"event: {kind}\ndata: {data}\n\n"
+        finally:
+            bus.unsubscribe(trip_id, queue)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# Dashboard
 
 
 @router.get("/trips/{trip_id}/distribution")

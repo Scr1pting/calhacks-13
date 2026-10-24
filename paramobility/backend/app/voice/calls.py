@@ -23,6 +23,7 @@ def _agent_id(kind: VoiceTaskKind) -> str:
     return {
         VoiceTaskKind.policy_inquiry: s.cartesia_policy_agent_id,
         VoiceTaskKind.late_notice: s.cartesia_late_agent_id,
+        VoiceTaskKind.rider_message: s.cartesia_message_agent_id,
     }[kind]
 
 
@@ -41,13 +42,16 @@ async def run_voice_task(trip: Trip, kind: VoiceTaskKind, variables: dict) -> Vo
     variables = {**variables, "task_id": task.id}
     async with CartesiaClient() as cartesia:
         try:
-            task.call_id = await cartesia.start_call(agent_id, trip.appointment.phone, variables)
+            call_id = await cartesia.start_call(agent_id, trip.appointment.phone, variables)
         except CartesiaError as e:
             task.status = "failed"
             store.put_voice_task(task)
             store.log(trip.id, "call_failed", f"Could not call {trip.appointment.name}.",
                       error=str(e))
             return task
+        # Reload first: the webhook may already have saved a result for this task.
+        task = store.get_voice_task(task.id) or task
+        task.call_id = call_id
         task.status = "started"
         store.put_voice_task(task)
         store.log(trip.id, "call_started", f"Calling {trip.appointment.name}.",

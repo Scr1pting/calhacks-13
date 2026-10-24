@@ -63,6 +63,9 @@ def test_plan_book_and_ride(client, trip_request, notified, store):
     assert r.json()["status"] == "completed"
     assert client.get("/calibration").json()
 
+    notices = [m["text"] for m in client.get(f"/trips/{trip_id}/messages").json()]
+    assert notices[0].startswith("Your plan is ready: pickup at")
+
     kinds = [e["kind"] for e in client.get(f"/trips/{trip_id}/events").json()]
     assert kinds[:3] == ["plan_ready", "booked", "picked_up"]
 

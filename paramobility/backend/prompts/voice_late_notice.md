@@ -4,4 +4,4 @@ Tell them this clearly, then ask whether the rider can still be seen when they a
 
 If you reach voicemail, leave a short message with the expected arrival time, then end the call.
 
-Once you have their answer, or have left a voicemail, call record_late_notice, then thank them and end the call.
+Before every goodbye, call record_late_notice with the outcome, including after leaving a voicemail. Then thank them and end the call.

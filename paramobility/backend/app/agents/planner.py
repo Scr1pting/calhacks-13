@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.core.llm import FALLBACK_BETA, final_text, get_client
 from app.core.schemas import Plan, Trip, TripOption, TripStatus
 from app.core.store import get_store
+from app.core.thread import notify_rider
 from app.tools import actions, model_tools
 from app.tools.model_tools import ModelUnavailable
 
@@ -136,6 +137,12 @@ def build_tools(trip_id: str):
 
         store.update_trip(trip_id, save)
         store.log(trip_id, "plan_ready", explanation, recommended=chosen.model_dump(mode="json"))
+        # The numbers in the notice come from the model, not from Claude.
+        notify_rider(trip_id, (
+            f"Your plan is ready: pickup at {actions.clock(chosen.pickup_time, trip.arrive_by)}, "
+            f"with a {chosen.p_on_time:.0%} chance of arriving on time and about "
+            f"{chosen.expected_wait_minutes:.0f} min of waiting. {explanation}"
+        ))
         return "Plan saved."
 
     return [get_tradeoff, get_options, call_appointment_for_policy, submit_plan]
@@ -170,3 +177,4 @@ async def plan_trip(trip_id: str) -> None:
 
         store.update_trip(trip_id, fail)
         store.log(trip_id, "planning_failed", "Could not make a plan.", detail=summary)
+        notify_rider(trip_id, "I couldn't make a plan this time. You can ask me to try again.")

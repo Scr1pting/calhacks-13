@@ -19,7 +19,7 @@ All of it lives in `paramobility/`:
 
 - `backend/`: API, agents, delay model
   - `app/model/`: the delay model (interface stubs; `app/tools/fake_model.py` stands in until it's implemented)
-  - `app/agents/`: planner and late-notice agents (Claude Sonnet), transcript extraction (Claude Haiku)
+  - `app/agents/`: planner and late-notice agents (Claude Sonnet); rider chat and transcript extraction (Claude Haiku)
   - `app/voice/`: Cartesia phone agents (Claude Haiku)
   - `prompts/`: every prompt the agents use
 - `frontend/rider/`: rider app

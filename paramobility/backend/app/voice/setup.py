@@ -23,6 +23,10 @@ GREETINGS = {
         "Hi, this is an automated assistant calling on behalf of {{rider_name}}, who has an "
         "appointment at {{appointment_time}}."
     ),
+    "message": (
+        "Hi, this is an automated assistant calling on behalf of {{rider_name}} about their "
+        "{{appointment_time}} appointment. I have a quick message from them."
+    ),
 }
 
 
@@ -102,6 +106,27 @@ LATE_TOOL = (
 )
 
 
+MESSAGE_TOOL = (
+    "record_message_outcome",
+    "Save whether the rider's message was delivered and what they said back.",
+    "/voice/webhooks/message",
+    {
+        "reached_someone": {
+            "type": "boolean",
+            "description": "True if you spoke with a person, false for voicemail.",
+        },
+        "delivered": {
+            "type": "boolean",
+            "description": "True if a person heard the message, or you left it on voicemail.",
+        },
+        "response": {
+            "type": "string",
+            "description": "What they said in reply, as close to their words as you can.",
+        },
+    },
+)
+
+
 def _agent(name: str, prompt: str, greeting: str, tool_id: str, model: str, voice: str) -> dict:
     config = {
         "instructions": prompts.load(prompt),
@@ -152,6 +177,7 @@ async def main(model: str, voice: str) -> None:
         existing = {t["name"]: t for t in await c.list_tools()}
         policy_tool = await _tool(c, existing, POLICY_TOOL)
         late_tool = await _tool(c, existing, LATE_TOOL)
+        message_tool = await _tool(c, existing, MESSAGE_TOOL)
         agents = {a["name"]: a for a in await c.list_agents()}
         policy_agent = await _upsert_agent(c, agents, _agent(
             "Paramobility policy inquiry", "voice_policy_inquiry", GREETINGS["policy"],
@@ -161,11 +187,16 @@ async def main(model: str, voice: str) -> None:
             "Paramobility late notice", "voice_late_notice", GREETINGS["late"],
             late_tool["id"], model, voice,
         ))
+        message_agent = await _upsert_agent(c, agents, _agent(
+            "Paramobility rider message", "voice_rider_message", GREETINGS["message"],
+            message_tool["id"], model, voice,
+        ))
         numbers = await c.list_phone_numbers()
 
     print("Add to .env:")
     print(f"CARTESIA_POLICY_AGENT_ID={policy_agent['id']}")
     print(f"CARTESIA_LATE_AGENT_ID={late_agent['id']}")
+    print(f"CARTESIA_MESSAGE_AGENT_ID={message_agent['id']}")
     if numbers:
         print(f"CARTESIA_FROM_NUMBER_ID={numbers[0]['id']}  # {numbers[0]['number']}")
     else:

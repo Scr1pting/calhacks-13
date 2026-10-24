@@ -17,7 +17,7 @@ class NotAllowed(Exception):
     pass
 
 
-def _clock(dt: datetime, like: datetime) -> str:
+def clock(dt: datetime, like: datetime) -> str:
     """Wall-clock time of dt in the time zone of like, e.g. "9:05 AM"."""
     local = dt.astimezone(like.tzinfo) if like.tzinfo else dt
     return local.strftime("%I:%M %p").lstrip("0")
@@ -48,7 +48,7 @@ async def inquire_policy(trip_id: str, questions: str) -> AppointmentPolicy | No
         {
             "rider_name": rider_label(trip),
             "appointment_name": trip.appointment.name,
-            "appointment_time": _clock(trip.arrive_by, trip.arrive_by),
+            "appointment_time": clock(trip.arrive_by, trip.arrive_by),
             "questions": questions,
         },
     )
@@ -75,9 +75,25 @@ async def call_about_delay(trip_id: str, a: DelayAssessment) -> dict | None:
         {
             "rider_name": rider_label(trip),
             "appointment_name": trip.appointment.name,
-            "appointment_time": _clock(trip.arrive_by, tz),
-            "expected_arrival": _clock(a.expected_arrival, tz),
+            "appointment_time": clock(trip.arrive_by, tz),
+            "expected_arrival": clock(a.expected_arrival, tz),
             "minutes_late": a.minutes_late,
+        },
+    )
+    return task.result
+
+
+async def relay_message(trip_id: str, message: str) -> dict | None:
+    """Phone the appointment with a message the rider asked us to pass on."""
+    trip = _take_call(trip_id)
+    task = await run_voice_task(
+        trip,
+        VoiceTaskKind.rider_message,
+        {
+            "rider_name": rider_label(trip),
+            "appointment_name": trip.appointment.name,
+            "appointment_time": clock(trip.arrive_by, trip.arrive_by),
+            "message": message,
         },
     )
     return task.result

@@ -17,6 +17,7 @@ from app.core.jobs import spawn
 from app.core.llm import FALLBACK_BETA, final_text, get_client
 from app.core.schemas import LateNotice, Outlook, Trip, TripStatus, now
 from app.core.store import get_store
+from app.core.thread import notify_rider
 from app.tools import actions, model_tools
 from app.tools.model_tools import DelayAssessment, ModelUnavailable
 
@@ -117,6 +118,8 @@ async def notify(trip: Trip, a: DelayAssessment) -> None:
     notice = LateNotice(sent_at=now(), minutes_late=a.minutes_late)
     store.update_trip(trip.id, lambda t: setattr(t, "late_notice", notice))
     store.log(trip.id, "late_handled", summary or "Handled the delay.")
+    if summary and not summary.startswith("Notifier error"):
+        notify_rider(trip.id, summary)
 
 
 async def monitor_loop() -> None:

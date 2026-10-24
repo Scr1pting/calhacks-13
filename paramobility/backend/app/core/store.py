@@ -8,8 +8,9 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from . import bus
 from .config import get_settings
-from .schemas import Event, Trip, VoiceTask
+from .schemas import ChatMessage, Event, Trip, VoiceTask
 
 M = TypeVar("M", bound=BaseModel)
 
@@ -27,6 +28,13 @@ CREATE TABLE IF NOT EXISTS events (
     data TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS events_trip ON events (trip_id, at);
+CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    at TEXT NOT NULL,
+    data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS messages_trip ON messages (trip_id, at);
 """
 
 
@@ -100,24 +108,40 @@ class Store:
     def put_json(self, key: str, value) -> None:
         self._put_raw("json", key, json.dumps(value, default=str))
 
-    # events
+    # per-trip logs: the activity log and the rider's chat thread.
+    # New entries are also published so the rider app can stream them.
+
+    def _append(self, table: str, item: Event | ChatMessage) -> None:
+        data = item.model_dump_json()
+        with self._lock:
+            self._db.execute(
+                f"INSERT INTO {table} (id, trip_id, at, data) VALUES (?, ?, ?, ?)",
+                (item.id, item.trip_id, item.at.isoformat(), data),
+            )
+            self._db.commit()
+        bus.publish(item.trip_id, table, data)
+
+    def _list(self, table: str, trip_id: str, model: type[M]) -> list[M]:
+        with self._lock:
+            rows = self._db.execute(
+                f"SELECT data FROM {table} WHERE trip_id = ? ORDER BY at", (trip_id,)
+            ).fetchall()
+        return [model.model_validate_json(r[0]) for r in rows]
 
     def log(self, trip_id: str, kind: str, message: str, **data) -> Event:
         event = Event(trip_id=trip_id, kind=kind, message=message, data=data)
-        with self._lock:
-            self._db.execute(
-                "INSERT INTO events (id, trip_id, at, data) VALUES (?, ?, ?, ?)",
-                (event.id, trip_id, event.at.isoformat(), event.model_dump_json()),
-            )
-            self._db.commit()
+        self._append("events", event)
         return event
 
     def events(self, trip_id: str) -> list[Event]:
-        with self._lock:
-            rows = self._db.execute(
-                "SELECT data FROM events WHERE trip_id = ? ORDER BY at", (trip_id,)
-            ).fetchall()
-        return [Event.model_validate_json(r[0]) for r in rows]
+        return self._list("events", trip_id, Event)
+
+    def add_message(self, message: ChatMessage) -> ChatMessage:
+        self._append("messages", message)
+        return message
+
+    def messages(self, trip_id: str) -> list[ChatMessage]:
+        return self._list("messages", trip_id, ChatMessage)
 
 
 _store: Store | None = None

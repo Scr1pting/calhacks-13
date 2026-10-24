@@ -38,6 +38,13 @@ class LateNoticeReport(BaseModel):
     notes: str = ""
 
 
+class MessageReport(BaseModel):
+    task_id: str
+    reached_someone: bool = True
+    delivered: bool = False
+    response: str = ""
+
+
 def _save(report: BaseModel, kind: str) -> None:
     store = get_store()
     task = store.get_voice_task(report.task_id)
@@ -58,4 +65,10 @@ async def report_policy(report: PolicyReport) -> str:
 @router.post("/late-notice", response_class=PlainTextResponse)
 async def report_late_notice(report: LateNoticeReport) -> str:
     _save(report, "late_notice")
+    return "Saved. Thank them and end the call."
+
+
+@router.post("/message", response_class=PlainTextResponse)
+async def report_message(report: MessageReport) -> str:
+    _save(report, "rider_message")
     return "Saved. Thank them and end the call."

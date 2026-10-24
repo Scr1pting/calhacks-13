@@ -29,9 +29,16 @@ class LateNoticeOutcome(BaseModel):
     notes: str
 
 
+class MessageOutcome(BaseModel):
+    reached_someone: bool
+    delivered: bool
+    response: str
+
+
 SHAPES: dict[VoiceTaskKind, tuple[type[BaseModel], str]] = {
     VoiceTaskKind.policy_inquiry: (PolicyFindings, "extract_policy"),
     VoiceTaskKind.late_notice: (LateNoticeOutcome, "extract_late_notice"),
+    VoiceTaskKind.rider_message: (MessageOutcome, "extract_message"),
 }
 
 

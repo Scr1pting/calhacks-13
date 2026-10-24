@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -120,9 +121,22 @@ class Event(BaseModel):
     data: dict = {}
 
 
+class ChatMessage(BaseModel):
+    """One message in the rider's conversation with the agent."""
+
+    id: str = Field(default_factory=lambda: new_id("msg"))
+    trip_id: str
+    at: datetime = Field(default_factory=now)
+    sender: Literal["rider", "agent"]
+    # A reply answers the rider; a notice is the agent reaching out on its own.
+    kind: Literal["reply", "notice"] = "reply"
+    text: str
+
+
 class VoiceTaskKind(StrEnum):
     policy_inquiry = "policy_inquiry"
     late_notice = "late_notice"
+    rider_message = "rider_message"
 
 
 class VoiceTask(BaseModel):
