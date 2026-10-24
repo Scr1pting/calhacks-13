@@ -3,8 +3,9 @@
 from datetime import datetime
 
 from app.agents import monitor, planner
+from app.core import bus
 from app.core.jobs import spawn
-from app.core.schemas import AppointmentPolicy, Permissions, Trip, TripStatus
+from app.core.schemas import AppointmentPolicy, Permissions, Trip, TripRequest, TripStatus
 from app.core.store import get_store
 
 
@@ -18,6 +19,16 @@ def get(trip_id: str) -> Trip:
     trip = get_store().get_trip(trip_id)
     if trip is None:
         raise TripOpError(404, "trip not found")
+    return trip
+
+
+def create(request: TripRequest) -> Trip:
+    """A new trip: save it, start the planner, and tell the rider's app it exists."""
+    trip = Trip(**request.model_dump())
+    get_store().put_trip(trip)
+    spawn(planner.plan_trip(trip.id), name=f"plan:{trip.id}")
+    if trip.rider_id:
+        bus.publish(trip.rider_id, "trips", trip.model_dump_json())
     return trip
 
 

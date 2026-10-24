@@ -56,9 +56,10 @@ export default function App() {
             onChange={(e) => flow.chat.onDraftChange(e.target.value)}
             onKeyDown={flow.chat.onEnter}
             onSend={flow.chat.onSend}
+            voice={flow.voice}
           />
         )
-      : <AskLeewayBar mode="button" onOpenChat={flow.onOpenChat} />
+      : <AskLeewayBar mode="button" onOpenChat={flow.onOpenChat} voice={flow.voice} />
     : null
 
   return (

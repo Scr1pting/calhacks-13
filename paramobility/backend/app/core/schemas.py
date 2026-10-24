@@ -38,6 +38,8 @@ class TripRequest(BaseModel):
     rider: Rider
     appointment: Contact
     title: str = ""  # what the appointment is for, e.g. "Neurology"
+    rider_id: str = ""  # the rider profile this trip belongs to, if any
+    calendar_event_id: str = ""  # the calendar event it was planned from, if any
     origin: str
     dest: str
     arrive_by: datetime
@@ -122,11 +124,37 @@ class Event(BaseModel):
     data: dict = {}
 
 
+class CalendarEvent(BaseModel):
+    """An appointment from the rider's calendar (mocked by the app for now)."""
+
+    id: str
+    title: str
+    start: datetime
+    place_name: str
+    place_address: str
+    place_phone: str = ""
+
+
+class RiderProfile(BaseModel):
+    id: str
+    name: str
+    home: str  # where pickups start
+    time_zone: str = "UTC"  # IANA name, e.g. "America/Los_Angeles"
+    calendar: list[CalendarEvent] = []
+    # Defaults for trips the chat agent schedules; calls stay off without a phone number.
+    permissions: Permissions = Permissions()
+    updated_at: datetime = Field(default_factory=now)
+
+
 class ChatMessage(BaseModel):
-    """One message in the rider's conversation with the agent."""
+    """One message in a conversation with the agent.
+
+    thread_id is the rider's id for their conversation, or a trip's id for a
+    trip that has no rider profile.
+    """
 
     id: str = Field(default_factory=lambda: new_id("msg"))
-    trip_id: str
+    thread_id: str
     at: datetime = Field(default_factory=now)
     sender: Literal["rider", "agent"]
     # A reply answers the rider; a notice is the agent reaching out on its own.

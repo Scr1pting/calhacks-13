@@ -9,10 +9,11 @@ import hashlib
 import random
 import statistics
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 from app.model.types import Distribution, Priors, Samples, Trip, TripLog, TripOption
 
-N_SAMPLES = 2000
+N_SAMPLES = 1000
 SLOT = timedelta(minutes=5)
 
 
@@ -91,6 +92,13 @@ def expected_wait(samples: Samples, arrive_by: datetime) -> timedelta:
 # decision
 
 def tradeoff(trip: Trip) -> list[tuple[datetime, float, timedelta]]:
+    # The planner asks for the same trip several times per plan, so remember the answer.
+    return list(_tradeoff(trip.origin, trip.dest, trip.arrive_by, trip.grace))
+
+
+@lru_cache(maxsize=256)
+def _tradeoff(origin: str, dest: str, arrive_by: datetime, grace: timedelta):
+    trip = Trip(origin=origin, dest=dest, arrive_by=arrive_by, grace=grace)
     priors = default_priors()
     rows = []
     pickup = trip.arrive_by - timedelta(minutes=150)
@@ -100,7 +108,7 @@ def tradeoff(trip: Trip) -> list[tuple[datetime, float, timedelta]]:
             (pickup, p_on_time(samples, trip.deadline), expected_wait(samples, trip.arrive_by))
         )
         pickup += SLOT
-    return rows
+    return tuple(rows)
 
 
 def options(trip: Trip, certainty: float) -> list[TripOption]:

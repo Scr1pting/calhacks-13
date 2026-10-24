@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from . import bus
 from .config import get_settings
-from .schemas import ChatMessage, Event, Trip, VoiceTask
+from .schemas import ChatMessage, Event, RiderProfile, Trip, VoiceTask
 
 M = TypeVar("M", bound=BaseModel)
 
@@ -91,6 +91,18 @@ class Store:
     def all_trips(self) -> list[Trip]:
         return self._all("trips", Trip)
 
+    def rider_trips(self, rider_id: str) -> list[Trip]:
+        trips = [t for t in self.all_trips() if t.rider_id == rider_id]
+        return sorted(trips, key=lambda t: t.arrive_by)
+
+    # riders
+
+    def get_rider(self, rider_id: str) -> RiderProfile | None:
+        return self._get("riders", rider_id, RiderProfile)
+
+    def put_rider(self, rider: RiderProfile) -> None:
+        self._put_raw("riders", rider.id, rider.model_dump_json())
+
     # voice tasks
 
     def get_voice_task(self, task_id: str) -> VoiceTask | None:
@@ -112,14 +124,16 @@ class Store:
     # New entries are also published so the rider app can stream them.
 
     def _append(self, table: str, item: Event | ChatMessage) -> None:
+        # The trip_id column holds the thread id for chat messages.
+        key = item.thread_id if isinstance(item, ChatMessage) else item.trip_id
         data = item.model_dump_json()
         with self._lock:
             self._db.execute(
                 f"INSERT INTO {table} (id, trip_id, at, data) VALUES (?, ?, ?, ?)",
-                (item.id, item.trip_id, item.at.isoformat(), data),
+                (item.id, key, item.at.isoformat(), data),
             )
             self._db.commit()
-        bus.publish(item.trip_id, table, data)
+        bus.publish(key, table, data)
 
     def _list(self, table: str, trip_id: str, model: type[M]) -> list[M]:
         with self._lock:
@@ -140,8 +154,8 @@ class Store:
         self._append("messages", message)
         return message
 
-    def messages(self, trip_id: str) -> list[ChatMessage]:
-        return self._list("messages", trip_id, ChatMessage)
+    def messages(self, thread_id: str) -> list[ChatMessage]:
+        return self._list("messages", thread_id, ChatMessage)
 
 
 _store: Store | None = None

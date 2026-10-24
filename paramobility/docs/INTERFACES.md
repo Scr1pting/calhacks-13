@@ -20,31 +20,44 @@ POST /trips ──► planning ──► planned ──book──► booked ─�
 4. **Ride.** Send live updates from the rider app. The backend re-checks the arrival outlook after each update and once a minute. If the rider becomes likely to be late, the late-notice agent phones the appointment, within the rider's permissions, and posts what happened in the chat.
 5. **Arrive.** The trip is logged so the delay model's estimates improve over time.
 
-## Chat with the agent
+## Riders and talking to Leeway
 
-Each trip has one conversation thread between the rider and the agent. The rider can ask anything about the trip ("what if I want to be 95% sure?"), and ask the agent to:
+The app keeps one **rider profile** per rider: their name, home address (where pickups start), time zone and calendar. Send it with `PUT /riders/{rider_id}` when the app starts. The app picks the `rider_id`, for example a random id it stores. Calendar events are what Leeway can see and plan rides for. Today the app sends its mock calendar; a real calendar integration would send the same shape. Create trips with `rider_id` (and `calendar_event_id` when the trip is for a calendar event), and `GET /riders/{rider_id}/trips` lists them all.
 
-- replan or book,
-- save a late policy they already know,
-- change their permissions,
-- update the appointment time after it moves,
-- phone the appointment with a message ("tell them I'll take the 3:30 slot").
+Each rider has **one conversation** with Leeway, by text or voice, covering all their trips and calendar appointments. The rider can:
 
-The agent only acts when the rider asks, and within the rider's permissions and call limit.
+- ask what's coming up, when to be ready, or how likely they are to make it;
+- tell Leeway about a new appointment ("I have a dentist appointment Friday at 3 at Smile Dental"). Leeway asks for anything missing, then plans the ride;
+- ask Leeway to plan a ride for a calendar appointment;
+- replan or book, save a late policy they already know, change their permissions, or update an appointment time after it moves;
+- have Leeway phone an appointment with a message ("tell them I'll take the 3:30 slot").
 
-The agents also post into the thread on their own, as `kind: "notice"` messages: when a plan is ready, when they called the appointment because the ride is late, and when a call the rider asked for ends.
+Leeway only acts when the rider asks, and within the rider's permissions and call limits.
 
-- `POST /trips/{id}/messages` with `{"text": "…"}` returns the rider's message and the agent's reply, usually within a few seconds. Calls and replans the agent starts run in the background, and their outcomes arrive later as notices.
-- `GET /trips/{id}/messages` returns the whole thread.
-- `GET /trips/{id}/stream` is a [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. Every new chat message arrives as event `messages`, and every new activity log entry as event `events`. Each event's `data` is the JSON object. Use it to show notices as they happen instead of polling:
+Leeway also posts into the conversation on its own, as `kind: "notice"` messages: when a plan is ready, when it called an appointment because a ride is late, and when a call the rider asked for ends.
+
+**Text:** `POST /riders/{rider_id}/messages` with `{"text": "…"}` returns the rider's message and Leeway's reply, usually within a few seconds. Plans and calls Leeway starts run in the background, and their outcomes arrive later as notices. `GET /riders/{rider_id}/messages` returns the whole conversation.
+
+**Voice:** record the rider (hold-to-talk), then:
+
+1. `POST /riders/{rider_id}/voice` as `multipart/form-data` with the recording in field `audio` (webm, ogg, mp4, mp3 or wav). It returns `{"transcript": "…", "messages": [rider message, Leeway's reply]}`. An empty `transcript` means nothing was heard, and then `messages` is empty.
+2. `POST /speech` with `{"text": "<Leeway's reply>"}` returns the reply spoken in Leeway's voice as `audio/mpeg`. Play it.
+
+Voice and text share the same conversation, and Leeway keeps spoken replies short.
+
+**Live updates:** `GET /riders/{rider_id}/stream` is a [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. New messages arrive as event `messages`. New trips, including ones Leeway schedules in the conversation, arrive as event `trips`. Each trip also has `GET /trips/{id}/stream`, where every new activity log entry arrives as event `events`. Each event's `data` is the JSON object:
 
 ```js
-const es = new EventSource(`${BASE}/trips/${id}/stream?api_key=${KEY}`);
-es.addEventListener("messages", (e) => addToThread(JSON.parse(e.data)));
-es.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
+const rider = new EventSource(`${BASE}/riders/${riderId}/stream?api_key=${KEY}`);
+rider.addEventListener("messages", (e) => addToConversation(JSON.parse(e.data)));
+rider.addEventListener("trips", (e) => addTrip(JSON.parse(e.data)));
+const trip = new EventSource(`${BASE}/trips/${tripId}/stream?api_key=${KEY}`);
+trip.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
 ```
 
-`GET /trips/{id}/events` is the activity log: a lower-level record of everything the agents did.
+`GET /trips/{id}/events` is the activity log: a lower-level record of everything the agents did for a trip.
+
+A trip created without a `rider_id` gets its own conversation at `/trips/{id}/messages` (and its notices arrive on its own stream). For a trip with a rider, those endpoints use the rider's conversation.
 
 ## Endpoints
 
@@ -52,10 +65,18 @@ es.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
 |---|---|---|---|
 | `POST` | `/trips` | `TripRequest` | `Trip` (202, status `planning`) |
 | `GET` | `/trips` | | `Trip[]`, newest first |
+| `PUT` | `/riders/{rider_id}` | `RiderProfile` (without `id`) | `RiderProfile`; create or update, including the calendar |
+| `GET` | `/riders/{rider_id}` | | `RiderProfile` |
+| `GET` | `/riders/{rider_id}/trips` | | `Trip[]`, soonest first |
+| `GET` | `/riders/{rider_id}/messages` | | `ChatMessage[]` |
+| `POST` | `/riders/{rider_id}/messages` | `{"text": "…"}` | `ChatMessage[]`: the rider's message and Leeway's reply |
+| `POST` | `/riders/{rider_id}/voice` | multipart, field `audio` | `{"transcript", "messages"}` |
+| `GET` | `/riders/{rider_id}/stream` | | server-sent events `messages` and `trips` |
+| `POST` | `/speech` | `{"text": "…"}` | `audio/mpeg`: the text in Leeway's voice |
 | `GET` | `/trips/{id}` | | `Trip` |
-| `GET` | `/trips/{id}/messages` | | `ChatMessage[]` |
-| `POST` | `/trips/{id}/messages` | `{"text": "…"}` | `ChatMessage[]`: the rider's message and the agent's reply |
-| `GET` | `/trips/{id}/stream` | | server-sent events `messages` and `events` |
+| `GET` | `/trips/{id}/messages` | | `ChatMessage[]` (the rider's conversation if the trip has one) |
+| `POST` | `/trips/{id}/messages` | `{"text": "…"}` | `ChatMessage[]` |
+| `GET` | `/trips/{id}/stream` | | server-sent events `events` (and `messages` for trips without a rider) |
 | `GET` | `/trips/{id}/events` | | `Event[]` |
 | `POST` | `/trips/{id}/plan` | `{"certainty": 0.95}` (optional) | `Trip` (202); replans a `planned` or `failed` trip |
 | `PUT` | `/trips/{id}/policy` | `AppointmentPolicy` | `Trip`; the rider already knows the late policy (replan afterwards) |
@@ -75,6 +96,8 @@ es.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
   "rider": {"name": "Maya"},       // "phone" optional, currently unused
   "appointment": {"name": "Eastside Clinic", "phone": "+14155550199"},
   "title": "Neurology",            // what the appointment is for; optional
+  "rider_id": "rider_…",           // the rider profile it belongs to; optional
+  "calendar_event_id": "cal-neuro", // the calendar event it's for; optional
   "origin": "1200 Market St, San Francisco",
   "dest": "Eastside Clinic, Oakland",
   "arrive_by": "2026-11-03T14:00:00-08:00",
@@ -109,8 +132,23 @@ es.addEventListener("events", (e) => addToActivityLog(JSON.parse(e.data)));
 // TripOption
 {"pickup_time": "…", "p_on_time": 0.93, "expected_wait_minutes": 19.8}
 
-// ChatMessage
-{"id": "msg_…", "trip_id": "trip_…", "at": "…", "sender": "rider | agent", "kind": "reply | notice", "text": "…"}
+// RiderProfile
+{
+  "id": "rider_…",
+  "name": "Denise Carter",
+  "home": "1520 Grand Ave, Oakland",
+  "time_zone": "America/Los_Angeles",   // IANA name, from the device
+  "calendar": [CalendarEvent],
+  "permissions": {"may_call_appointment": true, "share_rider_name": true, "max_calls": 3}
+                                        // defaults for trips Leeway schedules
+}
+
+// CalendarEvent
+{"id": "cal-neuro", "title": "Neurology", "start": "2026-11-03T10:30:00-08:00",
+ "place_name": "Kaiser Oakland", "place_address": "3600 Broadway, Oakland", "place_phone": "+15105550123"}
+
+// ChatMessage: thread_id is the rider's id (or the trip's, for a trip without a rider)
+{"id": "msg_…", "thread_id": "rider_…", "at": "…", "sender": "rider | agent", "kind": "reply | notice", "text": "…"}
 
 // Event
 {"id": "evt_…", "trip_id": "trip_…", "at": "…", "kind": "plan_ready", "message": "…", "data": {}}

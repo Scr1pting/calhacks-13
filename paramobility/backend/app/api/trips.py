@@ -1,16 +1,13 @@
 """Trip API used by the rider app and the dashboard."""
 
-import asyncio
 import secrets
 from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.agents import chat, monitor, planner
-from app.core import bus
+from app.agents import chat, monitor
 from app.core.config import get_settings
 from app.core.jobs import spawn
 from app.core.schemas import (
@@ -23,9 +20,12 @@ from app.core.schemas import (
     now,
 )
 from app.core.store import get_store
+from app.core.thread import thread_of
 from app.tools import model_tools, trip_ops
 from app.tools.model_tools import ModelUnavailable
 from app.tools.trip_ops import TripOpError
+
+from .streams import sse
 
 
 def require_api_key(x_api_key: str = Header(""), api_key: str = Query("")) -> None:
@@ -55,10 +55,7 @@ def _op(fn, *args, **kwargs) -> Trip:
 
 @router.post("/trips", status_code=202)
 async def create_trip(request: TripRequest) -> Trip:
-    trip = Trip(**request.model_dump())
-    get_store().put_trip(trip)
-    spawn(planner.plan_trip(trip.id), name=f"plan:{trip.id}")
-    return trip
+    return trip_ops.create(request)
 
 
 @router.get("/trips")
@@ -155,13 +152,13 @@ async def update_status(trip_id: str, body: StatusUpdate) -> Trip:
     return trip
 
 
-# Chat with the agent
+# Chat with the agent. A trip with a rider profile shares the rider's
+# conversation (see /riders/{rider_id}/messages); otherwise it has its own.
 
 
 @router.get("/trips/{trip_id}/messages")
 async def list_messages(trip_id: str) -> list[ChatMessage]:
-    _trip(trip_id)
-    return get_store().messages(trip_id)
+    return get_store().messages(thread_of(_trip(trip_id)))
 
 
 class RiderMessage(BaseModel):
@@ -171,41 +168,24 @@ class RiderMessage(BaseModel):
 @router.post("/trips/{trip_id}/messages")
 async def send_message(trip_id: str, body: RiderMessage) -> list[ChatMessage]:
     """The rider writes to the agent. Returns their message and the agent's reply."""
-    _trip(trip_id)
-    return await chat.reply(trip_id, body.text)
+    return await chat.reply(thread_of(_trip(trip_id)), body.text)
 
 
 @router.get("/trips/{trip_id}/stream")
-async def stream(trip_id: str, request: Request) -> StreamingResponse:
-    """Server-sent events: `messages` for the chat thread, `events` for the activity log."""
+async def stream(trip_id: str, request: Request):
+    """Server-sent events: `events` for the activity log; `messages` for trips without a rider."""
     _trip(trip_id)
-    queue = bus.subscribe(trip_id)
-
-    async def events():
-        try:
-            yield ": connected\n\n"
-            while not await request.is_disconnected():
-                try:
-                    kind, data = await asyncio.wait_for(queue.get(), timeout=15)
-                except TimeoutError:
-                    yield ": keep-alive\n\n"
-                    continue
-                yield f"event: {kind}\ndata: {data}\n\n"
-        finally:
-            bus.unsubscribe(trip_id, queue)
-
-    return StreamingResponse(
-        events(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return sse(request, trip_id)
 
 
 # Dashboard
 
 
+# Plain functions, so FastAPI runs the model's number crunching in its thread pool.
+
+
 @router.get("/trips/{trip_id}/distribution")
-async def distribution(trip_id: str, pickup_time: datetime) -> dict:
+def distribution(trip_id: str, pickup_time: datetime) -> dict:
     try:
         return model_tools.distribution(_trip(trip_id), pickup_time)
     except ModelUnavailable as e:
@@ -213,7 +193,7 @@ async def distribution(trip_id: str, pickup_time: datetime) -> dict:
 
 
 @router.get("/calibration")
-async def calibration() -> list[dict]:
+def calibration() -> list[dict]:
     try:
         return model_tools.calibration()
     except ModelUnavailable as e:

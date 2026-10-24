@@ -1,7 +1,9 @@
 """Bridge between the delay model (app.model) and the agents and API.
 
 Everything numeric the rider sees comes through here, so the agents only ever
-choose between numbers the model produced.
+choose between numbers the model produced. These functions are synchronous and
+can be slow; async callers run them with asyncio.to_thread so the server stays
+responsive.
 """
 
 import statistics
