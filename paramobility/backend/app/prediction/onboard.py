@@ -4,17 +4,18 @@ Before pickup the estimate is ontime's (pickup + ride). After pickup only the re
 uncertain. With drive_now the live traffic-aware drive time from the van to the destination and
 drive_at_pickup the same at the first poll after pickup:
 
-    f          = min(prev_f, drive_now / drive_at_pickup)    # share of the ride left, never increases
-    kappa_rem  = 1 + (KAPPA - 1) * f                         # fewer detours left as the ride goes on
-    s_rem      = S_RIDE * sqrt(max(f, 0.05))                 # and less spread
-    mean_rem   = kappa_rem * drive_now + OVERHEAD_MIN * f    # calibrated on the mean, like ride.ride_time
+    f          = min(prev_f, drive_now / drive_at_pickup)  # share of the ride left, never grows
+    kappa_rem  = 1 + (KAPPA - 1) * f                       # fewer detours left as the ride goes on
+    s_rem      = S_RIDE * sqrt(max(f, 0.05))               # and less spread
+    mean_rem   = kappa_rem * drive_now + OVERHEAD_MIN * f  # calibrated on the mean, like ride_time
     R_rem      ~ lognorm(s_rem, scale=mean_rem * exp(-s_rem^2 / 2))
 
 Flags (display only, the model ignores them):
-* detour: drive_now is >= DETOUR_MIN above the best remaining drive so far (prev_f * drive_at_pickup)
-  after moving >= DETOUR_MOVE_M since the last poll. f stays put, so a detour isn't read as
-  "detours are over". The flag holds until drive_now is back under that bar. (Comparing with the
-  best so far rather than only the previous poll also catches detours that grow ~1 min per poll.)
+* detour: drive_now is >= DETOUR_MIN above the best remaining drive so far
+  (prev_f * drive_at_pickup) after moving >= DETOUR_MOVE_M since the last poll. f stays put, so
+  a detour isn't read as "detours are over". The flag holds until drive_now is back under that
+  bar. (Comparing with the best so far rather than only the previous poll also catches detours
+  that grow ~1 min per poll.)
 * stopped: no movement beyond STALL_M for STALL_MIN while f > 0.1 (likely picking someone up).
 
 Display is kept calm: the ETA is an EMA (alpha 0.5) of the model median and only moves in steps of
@@ -35,8 +36,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from scipy import stats
 
-import routing
-from ride import KAPPA, OVERHEAD_MIN, S_RIDE
+from . import routing
+from .ride import KAPPA, OVERHEAD_MIN, S_RIDE
 
 LatLng = tuple[float, float]
 
@@ -89,8 +90,9 @@ def should_poll(state: OnboardState, now: float, pos: LatLng, refresh: bool = Fa
         return False
     if state.last_call_t is None or state.stale or refresh:
         return True
-    return ((now - state.last_call_t) * 60 >= MAX_GAP_S
-            or routing.distance_m(pos, state.last_call_pos) >= MOVE_POLL_M)
+    return (now - state.last_call_t) * 60 >= MAX_GAP_S or routing.distance_m(
+        pos, state.last_call_pos
+    ) >= MOVE_POLL_M
 
 
 def remaining_ride(drive_now: float, f: float):
@@ -101,7 +103,9 @@ def remaining_ride(drive_now: float, f: float):
     return stats.lognorm(s_rem, scale=mean_rem * np.exp(-(s_rem**2) / 2))
 
 
-def onboard_status(state: OnboardState, now: float, drive_now: float, pos: LatLng | None = None) -> dict:
+def onboard_status(
+    state: OnboardState, now: float, drive_now: float, pos: LatLng | None = None
+) -> dict:
     """The §1 model for a fresh drive_now taken at pos (default state.last_pos).
 
     Updates drive_at_pickup (first poll), prev_f, the detour flag and the last-call fields.
@@ -110,8 +114,11 @@ def onboard_status(state: OnboardState, now: float, drive_now: float, pos: LatLn
     if state.drive_at_pickup is None:
         state.drive_at_pickup = drive_now
     best = state.prev_f * state.drive_at_pickup  # best remaining drive seen so far
-    moved = pos is not None and state.last_call_pos is not None and \
-        routing.distance_m(pos, state.last_call_pos) >= DETOUR_MOVE_M
+    moved = (
+        pos is not None
+        and state.last_call_pos is not None
+        and routing.distance_m(pos, state.last_call_pos) >= DETOUR_MOVE_M
+    )
     if drive_now >= best + DETOUR_MIN:
         state.detour = state.detour or moved
     else:
@@ -123,9 +130,15 @@ def onboard_status(state: OnboardState, now: float, drive_now: float, pos: LatLn
     R = remaining_ride(drive_now, f)
     p = float(R.cdf(state.appointment - now))
     state.model = {
-        "t": now, "f": f, "drive_now": drive_now, "mean": float(R.mean()),
-        "eta": now + float(R.median()), "eta_lo": now + float(R.ppf(0.1)), "eta_hi": now + float(R.ppf(0.9)),
-        "p_on_time": p, "detour": state.detour,
+        "t": now,
+        "f": f,
+        "drive_now": drive_now,
+        "mean": float(R.mean()),
+        "eta": now + float(R.median()),
+        "eta_lo": now + float(R.ppf(0.1)),
+        "eta_hi": now + float(R.ppf(0.9)),
+        "p_on_time": p,
+        "detour": state.detour,
     }
     return state.model
 
@@ -158,8 +171,11 @@ def handle_gps(state: OnboardState, now: float, pos: LatLng, refresh: bool = Fal
 
 def update_display(state: OnboardState, model: dict) -> None:
     """Smooth the ETA, step the displayed ETA, and fire or re-arm the running-late alert."""
-    state.eta_smoothed = model["eta"] if state.eta_smoothed is None else \
-        ALPHA * model["eta"] + (1 - ALPHA) * state.eta_smoothed
+    state.eta_smoothed = (
+        model["eta"]
+        if state.eta_smoothed is None
+        else ALPHA * model["eta"] + (1 - ALPHA) * state.eta_smoothed
+    )
     if state.eta_displayed is None or abs(state.eta_smoothed - state.eta_displayed) >= ETA_STEP:
         state.eta_displayed = state.eta_smoothed
 
@@ -167,14 +183,20 @@ def update_display(state: OnboardState, model: dict) -> None:
     if state.alert_armed and (model["p_on_time"] < ALERT_BELOW or late > ALERT_LATE_MIN):
         state.alert_armed = False
         minutes = max(5, round(late / 5) * 5)
-        state.alert = {"type": "running_late", "minutes": minutes,
-                       "message": f"Tell the clinic you'll be about {minutes} min late?"}
+        state.alert = {
+            "type": "running_late",
+            "minutes": minutes,
+            "message": f"Tell the clinic you'll be about {minutes} min late?",
+        }
     elif not state.alert_armed and model["p_on_time"] > REARM_ABOVE and late <= 0:
         state.alert_armed, state.alert = True, None
 
 
 def payload(state: OnboardState) -> dict:
-    """The live card's status. Before the first poll, falls back to state.fallback (pickup + full ride)."""
+    """The live card's status.
+
+    Before the first poll, falls back to state.fallback (pickup + full ride).
+    """
     m = state.model or state.fallback
     if not m:
         raise ValueError("no estimate yet: poll first or set state.fallback")

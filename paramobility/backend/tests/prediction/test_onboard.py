@@ -3,11 +3,8 @@ import math
 
 import pytest
 
-import onboard
-import ride
-import routing
-import sim
-from onboard import OnboardState
+from app.prediction import live, onboard, ride, routing, sim
+from app.prediction.onboard import OnboardState
 
 DEST = (37.8, -122.2)
 APPT = 14 * 60.0
@@ -67,7 +64,9 @@ def test_should_poll():
     assert onboard.should_poll(s, 780, p)  # first fix
     s.last_attempt_t = s.last_call_t = 780
     s.last_call_pos = p
-    assert not onboard.should_poll(s, 780 + 20 / 60, east_of(p, 1000))  # 30-s minimum, even after moving
+    assert not onboard.should_poll(
+        s, 780 + 20 / 60, east_of(p, 1000)
+    )  # 30-s minimum, even after moving
     assert not onboard.should_poll(s, 780 + 20 / 60, p, refresh=True)
     assert onboard.should_poll(s, 780 + 31 / 60, p, refresh=True)
     assert onboard.should_poll(s, 780 + 31 / 60, east_of(p, 310))  # moved 300 m
@@ -99,8 +98,11 @@ def test_alert_once_per_crossing_with_hysteresis():
 def test_alert_when_eta_passes_appointment_plus_5():
     s = state()
     onboard.update_display(s, {"eta": APPT + 12, "p_on_time": 0.75})
-    assert s.alert == {"type": "running_late", "minutes": 10,
-                       "message": "Tell the clinic you'll be about 10 min late?"}
+    assert s.alert == {
+        "type": "running_late",
+        "minutes": 10,
+        "message": "Tell the clinic you'll be about 10 min late?",
+    }
 
 
 def test_routing_failure_is_stale(monkeypatch):
@@ -121,8 +123,6 @@ def test_routing_failure_is_stale(monkeypatch):
 
 
 def test_replay_of_synthetic_track_with_detour(monkeypatch):
-    import live
-
     origin, dest = east_of(DEST, -12_000), DEST
     # straight road east at 30 km/h; drive_now = 2 min per km of straight-line distance
     points = [east_of(origin, k * 250) for k in range(49)]

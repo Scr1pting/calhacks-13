@@ -10,9 +10,16 @@ from app.core.store import Store, set_store
 @pytest.fixture(autouse=True)
 def settings(monkeypatch):
     """Fake model, no real calls, and a webhook secret for the voice API tests."""
-    for key in ("CARTESIA_API_KEY", "CARTESIA_FROM_NUMBER_ID", "API_KEY"):
+    for key in (
+        "CARTESIA_API_KEY",
+        "CARTESIA_FROM_NUMBER_ID",
+        "API_KEY",
+        "GOOGLE_MAPS_KEY",
+        "ORS_API_KEY",
+    ):
         monkeypatch.setenv(key, "")
     monkeypatch.setenv("MODEL_BACKEND", "fake")
+    monkeypatch.setenv("DEMO_CACHE", "false")
     monkeypatch.setenv("VOICE_WEBHOOK_SECRET", "test-secret")
     config.get_settings.cache_clear()
     yield config.get_settings()

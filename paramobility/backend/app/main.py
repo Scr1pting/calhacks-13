@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents.monitor import monitor_loop
-from app.api import riders, trips, voice
+from app.api import prediction, riders, trips, voice
 from app.core.config import get_settings
 from app.core.jobs import spawn
 
@@ -31,6 +31,8 @@ app.add_middleware(
 app.include_router(trips.router)
 app.include_router(riders.router)
 app.include_router(voice.router)
+app.include_router(prediction.router)
+app.include_router(prediction.live_router)
 
 
 @app.get("/health")

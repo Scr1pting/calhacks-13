@@ -22,12 +22,9 @@ import re
 import threading
 from dataclasses import dataclass, field
 
-import onboard
-import ontime
-import personal
-import routing
-from onboard import LatLng, hhmm, round_p
-from ride import ride_time
+from . import onboard, ontime, personal, routing
+from .onboard import LatLng, hhmm, round_p
+from .ride import ride_time
 
 MAX_ACCURACY_M = 100.0  # drop fixes less accurate than this
 PICKUP_RADIUS_M = 300.0
@@ -38,7 +35,17 @@ ARRIVE_DWELL_MIN = 1.0
 GPS_TTL_MIN = 180.0  # drop positions this long after pickup
 
 # what the live card shows; a change in any of these is pushed to stream subscribers
-DISPLAY_KEYS = ("phase", "eta", "p_on_time", "detour", "stopped", "stale", "alert", "ask_picked_up", "sharing")
+DISPLAY_KEYS = (
+    "phase",
+    "eta",
+    "p_on_time",
+    "detour",
+    "stopped",
+    "stale",
+    "alert",
+    "ask_picked_up",
+    "sharing",
+)
 
 
 class EventError(Exception):
@@ -120,8 +127,13 @@ def status(trip: LiveTrip, now: float | None = None) -> dict:
         return _status(trip, now)
 
 
-def handle_event(trip_id: str, kind: str, pos: LatLng | None = None, t: float | None = None,
-                 accuracy: float | None = None) -> dict:
+def handle_event(
+    trip_id: str,
+    kind: str,
+    pos: LatLng | None = None,
+    t: float | None = None,
+    accuracy: float | None = None,
+) -> dict:
     """Apply one event (picked_up, gps, refresh, stop_sharing, arrived) and return the status."""
     trip = get(trip_id)
     with trip.lock:
@@ -166,17 +178,37 @@ def _status(trip: LiveTrip, now: float) -> dict:
         return {**onboard.payload(trip.state), **base}
     if phase == "arrived":
         late = trip.arrived_t - trip.appointment
-        return {"phase": "arrived", "eta": hhmm(trip.arrived_t), "eta_range": [hhmm(trip.arrived_t)] * 2,
-                "p_on_time": 1.0 if late <= 0 else 0.0, "minutes_late_expected": max(0, round(late)),
-                "detour": False, "stopped": False, "stale": False, "progress": 1.0, "alert": None,
-                **base, "record": trip.record}
-    ev = ontime.evaluate_window(trip.appointment, trip.window_start, trip.drive_min, trip.history,
-                                key=trip.key, now=now)
+        return {
+            "phase": "arrived",
+            "eta": hhmm(trip.arrived_t),
+            "eta_range": [hhmm(trip.arrived_t)] * 2,
+            "p_on_time": 1.0 if late <= 0 else 0.0,
+            "minutes_late_expected": max(0, round(late)),
+            "detour": False,
+            "stopped": False,
+            "stale": False,
+            "progress": 1.0,
+            "alert": None,
+            **base,
+            "record": trip.record,
+        }
+    ev = ontime.evaluate_window(
+        trip.appointment, trip.window_start, trip.drive_min, trip.history, key=trip.key, now=now
+    )
     q = {k: trip.appointment + v for k, v in ev["arrival_vs_appointment"].items()}
-    return {"phase": phase, "eta": hhmm(q[0.5]), "eta_range": [hhmm(q[0.1]), hhmm(q[0.9])],
-            "p_on_time": round_p(ev["p_on_time"]),
-            "minutes_late_expected": max(0, round(q[0.5] - trip.appointment)),
-            "detour": False, "stopped": False, "stale": False, "progress": 0.0, "alert": None, **base}
+    return {
+        "phase": phase,
+        "eta": hhmm(q[0.5]),
+        "eta_range": [hhmm(q[0.1]), hhmm(q[0.9])],
+        "p_on_time": round_p(ev["p_on_time"]),
+        "minutes_late_expected": max(0, round(q[0.5] - trip.appointment)),
+        "detour": False,
+        "stopped": False,
+        "stale": False,
+        "progress": 0.0,
+        "alert": None,
+        **base,
+    }
 
 
 def _picked_up(trip: LiveTrip, now: float, pos: LatLng | None) -> None:
@@ -188,8 +220,12 @@ def _picked_up(trip: LiveTrip, now: float, pos: LatLng | None) -> None:
     trip.last_fix = trip.moving_since = None
     trip.state = onboard.OnboardState(trip.trip_id, trip.appointment, trip.destination)
     R = ride_time(trip.drive_min)  # until the first live poll: the full planned ride from now
-    trip.state.fallback = {"eta": now + float(R.median()), "eta_lo": now + float(R.ppf(0.1)),
-                           "eta_hi": now + float(R.ppf(0.9)), "p_on_time": float(R.cdf(trip.appointment - now))}
+    trip.state.fallback = {
+        "eta": now + float(R.median()),
+        "eta_lo": now + float(R.ppf(0.1)),
+        "eta_hi": now + float(R.ppf(0.9)),
+        "p_on_time": float(R.cdf(trip.appointment - now)),
+    }
     if pos is not None and trip.sharing:
         onboard.handle_gps(trip.state, now, pos)
 
@@ -236,7 +272,9 @@ def _arrive(trip: LiveTrip, at: float) -> None:
         "pickup_lateness_min": round(trip.pickup_t - trip.window_start, 1),
         "ride_min": round(ride_min, 1),
         "drive_at_pickup": None if s.drive_at_pickup is None else round(s.drive_at_pickup, 1),
-        "ride_over_drive": None if not s.drive_at_pickup else round(ride_min / s.drive_at_pickup, 3),
+        "ride_over_drive": None
+        if not s.drive_at_pickup
+        else round(ride_min / s.drive_at_pickup, 3),
     }
     _stop_tracking(trip)
 

@@ -3,9 +3,8 @@ import math
 import pytest
 from fastapi.testclient import TestClient
 
-import api
-import live
-import routing
+from app.main import app
+from app.prediction import live, routing, sim
 
 DEST = (37.8, -122.2)
 ORIGIN = (37.8, -122.2 - 12_000 / (111_320 * math.cos(math.radians(37.8))))
@@ -15,23 +14,25 @@ TRIP = {"appointment": "14:00", "window_start": "13:00", "destination": list(DES
 @pytest.fixture(autouse=True)
 def fresh(monkeypatch):
     live.TRIPS.clear()
-    monkeypatch.setattr(routing, "drive_now", lambda o, d: routing.distance_m(o, d) / 500)  # 2 min/km
+    monkeypatch.setattr(
+        routing, "drive_now", lambda o, d: routing.distance_m(o, d) / 500
+    )  # 2 min/km
     yield
     live.TRIPS.clear()
 
 
 @pytest.fixture
 def client():
-    with TestClient(api.app) as c:
+    with TestClient(app) as c:
         yield c
 
 
 def put(client, trip_id="a", **changes):
-    return client.put(f"/trips/{trip_id}", json={**TRIP, **changes})
+    return client.put(f"/live/trips/{trip_id}", json={**TRIP, **changes})
 
 
 def event(client, trip_id="a", **body):
-    return client.post(f"/trips/{trip_id}/events", json=body)
+    return client.post(f"/live/trips/{trip_id}/events", json=body)
 
 
 def east_of(p, meters):
@@ -43,7 +44,7 @@ def test_lifecycle(client):
     assert event(client, type="refresh", t="12:40:00").json()["phase"] == "scheduled"
     waiting = event(client, type="refresh", t="13:20:00").json()
     assert waiting["phase"] == "waiting"
-    later = client.get("/trips/a/status").json()  # same clock: last event time
+    later = client.get("/live/trips/a/status").json()  # same clock: last event time
     assert later == waiting
     out = event(client, type="picked_up", lat=ORIGIN[0], lng=ORIGIN[1], t="13:25:00").json()
     assert out["phase"] == "onboard" and out["progress"] == 0.0 and not out["stale"]
@@ -53,7 +54,11 @@ def test_lifecycle(client):
     out = event(client, type="arrived", t="13:52:00").json()
     assert out["phase"] == "arrived" and out["eta"] == "13:52" and out["p_on_time"] == 1.0
     rec = out["record"]
-    assert rec["pickup_lateness_min"] == 25.0 and rec["ride_min"] == 27.0 and rec["drive_at_pickup"] == 24.0
+    assert (
+        rec["pickup_lateness_min"] == 25.0
+        and rec["ride_min"] == 27.0
+        and rec["drive_at_pickup"] == 24.0
+    )
     assert not out["sharing"]
     trip = live.get("a")
     assert trip.state.last_pos is None and trip.state.last_call_pos is None  # raw GPS dropped
@@ -62,7 +67,7 @@ def test_lifecycle(client):
 
 def test_unknown_trip_is_404(client):
     assert event(client, "nope", type="gps", lat=1, lng=2).status_code == 404
-    assert client.get("/trips/nope/status").status_code == 404
+    assert client.get("/live/trips/nope/status").status_code == 404
 
 
 def test_gps_before_pickup_is_409(client):
@@ -72,11 +77,14 @@ def test_gps_before_pickup_is_409(client):
     assert event(client, type="arrived", t="13:10:00").status_code == 409
 
 
-@pytest.mark.parametrize(("body", "code"), [
-    ({"type": "gps", "t": "13:30:00"}, 422),  # no position
-    ({"type": "gps", "lat": 37.8, "lng": -122.2, "t": "25:00:00"}, 422),
-    ({"type": "teleport"}, 422),
-])
+@pytest.mark.parametrize(
+    ("body", "code"),
+    [
+        ({"type": "gps", "t": "13:30:00"}, 422),  # no position
+        ({"type": "gps", "lat": 37.8, "lng": -122.2, "t": "25:00:00"}, 422),
+        ({"type": "teleport"}, 422),
+    ],
+)
 def test_bad_events_are_422(client, body, code):
     put(client)
     event(client, type="picked_up", t="13:10:00")
@@ -104,7 +112,10 @@ def test_arrival_detected_after_a_minute_near_destination(client):
     put(client)
     event(client, type="picked_up", lat=ORIGIN[0], lng=ORIGIN[1], t="13:10:00")
     near = east_of(DEST, -50)
-    assert event(client, type="gps", lat=near[0], lng=near[1], t="13:40:00").json()["phase"] == "onboard"
+    assert (
+        event(client, type="gps", lat=near[0], lng=near[1], t="13:40:00").json()["phase"]
+        == "onboard"
+    )
     out = event(client, type="gps", lat=DEST[0], lng=DEST[1], t="13:41:05").json()
     assert out["phase"] == "arrived" and out["eta"] == "13:40"
 
@@ -129,7 +140,9 @@ def test_status_also_drops_gps_after_3_hours(client):
     put(client)
     event(client, type="picked_up", lat=ORIGIN[0], lng=ORIGIN[1], t="10:00:00")
     live.get("a").clock = 13 * 60 + 1  # the phone went silent; only reads happen
-    assert client.get("/trips/a/status").json()["stale"] and live.get("a").state.last_pos is None
+    assert (
+        client.get("/live/trips/a/status").json()["stale"] and live.get("a").state.last_pos is None
+    )
 
 
 def test_routing_error_is_stale_not_error(client, monkeypatch):
@@ -148,7 +161,7 @@ def test_routing_error_is_stale_not_error(client, monkeypatch):
 def test_stream_pushes_on_eta_change(client):
     put(client, drive_min=40)  # planned 40-min drive; the live drive is much shorter
     event(client, type="picked_up", t="13:10:00")  # no position: fallback estimate from the plan
-    with client.websocket_connect("/trips/a/stream") as ws:
+    with client.websocket_connect("/live/trips/a/stream") as ws:
         first = ws.receive_json()
         assert first["phase"] == "onboard"
         near = east_of(DEST, -2000)
@@ -160,18 +173,23 @@ def test_stream_pushes_on_eta_change(client):
 def test_stream_unknown_trip(client):
     from starlette.websockets import WebSocketDisconnect
 
-    with pytest.raises(WebSocketDisconnect), client.websocket_connect("/trips/nope/stream") as ws:
+    with (
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect("/live/trips/nope/stream") as ws,
+    ):
         ws.receive_json()
 
 
 def test_replay_endpoint_with_given_track(client, monkeypatch):
-    import sim
-
     started = []
     monkeypatch.setattr(sim, "start_replay", lambda *a: started.append(a))
     put(client)
     track = [[*ORIGIN, "13:10:00"], [*east_of(ORIGIN, 500), "13:11:00"]]
-    r = client.post("/sim/replay", json={"trip_id": "a", "track": track, "speed": 20})
+    r = client.post("/live/sim/replay", json={"trip_id": "a", "track": track, "speed": 20})
     assert r.status_code == 200 and r.json()["seconds"] == 3.0 and started
-    assert client.post("/sim/replay", json={"trip_id": "nope", "track": track}).status_code == 404
-    assert client.post("/sim/replay", json={"trip_id": "a"}).status_code == 422  # no origin, no track
+    assert (
+        client.post("/live/sim/replay", json={"trip_id": "nope", "track": track}).status_code == 404
+    )
+    assert (
+        client.post("/live/sim/replay", json={"trip_id": "a"}).status_code == 422
+    )  # no origin, no track

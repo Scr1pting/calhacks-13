@@ -1,11 +1,8 @@
 import numpy as np
 import pytest
 
-import ontime
-import personal
-import prior
-import ride
-from personal import Trip
+from app.prediction import ontime, personal, prior, ride
+from app.prediction.personal import Trip
 
 HISTORY = (Trip(13 * 60, 18, -7), Trip(13 * 60, 25, -14))
 KEYED = (Trip(13 * 60, 28, -7, "a"), Trip(13 * 60, 25, -14, "a"), Trip(9 * 60, 2, -3, "b"))
@@ -17,14 +14,17 @@ def test_no_history_is_prior():
         np.testing.assert_allclose(personal.lateness(t).cdf(x), prior.prior(t).cdf(x), rtol=1e-12)
 
 
-@pytest.mark.parametrize(("appt", "ws", "drive", "history", "now", "key"), [
-    (14 * 60, 13 * 60, 25, (), None, None),
-    (14 * 60, 13 * 60, 25, HISTORY, None, None),
-    (14 * 60, 13 * 60, 25, KEYED, None, "a"),
-    (9 * 60, 7 * 60 + 30, 30, (), None, None),
-    (18 * 60, 17 * 60, 15, (), 17 * 60 + 20, None),
-    (14 * 60, 13 * 60, 25, KEYED, 13 * 60 + 40, "a"),
-])
+@pytest.mark.parametrize(
+    ("appt", "ws", "drive", "history", "now", "key"),
+    [
+        (14 * 60, 13 * 60, 25, (), None, None),
+        (14 * 60, 13 * 60, 25, HISTORY, None, None),
+        (14 * 60, 13 * 60, 25, KEYED, None, "a"),
+        (9 * 60, 7 * 60 + 30, 30, (), None, None),
+        (18 * 60, 17 * 60, 15, (), 17 * 60 + 20, None),
+        (14 * 60, 13 * 60, 25, KEYED, 13 * 60 + 40, "a"),
+    ],
+)
 def test_integral_matches_monte_carlo(appt, ws, drive, history, now, key):
     p = ontime.p_on_time(appt, ws, drive, history, now=now, key=key)
     mc = np.mean(ontime.arrival_draws(ws, drive, history, now=now, n=200_000, key=key) <= appt)
@@ -47,9 +47,15 @@ def test_still_waiting_far_in_the_tail():
     assert np.all(np.isfinite(L)) and np.all(L > 180)
 
 
-@pytest.mark.parametrize(("appt", "drive", "history"), [
-    (14 * 60, 25, ()), (14 * 60, 25, HISTORY), (8 * 60 + 15, 20, ()), (17 * 60 + 10, 40, ()),
-])
+@pytest.mark.parametrize(
+    ("appt", "drive", "history"),
+    [
+        (14 * 60, 25, ()),
+        (14 * 60, 25, HISTORY),
+        (8 * 60 + 15, 20, ()),
+        (17 * 60 + 10, 40, ()),
+    ],
+)
 def test_latest_window_start(appt, drive, history):
     target = 0.95
     w = ontime.latest_window_start(appt, drive, history, target=target)
@@ -75,7 +81,9 @@ def test_evaluate_window():
     assert 0 < ev["p_very_early"] < ev["p_on_time"] < 1
     assert q[0.1] < q[0.5] < q[0.9]
     # the median arrival inverts the cdf
-    assert ontime.arrival_cdf(14 * 60 + q[0.5], 13 * 60, 25, HISTORY)[0] == pytest.approx(0.5, abs=0.01)
+    assert ontime.arrival_cdf(14 * 60 + q[0.5], 13 * 60, 25, HISTORY)[0] == pytest.approx(
+        0.5, abs=0.01
+    )
 
 
 @pytest.mark.parametrize("d", [1.0, 12.5, 25.0, 90.0])

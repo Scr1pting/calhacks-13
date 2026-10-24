@@ -1,6 +1,6 @@
 """Direct drive time between two points at a departure time, with a small on-disk cache.
 
-Providers, in order:
+Providers, in order (keys come from Settings, i.e. the environment or .env):
 * GOOGLE_MAPS_KEY -> Google Routes computeRoutes, TRAFFIC_AWARE (future departures only).
 * ORS_API_KEY -> OpenRouteService directions, driving-car: real roads but no traffic.
 * neither -> RuntimeError("no routing key"). The notebook's straight-line fallback is not used here.
@@ -11,8 +11,8 @@ traffic for the future.
 
 The cache key is both coordinates (5 decimals), weekday, HH:MM and provider (ORS ignores the
 time), so reruns stay free. Google's Maps Platform terms only allow temporary caching for
-performance, so the cache stays local (CACHE_PATH, git-ignored) and entries expire after
-max_age_days.
+performance, so the cache stays local (DRIVE_CACHE_PATH, git-ignored) and entries expire
+after max_age_days.
 
 Live calls (drive_now, during a ride) depart now and are never cached on disk, since the van's
 position changes every call. Only with DEMO_CACHE=1 are live and route responses recorded in
@@ -21,7 +21,6 @@ DEMO_CACHE_PATH and replayed afterwards, so a demo survives bad venue Wi-Fi.
 
 import json
 import math
-import os
 import threading
 import time
 import urllib.error
@@ -30,9 +29,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from app.core.config import get_settings
+
 TZ = ZoneInfo("America/Los_Angeles")
-CACHE_PATH = Path(os.environ.get("DRIVE_CACHE", Path(__file__).with_name("drive_cache.json")))
-DEMO_CACHE_PATH = Path(os.environ.get("DEMO_CACHE_PATH", Path(__file__).with_name("demo_cache.json")))
 TIMEOUT_S = 10.0
 ROUND_MIN = 15
 
@@ -50,9 +49,10 @@ class RoutingError(RuntimeError):
 
 def provider() -> str:
     """'google' or 'ors', whichever key is set; raises if neither is."""
-    if os.environ.get("GOOGLE_MAPS_KEY"):
+    settings = get_settings()
+    if settings.google_maps_key:
         return "google"
-    if os.environ.get("ORS_API_KEY"):
+    if settings.ors_api_key:
         return "ors"
     raise RoutingError("no routing key")
 
@@ -69,8 +69,9 @@ def departure(depart: datetime, now: datetime | None = None) -> datetime:
     return t
 
 
-def drive_minutes(origin: LatLng, destination: LatLng, depart: datetime,
-                  max_age_days: float = 7.0) -> float:
+def drive_minutes(
+    origin: LatLng, destination: LatLng, depart: datetime, max_age_days: float = 7.0
+) -> float:
     """Direct drive minutes from origin to destination (lat, lng) leaving at depart."""
     name = provider()
     t = departure(depart)
@@ -96,8 +97,9 @@ def drive_now(origin: LatLng, destination: LatLng) -> float:
     """Direct drive minutes from origin to destination leaving now (traffic-aware with Google)."""
     name = provider()
     key = "|".join(["now", *(f"{v:.5f}" for v in (*origin, *destination)), name])
-    return _demo_cached(key, lambda: _google(origin, destination) if name == "google"
-                        else _ors(origin, destination))
+    return _demo_cached(
+        key, lambda: _google(origin, destination) if name == "google" else _ors(origin, destination)
+    )
 
 
 def route_track(origin: LatLng, destination: LatLng) -> tuple[list[LatLng], list[float]]:
@@ -132,7 +134,10 @@ def decode_polyline(encoded: str) -> list[LatLng]:
 def distance_m(a: LatLng, b: LatLng) -> float:
     """Great-circle distance in meters."""
     lat1, lng1, lat2, lng2 = map(math.radians, (*a, *b))
-    h = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lng2 - lng1) / 2) ** 2
+    h = (
+        math.sin((lat2 - lat1) / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin((lng2 - lng1) / 2) ** 2
+    )
     return 2 * 6_371_000 * math.asin(math.sqrt(h))
 
 
@@ -142,12 +147,22 @@ def _point(p: LatLng) -> dict:
 
 def _google(origin: LatLng, destination: LatLng, t: datetime | None = None) -> float:
     """t=None departs now (Google's default)."""
-    body = {"origin": _point(origin), "destination": _point(destination), "travelMode": "DRIVE",
-            "routingPreference": "TRAFFIC_AWARE"}
+    body = {
+        "origin": _point(origin),
+        "destination": _point(destination),
+        "travelMode": "DRIVE",
+        "routingPreference": "TRAFFIC_AWARE",
+    }
     if t is not None:
         body["departureTime"] = t.isoformat()
-    res = _post(GOOGLE_URL, body, {"X-Goog-Api-Key": os.environ["GOOGLE_MAPS_KEY"],
-                                   "X-Goog-FieldMask": "routes.duration,routes.distanceMeters"})
+    res = _post(
+        GOOGLE_URL,
+        body,
+        {
+            "X-Goog-Api-Key": get_settings().google_maps_key,
+            "X-Goog-FieldMask": "routes.duration,routes.distanceMeters",
+        },
+    )
     try:
         return float(res["routes"][0]["duration"].removesuffix("s")) / 60
     except (KeyError, IndexError, ValueError) as e:
@@ -155,10 +170,15 @@ def _google(origin: LatLng, destination: LatLng, t: datetime | None = None) -> f
 
 
 def _google_track(origin: LatLng, destination: LatLng) -> tuple[list[LatLng], list[float]]:
-    body = {"origin": _point(origin), "destination": _point(destination), "travelMode": "DRIVE",
-            "routingPreference": "TRAFFIC_UNAWARE"}
+    body = {
+        "origin": _point(origin),
+        "destination": _point(destination),
+        "travelMode": "DRIVE",
+        "routingPreference": "TRAFFIC_UNAWARE",
+    }
     mask = "routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.staticDuration"
-    res = _post(GOOGLE_URL, body, {"X-Goog-Api-Key": os.environ["GOOGLE_MAPS_KEY"], "X-Goog-FieldMask": mask})
+    headers = {"X-Goog-Api-Key": get_settings().google_maps_key, "X-Goog-FieldMask": mask}
+    res = _post(GOOGLE_URL, body, headers)
     try:
         steps = [step for leg in res["routes"][0]["legs"] for step in leg["steps"]]
     except (KeyError, IndexError) as e:
@@ -177,7 +197,7 @@ def _google_track(origin: LatLng, destination: LatLng) -> tuple[list[LatLng], li
 
 def _ors(origin: LatLng, destination: LatLng) -> float:
     body = {"coordinates": [[origin[1], origin[0]], [destination[1], destination[0]]]}  # [lng, lat]
-    res = _post(ORS_URL, body, {"Authorization": os.environ["ORS_API_KEY"]})
+    res = _post(ORS_URL, body, {"Authorization": get_settings().ors_api_key})
     try:
         return float(res["routes"][0]["summary"]["duration"]) / 60
     except (KeyError, IndexError, ValueError) as e:
@@ -185,8 +205,9 @@ def _ors(origin: LatLng, destination: LatLng) -> float:
 
 
 def _post(url: str, body: dict, headers: dict) -> dict:
-    req = urllib.request.Request(url, data=json.dumps(body).encode(),
-                                 headers={"Content-Type": "application/json", **headers})
+    req = urllib.request.Request(
+        url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **headers}
+    )
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
             return json.load(r)
@@ -198,18 +219,20 @@ def _post(url: str, body: dict, headers: dict) -> dict:
 
 def _demo_cached(key: str, fetch):
     """fetch(), recorded in / replayed from DEMO_CACHE_PATH when DEMO_CACHE=1."""
-    if os.environ.get("DEMO_CACHE") != "1":
+    settings = get_settings()
+    if not settings.demo_cache:
         return fetch()
+    path = Path(settings.demo_cache_path)
     with _lock:
-        cache = _read(DEMO_CACHE_PATH)
+        cache = _read(path)
     if key in cache:
         hit = cache[key]
         return (list(map(tuple, hit[0])), hit[1]) if isinstance(hit, list) else hit
     value = fetch()
     with _lock:
-        cache = _read(DEMO_CACHE_PATH)
+        cache = _read(path)
         cache[key] = value
-        _write(DEMO_CACHE_PATH, cache)
+        _write(path, cache)
     return value
 
 
@@ -229,10 +252,14 @@ def _write(path: Path, data: dict) -> None:
         pass
 
 
+def _cache_path() -> Path:
+    return Path(get_settings().drive_cache_path)
+
+
 def _load() -> dict:
-    return _read(CACHE_PATH)
+    return _read(_cache_path())
 
 
 def _save(cache: dict, max_age_days: float) -> None:
     cutoff = time.time() - max_age_days * 86400
-    _write(CACHE_PATH, {k: v for k, v in cache.items() if v["at"] >= cutoff})
+    _write(_cache_path(), {k: v for k, v in cache.items() if v["at"] >= cutoff})

@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     database_path: str = "./paramobility.db"
     model_backend: str = "fake"  # "fake" until app/model is implemented, then "real"
 
+    # Drive times for app.prediction.routing: Google (traffic-aware) first, else OpenRouteService.
+    google_maps_key: str = ""
+    ors_api_key: str = ""
+    drive_cache_path: str = "./drive_cache.json"  # temporary cache (Google's terms), git-ignored
+    demo_cache: bool = False  # record live/route answers once and replay them (demos)
+    demo_cache_path: str = "./demo_cache.json"
+
     anthropic_api_key: str = ""
     planner_model: str = "claude-sonnet-5-5"
     extract_model: str = "claude-haiku-5-5"

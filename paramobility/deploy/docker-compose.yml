@@ -11,6 +11,8 @@ services:
     env_file: ${PARAMOBILITY_ENV_FILE:-.env}
     environment:
       DATABASE_PATH: /data/paramobility.db
+      DRIVE_CACHE_PATH: /data/drive_cache.json
+      DEMO_CACHE_PATH: /data/demo_cache.json
     volumes:
       - api-data:/data
 

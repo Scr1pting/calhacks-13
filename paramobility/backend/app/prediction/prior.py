@@ -53,9 +53,10 @@ def mu0(minutes):
 
 
 def prior(minutes):
-    """Frozen scipy distribution of L (minutes from window start) for a window starting at `minutes`.
+    """Frozen scipy distribution of L (minutes from window start) for a window at `minutes`.
 
-    Use .pdf, .cdf, .sf, .ppf, .interval, .rvs, etc. An array of times gives a batch of distributions.
+    Use .pdf, .cdf, .sf, .ppf, .interval, .rvs, etc. An array of times gives a batch of
+    distributions.
     """
     return stats.lognorm(S, loc=-C, scale=np.exp(mu0(minutes)))
 

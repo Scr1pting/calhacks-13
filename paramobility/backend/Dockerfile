@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 
 WORKDIR /srv
-ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 DATABASE_PATH=/data/paramobility.db
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 DATABASE_PATH=/data/paramobility.db \
+    DRIVE_CACHE_PATH=/data/drive_cache.json DEMO_CACHE_PATH=/data/demo_cache.json
 
 COPY pyproject.toml ./
 COPY app ./app

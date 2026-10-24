@@ -1,41 +1,34 @@
-"""HTTP API for on-time advice and live trips: `uvicorn api:app --reload`.
+"""Delay-model API: on-time advice for a confirmed pickup window, and live trips.
 
-Routing needs GOOGLE_MAPS_KEY or ORS_API_KEY in the environment (see routing.py) unless
-requests pass drive_min themselves. Live trips (live.py) are kept in memory: a restart forgets them.
+Routing needs GOOGLE_MAPS_KEY or ORS_API_KEY (Settings) unless requests pass drive_min
+themselves. Live trips (app.prediction.live) are kept in memory: a restart forgets them.
+
+The live endpoints sit under /live for now, apart from the agent's /trips, until live
+tracking is folded into the trip lifecycle.
 """
 
 import asyncio
 import datetime
-import os
 import re
 from typing import Literal
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-import live
-import ontime
-import personal
-import prior
-import ride
-import routing
-import sim
+from app.prediction import live, ontime, personal, prior, ride, routing, sim
+
+from .trips import require_api_key
 
 ARRIVAL_QUANTILES = (0.1, 0.5, 0.9)
 BOARD_AFTER_START = 15.0  # minutes: drive time is looked up for a typical boarding time
 DAILY_P_LATE = 0.053  # EBP Jul '25-Apr '26: 94.7% of pickups within the window
-TIGHT_SLACK = prior.WINDOW  # minutes left after the median ride; less -> a van at the window's end is late
+# minutes left after the median ride; less -> a van at the window's end is late
+TIGHT_SLACK = prior.WINDOW
 
-app = FastAPI(title="Paramobility prediction")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter(dependencies=[Depends(require_api_key)])
+live_router = APIRouter(prefix="/live", dependencies=[Depends(require_api_key)])
 
 
 def parse_time(time: str) -> int:
@@ -55,7 +48,9 @@ class TripIn(BaseModel):
 class EvaluateWindowIn(BaseModel):
     appointment: str  # "HH:MM"
     window_start: str  # "HH:MM", EBP's confirmed window start
-    date: datetime.date | None = None  # trip date (for traffic); default: next occurrence of today's weekday
+    date: datetime.date | None = (
+        None  # trip date (for traffic); default: next occurrence of today's weekday
+    )
     drive_min: float | None = Field(None, gt=0)  # either this ...
     origin: tuple[float, float] | None = None  # ... or origin + destination (lat, lng)
     destination: tuple[float, float] | None = None
@@ -88,7 +83,10 @@ def probability(p: float) -> float:
 
 
 def history_trips(history: list[TripIn]) -> list[personal.Trip]:
-    return [personal.Trip(parse_time(t.window_start), t.lateness_min, -t.days_ago, t.trip_key) for t in history]
+    return [
+        personal.Trip(parse_time(t.window_start), t.lateness_min, -t.days_ago, t.trip_key)
+        for t in history
+    ]
 
 
 def check_service(window_start: float, history: list[personal.Trip]) -> None:
@@ -101,12 +99,16 @@ def check_service(window_start: float, history: list[personal.Trip]) -> None:
 
 
 def planned_drive(drive_min, origin, destination, date, window_start) -> tuple[float, str]:
-    """(drive minutes, source): drive_min if given, else routed for a typical boarding time (502 on failure)."""
+    """(drive minutes, source): drive_min if given, else routed for a typical boarding time.
+
+    Routing failures are a 502.
+    """
     if drive_min is not None:
         return drive_min, "given"
     day = date or datetime.datetime.now(routing.TZ).date()  # routing rolls past times a week on
     depart = datetime.datetime.combine(day, datetime.time()) + datetime.timedelta(
-        minutes=window_start + BOARD_AFTER_START)
+        minutes=window_start + BOARD_AFTER_START
+    )
     try:
         return routing.drive_minutes(origin, destination, depart), routing.provider()
     except routing.RoutingError as e:
@@ -126,7 +128,13 @@ def drivers(appointment, window_start, drive_min, source, history, key) -> list[
     ride_median = float(ride.ride_time(drive_min).median())
     if appointment - window_start - ride_median < TIGHT_SLACK:
         out.append(f"Little room: the ride alone takes about {ride_median:.0f} min")
-    part = "Morning" if window_start < 12 * 60 else "Afternoon" if window_start < 17 * 60 else "Evening"
+    part = (
+        "Morning"
+        if window_start < 12 * 60
+        else "Afternoon"
+        if window_start < 17 * 60
+        else "Evening"
+    )
     ratio = float(prior.p_late(window_start)) / DAILY_P_LATE
     if ratio > 1.25:
         out.append(f"{part} pickups run later than average")
@@ -137,7 +145,7 @@ def drivers(appointment, window_start, drive_min, source, history, key) -> list[
     return out[:3]
 
 
-@app.post("/advice/evaluate-window")
+@router.post("/advice/evaluate-window")
 def evaluate_window(req: EvaluateWindowIn) -> EvaluateWindowOut:
     """Chances of arriving on time with EBP's confirmed 30-min pickup window."""
     appointment = parse_time(req.appointment)
@@ -145,15 +153,29 @@ def evaluate_window(req: EvaluateWindowIn) -> EvaluateWindowOut:
     if window_start >= appointment:
         raise HTTPException(422, "window_start must be before the appointment")
     has_coords = req.origin is not None and req.destination is not None
-    if (req.drive_min is not None) == has_coords or (req.origin is None) != (req.destination is None):
+    if (req.drive_min is not None) == has_coords or (req.origin is None) != (
+        req.destination is None
+    ):
         raise HTTPException(422, "give either drive_min or both origin and destination")
     history = history_trips(req.history)
     check_service(window_start, history)
-    drive_min, source = planned_drive(req.drive_min, req.origin, req.destination, req.date, window_start)
+    drive_min, source = planned_drive(
+        req.drive_min, req.origin, req.destination, req.date, window_start
+    )
 
-    ev = ontime.evaluate_window(appointment, window_start, drive_min, history, 0, req.early_min,
-                                ARRIVAL_QUANTILES, key=req.trip_key)
-    latest = ontime.latest_window_start(appointment, drive_min, history, 0, req.target, key=req.trip_key)
+    ev = ontime.evaluate_window(
+        appointment,
+        window_start,
+        drive_min,
+        history,
+        0,
+        req.early_min,
+        ARRIVAL_QUANTILES,
+        key=req.trip_key,
+    )
+    latest = ontime.latest_window_start(
+        appointment, drive_min, history, 0, req.target, key=req.trip_key
+    )
     return EvaluateWindowOut(
         appointment=hhmm(appointment),
         window=f"{hhmm(window_start)}–{hhmm(window_start + prior.WINDOW)}",
@@ -161,7 +183,9 @@ def evaluate_window(req: EvaluateWindowIn) -> EvaluateWindowOut:
         drive_source=source,
         p_on_time=probability(ev["p_on_time"]),
         p_very_early=probability(ev["p_very_early"]),
-        arrival_vs_appointment={str(q): round(v, 1) for q, v in ev["arrival_vs_appointment"].items()},
+        arrival_vs_appointment={
+            str(q): round(v, 1) for q, v in ev["arrival_vs_appointment"].items()
+        },
         latest_window_start=None if latest is None else hhmm(latest),
         target=req.target,
         drivers=drivers(appointment, window_start, drive_min, source, history, req.trip_key),
@@ -172,8 +196,12 @@ class LiveTripIn(BaseModel):
     appointment: str  # "HH:MM"
     window_start: str  # "HH:MM", EBP's confirmed window start
     destination: tuple[float, float]  # (lat, lng)
-    origin: tuple[float, float] | None = None  # pickup address: needed for auto-pickup and routed drive_min
-    drive_min: float | None = Field(None, gt=0)  # planned direct drive; routed from origin if missing
+    origin: tuple[float, float] | None = (
+        None  # pickup address: needed for auto-pickup and routed drive_min
+    )
+    drive_min: float | None = Field(
+        None, gt=0
+    )  # planned direct drive; routed from origin if missing
     date: datetime.date | None = None
     history: list[TripIn] = []
     trip_key: str | None = None
@@ -197,7 +225,9 @@ class LiveStatus(BaseModel):
     stopped: bool  # "Your van is stopped — likely picking someone up"
     stale: bool  # routing failed or tracking stopped: the estimate is frozen
     progress: float  # share of the ride done, 0-1
-    alert: dict | None  # {"type": "running_late", "minutes", "message"}; sending needs the rider's confirmation
+    alert: (
+        dict | None
+    )  # {"type": "running_late", "minutes", "message"}; sending needs the rider's confirmation
     ask_picked_up: bool  # auto-detected movement at the pickup: ask "Were you picked up?"
     sharing: bool  # location tracking on
     record: dict | None = None  # arrived only: what to keep for the rider's history
@@ -205,9 +235,13 @@ class LiveStatus(BaseModel):
 
 class ReplayIn(BaseModel):
     trip_id: str
-    track: list[tuple[float, float, str]] | None = None  # [[lat, lng, "HH:MM:SS"], ...]; generated if missing
+    track: list[tuple[float, float, str]] | None = (
+        None  # [[lat, lng, "HH:MM:SS"], ...]; generated if missing
+    )
     speed: float = Field(10.0, gt=0)  # x real time
-    start: str | None = None  # "HH:MM:SS" departure for a generated track; default: the window start
+    start: str | None = (
+        None  # "HH:MM:SS" departure for a generated track; default: the window start
+    )
 
 
 def live_trip(trip_id: str) -> live.LiveTrip:
@@ -224,7 +258,7 @@ def clock_time(t: str) -> float:
         raise HTTPException(422, str(e)) from e
 
 
-@app.put("/trips/{trip_id}")
+@live_router.put("/trips/{trip_id}")
 def put_trip(trip_id: str, req: LiveTripIn) -> LiveStatus:
     """Register (or replace) a trip for live tracking."""
     appointment = parse_time(req.appointment)
@@ -236,14 +270,27 @@ def put_trip(trip_id: str, req: LiveTripIn) -> LiveStatus:
     history = history_trips(req.history)
     check_service(window_start, history)
     drive_min, _ = planned_drive(req.drive_min, req.origin, req.destination, req.date, window_start)
-    trip = live.register(live.LiveTrip(trip_id, appointment, window_start, req.destination, drive_min,
-                                       req.origin, tuple(history), req.trip_key, req.date))
+    trip = live.register(
+        live.LiveTrip(
+            trip_id,
+            appointment,
+            window_start,
+            req.destination,
+            drive_min,
+            req.origin,
+            tuple(history),
+            req.trip_key,
+            req.date,
+        )
+    )
     return LiveStatus(**live.status(trip))
 
 
-@app.post("/trips/{trip_id}/events")
+@live_router.post("/trips/{trip_id}/events")
 def post_event(trip_id: str, ev: EventIn) -> LiveStatus:
-    """picked_up | gps | arrived | refresh | stop_sharing. gps needs lat/lng and is only taken on board,
+    """picked_up | gps | arrived | refresh | stop_sharing.
+
+    gps needs lat/lng and is only taken on board,
     or while waiting when the trip has an origin (auto-pickup detection)."""
     live_trip(trip_id)
     pos = None if ev.lat is None or ev.lng is None else (ev.lat, ev.lng)
@@ -254,12 +301,12 @@ def post_event(trip_id: str, ev: EventIn) -> LiveStatus:
         raise HTTPException(e.status, e.detail) from e
 
 
-@app.get("/trips/{trip_id}/status")
+@live_router.get("/trips/{trip_id}/status")
 def get_status(trip_id: str) -> LiveStatus:
     return LiveStatus(**live.status(live_trip(trip_id)))
 
 
-@app.websocket("/trips/{trip_id}/stream")
+@live_router.websocket("/trips/{trip_id}/stream")
 async def stream(ws: WebSocket, trip_id: str):
     """Sends the status now and again whenever what the card shows changes."""
     try:
@@ -280,7 +327,7 @@ async def stream(ws: WebSocket, trip_id: str):
         live.unsubscribe(trip, sub)
 
 
-@app.post("/sim/replay")
+@live_router.post("/sim/replay")
 def post_replay(req: ReplayIn) -> dict:
     """Replay a GPS track as live events in the background (demo). Without a track, one is generated
     along Google's route from the trip's origin, with a detour and a 4-min stop."""
@@ -301,10 +348,9 @@ def post_replay(req: ReplayIn) -> dict:
         raise HTTPException(422, "empty track")
     sim.start_replay(req.trip_id, track, req.speed)
     span = live.parse_clock(track[-1][2]) - live.parse_clock(track[0][2])
-    return {"trip_id": req.trip_id, "points": len(track), "seconds": round(span * 60 / req.speed, 1),
-            "track": track}
-
-
-@app.get("/health")
-def health() -> dict:
-    return {"ok": True}
+    return {
+        "trip_id": req.trip_id,
+        "points": len(track),
+        "seconds": round(span * 60 / req.speed, 1),
+        "track": track,
+    }
