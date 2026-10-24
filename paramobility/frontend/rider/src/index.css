@@ -1,0 +1,30 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--lw-backdrop);
+  font-family: var(--lw-font);
+  color: var(--lw-ink);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.lw-desk {
+  min-height: 100vh;
+  padding: 48px;
+  display: flex;
+  gap: 48px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  box-sizing: border-box;
+}

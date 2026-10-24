@@ -1,0 +1,13 @@
+.lw-card {
+  background: var(--lw-card-bg);
+  border-radius: var(--lw-radius-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--lw-shadow-card);
+}
+
+.lw-card-small {
+  border-radius: var(--lw-radius-card-sm);
+}

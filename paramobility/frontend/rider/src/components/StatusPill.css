@@ -1,0 +1,19 @@
+.lw-pill {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--lw-radius-pill);
+  font-size: var(--lw-fs-secondary);
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lw-pill-green {
+  background: var(--lw-success-bg);
+  color: var(--lw-success);
+}
+
+.lw-pill-purple {
+  background: var(--lw-accent-bg);
+  color: var(--lw-accent);
+}

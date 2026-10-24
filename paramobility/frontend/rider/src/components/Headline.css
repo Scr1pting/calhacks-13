@@ -1,0 +1,12 @@
+.lw-headline {
+  font-size: var(--lw-fs-headline);
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+  padding: 0 4px;
+}
+
+.lw-headline-gray {
+  color: var(--lw-text-secondary);
+}

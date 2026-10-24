@@ -1,0 +1,59 @@
+/*
+  Design tokens transcribed from design-reference/README.md ("Design tokens"
+  section) and the Leeway Denise Prototype.dc.html source. Keep these in sync
+  with the original design file rather than inventing new values here.
+*/
+:root {
+  /* Color */
+  --lw-ink: #141618;
+  --lw-text-secondary: #6b6e72;
+  --lw-screen-bg: #f5f5f3;
+  --lw-card-bg: #ffffff;
+  --lw-backdrop: #edece6;
+
+  --lw-border-bar: #e6e5e2;
+  --lw-border-secondary: #e1e0dc;
+  --lw-divider: #eeedea;
+  --lw-ring-pending: #c9c8c4;
+  --lw-button-disabled: #b9b8b4;
+  --lw-map-bg: #ededeb;
+  --lw-map-road: #ffffff;
+  --lw-map-green-patch: #dde9de;
+  --lw-map-pin: #2fa36b;
+
+  --lw-success: #1f6b4a;
+  --lw-success-bg: #e3f1e8;
+  --lw-accent: #4a3bb8;
+  --lw-accent-bg: #ece9fa;
+  --lw-warning-text: #8a5a00;
+
+  /* Radii */
+  --lw-radius-map: 12px;
+  --lw-radius-pill: 14px;
+  --lw-radius-row: 20px;
+  --lw-radius-card-sm: 20px;
+  --lw-radius-card: 28px;
+  --lw-radius-button-sm: 22px;
+  --lw-radius-button: 26px;
+  --lw-radius-button-lg: 28px;
+  --lw-radius-bar: 30px;
+  --lw-radius-device: 52px;
+
+  /* Type */
+  --lw-font: 'Instrument Sans', system-ui, sans-serif;
+  --lw-fs-display-xl: 52px;
+  --lw-fs-display-lg: 44px;
+  --lw-fs-display-md: 40px;
+  --lw-fs-display-sm: 32px;
+  --lw-fs-headline: 28px;
+  --lw-fs-body: 17px;
+  --lw-fs-secondary: 15px;
+  --lw-fs-caption: 14px;
+  --lw-fs-eyebrow: 13px;
+
+  /* Shadow */
+  --lw-shadow-card: 0 12px 30px -20px rgba(20, 22, 24, 0.18);
+
+  /* Layout */
+  --lw-hit-min: 44px;
+}

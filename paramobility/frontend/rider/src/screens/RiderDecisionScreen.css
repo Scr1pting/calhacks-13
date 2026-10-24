@@ -1,0 +1,23 @@
+.lw-decision-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lw-decision-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lw-decision-title {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-decision-sub {
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+}

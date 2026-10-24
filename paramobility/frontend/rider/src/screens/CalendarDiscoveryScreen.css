@@ -1,0 +1,23 @@
+.lw-discover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lw-discover-title {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-discover-sub {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-discover-note {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+  padding: 0 4px;
+}
