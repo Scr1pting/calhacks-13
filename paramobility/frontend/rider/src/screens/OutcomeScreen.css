@@ -1,0 +1,63 @@
+.lw-outcome-times {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.lw-outcome-was {
+  font-size: 20px;
+  color: var(--lw-text-secondary);
+  text-decoration: line-through;
+}
+
+.lw-outcome-now {
+  font-size: var(--lw-fs-display-lg);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.lw-outcome-detail {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+}
+
+.lw-outcome-odds {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lw-outcome-odds-label {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-outcome-odds-value {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-outcome-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lw-outcome-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.lw-outcome-transcript-who {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}

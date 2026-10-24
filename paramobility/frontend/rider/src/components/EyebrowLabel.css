@@ -1,0 +1,7 @@
+.lw-eyebrow {
+  font-size: var(--lw-fs-eyebrow);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lw-text-secondary);
+}

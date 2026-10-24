@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.agents import monitor, planner
 from app.core.schemas import TripStatus, VoiceTask, VoiceTaskKind
 from app.main import app
+from app.tools import trip_ops
 
 
 async def fake_plan_trip(trip_id: str) -> None:
@@ -97,3 +98,24 @@ def test_voice_webhook_saves_result(client, trip, store):
 def test_replan_only_when_not_in_progress(client, trip, store):
     store.update_trip(trip.id, lambda t: setattr(t, "status", TripStatus.booked))
     assert client.post(f"/trips/{trip.id}/plan", json={}).status_code == 409
+
+
+async def test_booking_while_the_planner_finishes_is_not_a_failure(trip, store, monkeypatch):
+    """The rider can book as soon as the plan is saved, before Claude's last sentence."""
+
+    class Runner:
+        async def until_done(self):
+            await fake_plan_trip(trip.id)  # saves the plan through the real tools
+            trip_ops.book(trip.id, store.get_trip(trip.id).plan.recommended.pickup_time)
+            return type("Message", (), {"content": []})()
+
+    class Client:
+        class beta:
+            class messages:
+                @staticmethod
+                def tool_runner(**kwargs):
+                    return Runner()
+
+    monkeypatch.setattr(planner, "get_client", lambda: Client)
+    await planner.plan_trip(trip.id)
+    assert store.get_trip(trip.id).status == TripStatus.booked

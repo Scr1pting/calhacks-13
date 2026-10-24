@@ -37,6 +37,7 @@ class Permissions(BaseModel):
 class TripRequest(BaseModel):
     rider: Rider
     appointment: Contact
+    title: str = ""  # what the appointment is for, e.g. "Neurology"
     origin: str
     dest: str
     arrive_by: datetime

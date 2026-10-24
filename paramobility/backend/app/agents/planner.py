@@ -33,6 +33,7 @@ def trip_brief(trip: Trip) -> str:
         {
             "rider": trip.rider.name,
             "appointment": trip.appointment.name,
+            "appointment_for": trip.title,
             "origin": trip.origin,
             "destination": trip.dest,
             "arrive_by": trip.arrive_by.isoformat(),
@@ -170,7 +171,9 @@ async def plan_trip(trip_id: str) -> None:
         summary = f"Planner error: {e}"
 
     trip = store.get_trip(trip_id)
-    if trip.status != TripStatus.planned:
+    # Still planning means no plan was saved. Anything else (planned, or already
+    # booked by the rider while Claude wrote its last sentence) is a success.
+    if trip.status == TripStatus.planning:
         def fail(t: Trip):
             t.status = TripStatus.failed
             t.error = summary or "The planner finished without a plan."

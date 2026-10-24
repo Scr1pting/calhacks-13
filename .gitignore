@@ -9,3 +9,6 @@ __pycache__/
 *.egg-info/
 drive_cache.json
 drive_cache.tmp
+*.local
+node_modules/
+dist/

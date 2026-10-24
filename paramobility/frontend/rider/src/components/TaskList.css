@@ -1,0 +1,54 @@
+.lw-task-list {
+  background: var(--lw-card-bg);
+  border-radius: var(--lw-radius-card);
+  padding: 6px 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--lw-shadow-card);
+}
+
+.lw-task-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  border-top: 1px solid var(--lw-divider);
+}
+
+.lw-task-row-first {
+  border-top-color: transparent;
+}
+
+.lw-task-mark {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 12px;
+  border: 2px solid var(--lw-ring-pending);
+  box-sizing: border-box;
+  background: transparent;
+  color: #ffffff;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lw-task-mark-active {
+  border-color: var(--lw-ink);
+}
+
+.lw-task-mark-done {
+  border-color: var(--lw-ink);
+  background: var(--lw-ink);
+}
+
+.lw-task-label {
+  font-size: var(--lw-fs-body);
+  color: var(--lw-text-secondary);
+}
+
+.lw-task-label-active,
+.lw-task-label-done {
+  color: var(--lw-ink);
+}

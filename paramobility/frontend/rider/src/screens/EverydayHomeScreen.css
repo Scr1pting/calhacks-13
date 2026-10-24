@@ -1,0 +1,77 @@
+.lw-everyday-title {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-everyday-odds {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lw-everyday-odds-value {
+  font-size: var(--lw-fs-display-xl);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--lw-success);
+}
+
+.lw-everyday-odds-label {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-also-booked {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lw-also-booked > .lw-eyebrow {
+  padding: 0 4px;
+}
+
+.lw-also-booked-list {
+  background: var(--lw-card-bg);
+  border-radius: var(--lw-radius-row);
+  padding: 0 18px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--lw-shadow-card);
+}
+
+.lw-also-booked-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  border-top: 1px solid var(--lw-divider);
+}
+
+.lw-also-booked-row-first {
+  border-top: none;
+}
+
+.lw-also-booked-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lw-also-booked-title {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-also-booked-date {
+  font-size: var(--lw-fs-caption);
+  color: var(--lw-text-secondary);
+}
+
+.lw-also-booked-value {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-success);
+}

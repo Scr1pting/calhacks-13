@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#EDECE6;font-family:'Instrument Sans',system-ui,sans-serif;color:#141618}a{color:#141618}a:hover{color:#4A3BB8}</style>
+</helmet>
+<div style="min-height:{{ outerMinH }};padding:{{ outerPad }};box-sizing:border-box;display:flex;gap:48px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
+
+  <div data-screen-label="Phone" style="width:390px;height:844px;flex:none;border-radius:52px;background:#F5F5F3;border:1px solid #DEDCD7;box-shadow:0 40px 80px -40px rgba(35,38,42,.35);overflow:hidden;position:relative;font-family:'Instrument Sans',system-ui,sans-serif;color:#141618;box-sizing:border-box;display:flex;flex-direction:column">
+    <div style="height:54px;flex:none;display:flex;align-items:center;padding:0 38px;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums">{{ clock }}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 20px 0 26px;flex:none">
+      <sc-if value="{{ notChat }}" hint-placeholder-val="{{ true }}"><svg width="30" height="30" viewBox="0 0 30 30" aria-label="Leeway"><path d="M3 18 C8 9 12 9 15 15 C18 21 22 21 27 12" fill="none" stroke="#141618" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+      <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}"><div role="button" aria-label="Back" onClick="{{ closeChat }}" style="width:44px;height:44px;margin-left:-6px;border-radius:22px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 L2 8 L8 14" fill="none" stroke="#141618" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></sc-if>
+      <div role="button" aria-label="Menu" style="width:44px;height:44px;border-radius:22px;background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><span style="width:14px;height:1.8px;background:#141618"></span><span style="width:14px;height:1.8px;background:#141618"></span><span style="width:14px;height:1.8px;background:#141618"></span></div>
+    </div>
+
+    <div style="flex:1;min-height:0;overflow:hidden;padding:26px 24px 16px;display:flex;flex-direction:column;gap:16px">
+
+      <sc-if value="{{ isDiscover }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">Let’s plan ahead. <span style="color:#6B6E72">I found a few upcoming appointments in your calendar. Would you like me to arrange transportation?</span></div>
+        <div role="group" aria-label="Appointments that may need a ride" style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ discoverItems }}" as="it" hint-placeholder-count="2">
+            <div role="checkbox" aria-checked="{{ it.checked }}" onClick="{{ it.toggle }}" style="min-height:76px;padding:14px 18px;box-sizing:border-box;border-radius:20px;background:#FFFFFF;border:1.5px solid {{ it.border }};display:flex;align-items:center;gap:14px;cursor:pointer">
+              <span style="width:26px;height:26px;flex:none;border-radius:13px;border:2px solid #141618;box-sizing:border-box;background:{{ it.checkBg }};color:#FFFFFF;font-size:14px;display:flex;align-items:center;justify-content:center">{{ it.mark }}</span>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:17px;font-weight:500">{{ it.title }}</span><span style="font-size:15px;color:#6B6E72">{{ it.when }}</span><span style="font-size:15px;color:#6B6E72">Kaiser Oakland</span></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:15px;line-height:1.4;color:#6B6E72;padding:0 4px">I skipped 4 events that don’t look like they need a ride, like work meetings and calls.</div>
+        <div role="button" onClick="{{ arrange }}" style="min-height:56px;border-radius:28px;background:{{ arrangeBg }};color:#FFFFFF;font-size:17px;font-weight:500;display:flex;align-items:center;justify-content:center;cursor:pointer">{{ arrangeLabel }}</div>
+      </sc-if>
+
+      <sc-if value="{{ isRecommend }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px;padding:0 4px">
+          <div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72">{{ recStep }}</div>
+          <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty">Here’s what I’d book. <span style="color:#6B6E72">{{ recGray }}</span></div>
+        </div>
+        <div style="background:#FFFFFF;border-radius:20px;padding:14px 14px 14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><polygon points="1,1 13,6 7.5,7.5 6,13" fill="#141618"></polygon></svg>Kaiser Oakland</div><div style="font-size:14px;color:#6B6E72">3600 Broadway, Oakland</div></div><div role="img" aria-label="Map showing Kaiser Oakland" style="width:84px;height:58px;flex:none;border-radius:12px;background:#EDEDEB;position:relative;overflow:hidden"><div style="position:absolute;left:-10px;top:30px;width:120px;height:5px;background:#FFFFFF;transform:rotate(-18deg)"></div><div style="position:absolute;left:48px;top:-10px;width:5px;height:90px;background:#FFFFFF;transform:rotate(12deg)"></div><div style="position:absolute;right:-6px;bottom:-6px;width:30px;height:24px;border-radius:6px;background:#DDE9DE"></div><div style="position:absolute;left:34px;top:20px;width:16px;height:16px;border-radius:8px;background:#2FA36B;box-shadow:0 0 0 3px #FFFFFF"></div></div></div>
+        <div style="background:#FFFFFF;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72">RECOMMENDED PICKUP WINDOW</div><div style="font-size:40px;font-weight:400;letter-spacing:-.03em;line-height:1">{{ rec.window }}</div><div style="font-size:15px;color:#6B6E72">{{ rec.day }}. Be ready at {{ rec.start }}.</div></div>
+          <div style="height:1px;background:#EEEDEA"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:15px;color:#6B6E72">Chance of arriving by {{ rec.time }}</span><span style="font-size:20px;font-weight:500;color:#1F6B4A">{{ rec.oddsText }}</span></div>
+          <div style="font-size:15px;line-height:1.4;color:#6B6E72">{{ rec.why }}</div>
+        </div>
+        <div role="button" onClick="{{ startBooking }}" style="min-height:56px;flex:none;border-radius:28px;background:#141618;color:#FFFFFF;font-size:17px;font-weight:500;display:flex;align-items:center;justify-content:center;cursor:pointer">Confirm</div>
+      </sc-if>
+
+      <sc-if value="{{ isWorking }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">{{ workDark }} <span style="color:#6B6E72">{{ workGray }}</span></div>
+        <div aria-live="polite" style="background:#FFFFFF;border-radius:28px;padding:6px 20px;display:flex;flex-direction:column;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <sc-for list="{{ workTasks }}" as="tk" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:14px;min-height:60px;border-top:1px solid {{ tk.line }}">
+              <span style="width:24px;height:24px;flex:none;border-radius:12px;border:2px solid {{ tk.ring }};box-sizing:border-box;background:{{ tk.bg }};color:#FFFFFF;font-size:13px;display:flex;align-items:center;justify-content:center">{{ tk.mark }}</span>
+              <span style="font-size:17px;color:{{ tk.fg }}">{{ tk.t }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ workDone }}" hint-placeholder-val="{{ false }}">
+          <div role="button" onClick="{{ workNext }}" style="min-height:56px;border-radius:28px;background:#141618;color:#FFFFFF;font-size:17px;font-weight:500;display:flex;align-items:center;justify-content:center;cursor:pointer">{{ workNextLabel }}</div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">{{ homeDark }} <span style="color:#6B6E72">{{ homeGray }}</span></div>
+        <div style="background:#FFFFFF;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72">CHANCE OF ARRIVING BY {{ homeTimeCaps }}</div><div style="font-size:52px;font-weight:400;letter-spacing:-.03em;line-height:1;color:#1F6B4A">{{ homeOdds }}</div><div style="font-size:15px;color:#6B6E72">Based on similar trips over the last 3 months.</div></div>
+          <div style="height:1px;background:#EEEDEA"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:15px;color:#6B6E72">Pickup window</span><span style="font-size:17px;font-weight:400">{{ home.window }}</span></div>
+                  </div>
+        <div style="background:#FFFFFF;border-radius:20px;padding:14px 14px 14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><polygon points="1,1 13,6 7.5,7.5 6,13" fill="#141618"></polygon></svg>Kaiser Oakland</div><div style="font-size:14px;color:#6B6E72">3600 Broadway, Oakland</div></div><div role="img" aria-label="Map showing Kaiser Oakland" style="width:84px;height:58px;flex:none;border-radius:12px;background:#EDEDEB;position:relative;overflow:hidden"><div style="position:absolute;left:-10px;top:30px;width:120px;height:5px;background:#FFFFFF;transform:rotate(-18deg)"></div><div style="position:absolute;left:48px;top:-10px;width:5px;height:90px;background:#FFFFFF;transform:rotate(12deg)"></div><div style="position:absolute;right:-6px;bottom:-6px;width:30px;height:24px;border-radius:6px;background:#DDE9DE"></div><div style="position:absolute;left:34px;top:20px;width:16px;height:16px;border-radius:8px;background:#2FA36B;box-shadow:0 0 0 3px #FFFFFF"></div></div></div>
+        <div style="font-size:15px;line-height:1.4;color:#6B6E72;padding:0 4px">{{ monitorText }}</div>
+        <sc-if value="{{ hasSecondary }}" hint-placeholder-val="{{ false }}">
+          <div style="min-height:64px;padding:10px 10px 10px 18px;box-sizing:border-box;border-radius:20px;border:1px solid #E1E0DC;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:15px;font-weight:500">{{ secondary.title }} · {{ secondary.date }}</span><span style="font-size:14px;color:#6B6E72">Needs a ride</span></div>
+            <div role="button" onClick="{{ planSecondary }}" style="min-height:44px;padding:0 18px;border-radius:22px;background:#141618;color:#FFFFFF;font-size:15px;font-weight:500;display:flex;align-items:center;cursor:pointer">Plan</div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">Nothing to plan right now. <span style="color:#6B6E72">No appointments in your calendar need a ride in the next two weeks. I’ll let you know when one does.</span></div>
+        <div style="background:#FFFFFF;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72">LAST TRIP</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:17px;font-weight:500">Physical therapy</span><span style="font-size:15px;color:#6B6E72">Thu, Nov 5</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:15px;color:#6B6E72">Arrived</span><span style="font-size:17px;font-weight:400;color:#1F6B4A">1:41 PM, on time</span></div>
+        </div>
+        <div role="button" onClick="{{ restartFn }}" style="min-height:52px;border-radius:26px;border:1px solid #E1E0DC;font-size:17px;font-weight:400;display:flex;align-items:center;justify-content:center;cursor:pointer">Book a ride yourself</div>
+      </sc-if>
+
+      <sc-if value="{{ isEveryday }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">Your rides are taken care of. <span style="color:#6B6E72">Next up is neurology on Tuesday. I’ll remind you the night before.</span></div>
+        <div style="background:#FFFFFF;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72">NEXT RIDE · TUE, NOV 3</div>
+          <div style="font-size:17px;font-weight:500">Neurology, Kaiser Oakland</div>
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:52px;font-weight:400;letter-spacing:-.03em;line-height:1;color:#1F6B4A">86%</span><span style="font-size:15px;color:#6B6E72">chance of arriving by 10:30 AM</span></div>
+          <div style="height:1px;background:#EEEDEA"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:15px;color:#6B6E72">Pickup window</span><span style="font-size:17px;font-weight:400">9:15 – 9:45</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72;padding:0 4px">ALSO BOOKED</div>
+          <div role="list" style="background:#FFFFFF;border-radius:20px;padding:0 18px;display:flex;flex-direction:column;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:60px;border-top:none"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:500">Physical therapy</span><span style="font-size:14px;color:#6B6E72">Thu, Nov 5 · 2:00 PM</span></div><span style="font-size:15px;color:#1F6B4A">82%</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:60px;border-top:1px solid #EEEDEA"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:500">Physical therapy</span><span style="font-size:14px;color:#6B6E72">Thu, Nov 12 · 2:00 PM</span></div><span style="font-size:15px;color:#1F6B4A">84%</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:60px;border-top:1px solid #EEEDEA"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:500">Dentist</span><span style="font-size:14px;color:#6B6E72">Mon, Nov 16 · 11:00 AM</span></div><span style="font-size:15px;color:#1F6B4A">88%</span></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCall }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">You may be 15 minutes late. <span style="color:#6B6E72">I’m calling Kaiser Oakland to ask if they can still see you.</span></div>
+        <div style="background:#FFFFFF;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="min-height:28px;padding:0 12px;border-radius:14px;background:#ECE9FA;color:#4A3BB8;font-size:15px;font-weight:400;display:inline-flex;align-items:center">{{ callStatus }}</span>
+            <span style="font-size:15px;color:#6B6E72;font-variant-numeric:tabular-nums">{{ callTime }}</span>
+          </div>
+          <div aria-live="polite" style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ lines }}" as="ln" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:13px;font-weight:600;letter-spacing:.06em;color:{{ ln.color }}">{{ ln.who }}</div><div style="font-size:17px;line-height:1.35">{{ ln.t }}</div></div>
+            </sc-for>
+          </div>
+          <div style="height:1px;background:#EEEDEA"></div>
+          <div style="font-size:15px;line-height:1.4;color:#6B6E72">{{ waitingFor }}</div>
+          <div role="button" onClick="{{ toggleListen }}" style="min-height:52px;border-radius:26px;border:1px solid #E1E0DC;font-size:17px;font-weight:400;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ listenBg }}">{{ listenLabel }}</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOutcome }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">{{ out.dark }} <span style="color:#6B6E72">{{ out.gray }}</span></div>
+        <div style="background:#FFFFFF;border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+          <span style="align-self:flex-start;min-height:28px;padding:0 12px;border-radius:14px;background:#E3F1E8;color:#1F6B4A;font-size:15px;font-weight:400;display:inline-flex;align-items:center">Rescheduled</span>
+          <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font-size:20px;color:#6B6E72;text-decoration:line-through">{{ out.was }}</span><span style="font-size:44px;font-weight:400;letter-spacing:-.03em;line-height:1">{{ out.now }}</span></div>
+          <div style="font-size:15px;line-height:1.4;color:#6B6E72">{{ out.detail }}</div>
+          <div style="height:1px;background:#EEEDEA"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:15px;color:#6B6E72">{{ out.oddsLabel }}</span><span style="font-size:17px;font-weight:500;color:{{ out.oddsColor }}">{{ out.odds }}</span></div>
+        </div>
+        <sc-if value="{{ out.showLoc }}" hint-placeholder-val="{{ true }}"><div style="background:#FFFFFF;border-radius:20px;padding:14px 14px 14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><polygon points="1,1 13,6 7.5,7.5 6,13" fill="#141618"></polygon></svg>Kaiser Oakland</div><div style="font-size:14px;color:#6B6E72">3600 Broadway, Oakland</div></div><div role="img" aria-label="Map showing Kaiser Oakland" style="width:84px;height:58px;flex:none;border-radius:12px;background:#EDEDEB;position:relative;overflow:hidden"><div style="position:absolute;left:-10px;top:30px;width:120px;height:5px;background:#FFFFFF;transform:rotate(-18deg)"></div><div style="position:absolute;left:48px;top:-10px;width:5px;height:90px;background:#FFFFFF;transform:rotate(12deg)"></div><div style="position:absolute;right:-6px;bottom:-6px;width:30px;height:24px;border-radius:6px;background:#DDE9DE"></div><div style="position:absolute;left:34px;top:20px;width:16px;height:16px;border-radius:8px;background:#2FA36B;box-shadow:0 0 0 3px #FFFFFF"></div></div></div></sc-if>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div role="button" onClick="{{ out.firstGo }}" style="min-height:44px;padding:0 16px;border-radius:22px;border:1px solid #E1E0DC;box-sizing:border-box;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:400;cursor:pointer"><svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="13" rx="2" fill="none" stroke="#141618" stroke-width="2"></rect><path d="M6 1 V5 M12 1 V5 M2 7 H16" stroke="#141618" stroke-width="2"></path></svg><span>{{ out.first }}</span></div>
+          <div role="button" style="min-height:44px;padding:0 16px;border-radius:22px;border:1px solid #E1E0DC;box-sizing:border-box;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:400;cursor:pointer"><svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 2 H6.5 L8 6 L6 7.5 A9 9 0 0 0 10.5 12 L12 10 L16 11.5 V15 A1.5 1.5 0 0 1 14.5 16.5 A13 13 0 0 1 1.5 3.5 A1.5 1.5 0 0 1 3 2Z" fill="none" stroke="#141618" stroke-width="1.7" stroke-linejoin="round"></path></svg><span>Hear the call</span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDecision }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">Kaiser can’t see you late today. <span style="color:#6B6E72">Dr. Patel’s next opening is Thursday at 9:00 AM. Here’s what I’d do.</span></div>
+        <div role="radiogroup" aria-label="Options" style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ options }}" as="op" hint-placeholder-count="3">
+            <div role="radio" aria-checked="{{ op.checked }}" onClick="{{ op.pick }}" style="padding:14px 16px;border-radius:20px;background:#FFFFFF;border:1.5px solid {{ op.border }};display:flex;gap:14px;align-items:flex-start;cursor:pointer">
+              <span style="width:24px;height:24px;flex:none;margin-top:1px;border-radius:12px;border:2px solid #141618;box-sizing:border-box;display:flex;align-items:center;justify-content:center"><span style="width:12px;height:12px;border-radius:6px;background:{{ op.dot }}"></span></span>
+              <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:17px;font-weight:500">{{ op.title }}</span><sc-if value="{{ op.hasTag }}" hint-placeholder-val="{{ false }}"><span style="min-height:28px;padding:0 12px;border-radius:14px;background:#E3F1E8;color:#1F6B4A;font-size:15px;font-weight:400;display:inline-flex;align-items:center">{{ op.tag }}</span></sc-if></div>
+                <span style="font-size:15px;line-height:1.4;color:#6B6E72">{{ op.sub }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div role="button" onClick="{{ approve }}" style="min-height:56px;flex:none;border-radius:28px;background:#141618;color:#FFFFFF;font-size:17px;font-weight:500;display:flex;align-items:center;justify-content:center;cursor:pointer;text-align:center;padding:0 16px">{{ approveLabel }}</div>
+      </sc-if>
+
+      <sc-if value="{{ chatEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:28px;line-height:1.2;font-weight:400;letter-spacing:-.02em;text-wrap:pretty;padding:0 4px">What can I help with? <span style="color:#6B6E72">Ask about your rides, appointments or bookings. You can type or hold the mic to talk.</span></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="3">
+            <div role="button" onClick="{{ sg.go }}" style="min-height:60px;padding:0 18px;box-sizing:border-box;border-radius:20px;background:#FFFFFF;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:17px;cursor:pointer;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)"><span>{{ sg.q }}</span><svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="M1.5 1.5 L6.5 7 L1.5 12.5" fill="none" stroke="#6B6E72" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ chatHas }}" hint-placeholder-val="{{ false }}">
+        <div aria-live="polite" style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column-reverse;margin:0 -24px;padding:0 24px">
+          <div style="display:flex;flex-direction:column;gap:18px;padding-bottom:4px">
+            <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="2">
+              <sc-if value="{{ m.isMe }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-end;max-width:80%;padding:12px 16px;border-radius:22px 22px 6px 22px;background:#141618;color:#FFFFFF;font-size:17px;line-height:1.35">{{ m.t }}</div></sc-if>
+              <sc-if value="{{ m.isLw }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <div style="font-size:17px;line-height:1.4;padding:0 4px;text-wrap:pretty">{{ m.t }}</div>
+                  <sc-if value="{{ m.hasCard }}" hint-placeholder-val="{{ false }}">
+                    <div style="background:#FFFFFF;border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 30px -20px rgba(20,22,24,.18)">
+                      <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;font-weight:500;letter-spacing:.08em;color:#6B6E72">PICKUP WINDOW · TUE, NOV 3</div><div style="font-size:32px;font-weight:400;letter-spacing:-.03em;line-height:1">9:15 – 9:45</div><div style="font-size:15px;color:#6B6E72">Neurology, Kaiser Oakland</div></div>
+                      <div style="height:1px;background:#EEEDEA"></div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:15px;color:#6B6E72">Chance of arriving by 10:30 AM</span><span style="font-size:17px;font-weight:500;color:#1F6B4A">86%</span></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ m.hasActions }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <sc-for list="{{ m.actions }}" as="ac" hint-placeholder-count="2">
+                        <div role="button" onClick="{{ ac.go }}" style="min-height:44px;padding:0 18px;box-sizing:border-box;border-radius:22px;background:{{ ac.bg }};color:{{ ac.fg }};border:1px solid {{ ac.border }};display:flex;align-items:center;font-size:15px;font-weight:500;cursor:pointer">{{ ac.label }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#6B6E72;padding:0 4px">Leeway is checking…</div></sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ showBar }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:none;margin:0 16px 26px;min-height:60px;border-radius:30px;background:#FFFFFF;border:1.5px solid {{ barBorder }};box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:6px 6px 6px 22px">
+        <sc-if value="{{ notChat }}" hint-placeholder-val="{{ true }}"><div role="button" onClick="{{ openChat }}" style="flex:1;align-self:stretch;display:flex;align-items:center;font-size:17px;color:#6B6E72;cursor:text">{{ barText }}</div></sc-if>
+        <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}"><input aria-label="Message Leeway" placeholder="{{ barText }}" value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" style="flex:1;min-width:0;border:none;outline:none;background:transparent;font-family:inherit;font-size:17px;color:#141618;padding:0"></input></sc-if>
+        <sc-if value="{{ hasDraft }}" hint-placeholder-val="{{ false }}"><div role="button" aria-label="Send" onClick="{{ sendDraft }}" style="width:48px;height:48px;flex:none;border-radius:24px;background:#141618;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><path d="M8 16 V2 M2 8 L8 2 L14 8" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></sc-if>
+        <sc-if value="{{ noDraft }}" hint-placeholder-val="{{ true }}"><div role="button" aria-label="Hold to talk" onPointerDown="{{ micDown }}" onPointerUp="{{ micUp }}" onPointerLeave="{{ micUp }}" style="width:48px;height:48px;flex:none;border-radius:24px;background:{{ micBg }};display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;user-select:none"><svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><rect x="5" y="1" width="6" height="11" rx="3" fill="#FFFFFF"></rect><path d="M2 9 A6 6 0 0 0 14 9 M8 15 V19" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"></path></svg></div></sc-if>
+      </div>
+    </sc-if>
+    <div aria-hidden="true" style="position:absolute;left:128px;bottom:8px;width:134px;height:5px;border-radius:3px;background:#141618"></div>
+  </div>
+
+  <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+  <div style="width:340px;flex:none;display:flex;flex-direction:column;gap:26px;padding-top:8px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:24px;font-weight:500;letter-spacing:-.01em">Denise’s journey</div>
+      <div style="font-size:15px;line-height:1.45;color:#5C6168">The phone is live. Tap through it, or jump to any step. All times, percentages and availability are sample data.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:.06em;color:#5C6168">SIMULATE</div>
+      <sc-for list="{{ sims }}" as="sm" hint-placeholder-count="4">
+        <div role="button" onClick="{{ sm.go }}" style="min-height:44px;padding:0 16px;border-radius:12px;border:1px solid #D3D1CB;background:#F7F6F2;display:flex;align-items:center;font-size:15px;cursor:pointer">{{ sm.label }}</div>
+      </sc-for>
+    </div>
+    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:13px;font-weight:600;letter-spacing:.06em;color:#5C6168;padding-bottom:4px">{{ g.title }}</div>
+        <sc-for list="{{ g.steps }}" as="st" hint-placeholder-count="2">
+          <div role="button" onClick="{{ st.go }}" style="min-height:40px;padding:0 14px;border-radius:10px;background:{{ st.bg }};color:{{ st.fg }};display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer">
+            <span style="font-size:13px;opacity:.6;width:22px">{{ st.n }}</span>{{ st.label }}
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  APPTS = {
+    neuro: { key:'neuro', title:'Neurology', day:'Tuesday', date:'Tue, Nov 3', time:'10:30 AM', window:'9:15 – 9:45', start:'9:15', odds:86, conf:'#48213',
+      why:'Weekday morning rides from your area to Kaiser took 35 to 60 minutes over the last 3 months.' },
+    pt: { key:'pt', title:'Physical therapy', day:'Thursday', date:'Thu, Nov 5', time:'2:00 PM', window:'12:45 – 1:15', start:'12:45', odds:82, conf:'#48390',
+      why:'Midday rides from your area to Kaiser took 30 to 55 minutes over the last 3 months.' }
+  };
+  INIT = { screen:'discover', phase:0, sel:{ neuro:true, pt:true }, queue:[], qi:0, booked:{ neuro:false, pt:false }, today:false,
+    callPath:'yes', listening:false, mic:false, outKind:'moved', choice:'thu', work:'book', msgs:[], draft:'', typing:false, back:'home' };
+  CHAT = {
+    next:{ a:'Tuesday, for neurology at 10:30 AM. Be ready downstairs at 9:15.', card:true },
+    att:{ a:'Yes. EBP lets one attendant ride with you at no extra cost. Should I add one to Tuesday’s ride?', actions:[['Add attendant','attYes'],['Not now','no']] },
+    attYes:{ a:'Done. EBP updated ride #48213 for you and one attendant.' },
+    cancel:{ a:'That’s physical therapy on Thu, Nov 5, with pickup between 12:45 and 1:15. Should I cancel it with EBP?', actions:[['Cancel ride','cancelYes'],['Keep it','no']] },
+    cancelYes:{ a:'Cancelled. EBP confirmed, and it won’t count as a no-show.' },
+    no:{ a:'Okay, I won’t change anything.' },
+    help:{ a:'I can check your rides, change or cancel a booking, or call the clinic for you.' }
+  };
+  SUGG = [['When is my next ride?','next'],['Can someone ride with me?','att'],['Cancel Thursday’s ride','cancel']];
+  matchChat(q) { return /cancel/i.test(q) ? 'cancel' : /attendant|aide|someone|ride with|bring/i.test(q) ? 'att' : /next|when|pick/i.test(q) ? 'next' : 'help'; }
+  send(text, k) {
+    if (!text.trim()) return;
+    this.setState(s => ({ msgs:[...s.msgs, { from:'me', t:text }], draft:'', typing:true }));
+    clearTimeout(this.to);
+    this.to = setTimeout(() => this.setState(s => ({ msgs:[...s.msgs, { from:'lw', k: k || this.matchChat(text) }], typing:false })), 900);
+  }
+  state = { ...this.INIT, sel:{ ...this.INIT.sel }, booked:{ ...this.INIT.booked } };
+  STEPS = {
+    discover:{ screen:'discover' },
+    recommend:{ screen:'recommend', queue:['neuro','pt'], qi:0 },
+    booking:{ screen:'working', work:'book', queue:['neuro','pt'], qi:0, phase:3 },
+    bookingDone:{ screen:'working', work:'book', queue:['neuro','pt'], qi:0, phase:6, booked:{ neuro:true, pt:false } },
+    homeB:{ screen:'home', today:false, booked:{ neuro:true, pt:false } },
+    homeC:{ screen:'home', today:true, booked:{ neuro:true, pt:false } },
+    call:{ screen:'call', callPath:'yes', today:true, booked:{ neuro:true, pt:false }, phase:3 },
+    outcome:{ screen:'outcome', outKind:'moved', today:true },
+    callNo:{ screen:'call', callPath:'no', today:true, booked:{ neuro:true, pt:false }, phase:5 },
+    decision:{ screen:'decision', today:true },
+    workThu:{ screen:'working', work:'thu', today:true, phase:3 },
+    outThu:{ screen:'outcome', outKind:'thursday', today:true },
+    empty:{ screen:'empty' },
+    chatNew:{ screen:'chat', msgs:[] },
+    chat:{ screen:'chat', back:'everyday', msgs:[{ from:'me', t:'When is my next ride?' },{ from:'lw', k:'next' },{ from:'me', t:'Can someone ride with me?' },{ from:'lw', k:'att' }] },
+    everyday:{ screen:'everyday' }
+  };
+  componentDidMount() {
+    const st = this.STEPS[this.props.step];
+    if (st) this.setState({ phase:0, ...st });
+    if (!this.props.frozen) this.iv = setInterval(() => this.onTick(), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.iv); clearTimeout(this.to); }
+  onTick() {
+    this.setState(s => {
+      const n = { phase: s.phase + 1 };
+      if (s.screen === 'call' && n.phase >= 10) Object.assign(n, s.callPath === 'yes' ? { screen:'outcome', outKind:'moved', phase:0, listening:false } : { screen:'decision', phase:0, listening:false });
+      if (s.screen === 'working' && s.work === 'thu' && n.phase >= 5) Object.assign(n, { screen:'outcome', outKind:'thursday', phase:0 });
+      if (s.screen === 'working' && s.work === 'book' && n.phase === 6) n.booked = { ...s.booked, [s.queue[s.qi]]: true };
+      return n;
+    });
+  }
+  go(screen, extra = {}) { this.setState({ screen, phase:0, ...extra }); }
+  restart = () => this.setState({ ...this.INIT, sel:{ neuro:true, pt:true }, booked:{ neuro:false, pt:false } });
+  toTuesday = () => this.go('home', { today:true, booked:{ ...this.state.booked, neuro:true } });
+  delay = path => () => this.go('call', { callPath:path, today:true, booked:{ ...this.state.booked, neuro:true }, listening:false });
+  renderVals() {
+    const s = this.state, A = this.APPTS, n = s.phase;
+    const key = s.queue[s.qi] || 'neuro';
+    const rec = { ...A[key], oddsText: `${A[key].odds}%` };
+    const pend = (t, done, doneT, active) => ({ t: done ? doneT : t, mark: done ? '✓' : '', bg: done ? '#141618' : 'transparent', ring: done || active ? '#141618' : '#C9C8C4', fg: done || active ? '#141618' : '#6B6E72', line:'#EEEDEA' });
+    // working
+    let workDark = '', workGray = '', workTasks = [], workDone = false, workNextLabel = '', workNext = () => {};
+    if (s.work === 'book') {
+      const done = n >= 6;
+      workDark = done ? `Booked for ${rec.day}.` : 'Calling East Bay Paratransit.';
+      workGray = done ? `EBP confirmed your pickup window. Be ready at ${rec.start}.` : 'Nothing is booked until they confirm. You can leave the app.';
+      workTasks = [ pend('Calling reservations', n >= 2, 'Connected to EBP reservations', true), pend(`Requesting ${rec.window}`, n >= 4, `Pickup window ${rec.window} accepted`, n >= 2), pend('Waiting for confirmation', n >= 6, `Confirmation ${rec.conf}`, n >= 4) ];
+      workDone = done;
+      const more = s.qi + 1 < s.queue.length;
+      workNextLabel = more ? `Next: ${A[s.queue[s.qi + 1]].title}` : 'Done';
+      workNext = () => more ? this.go('recommend', { qi: s.qi + 1 }) : this.go('home', { today:false });
+    } else if (s.work === 'thu') {
+      workDark = 'Moving you to Thursday.';
+      workGray = 'I’m confirming with Kaiser, then cancelling today’s ride so it isn’t a no-show.';
+      workTasks = [ pend('Asking Kaiser for Thursday, 9:00 AM', n >= 2, 'Kaiser confirmed Thursday, 9:00 AM', true), pend('Cancelling today’s EBP ride', n >= 4, 'EBP cancelled ride #48213', n >= 2) ];
+    } else {
+      workDark = 'Checking accessible rides.';
+      workGray = 'I’ll show you what’s available and what it costs. Nothing is booked until you approve.';
+      workTasks = [ pend('Checking wheelchair-accessible options', false, '', true), pend('Comparing arrival times with 10:30', false, '', false) ];
+      workDone = true; workNextLabel = 'Back to options'; workNext = () => this.go('decision');
+    }
+    // home
+    const activeKey = s.booked.neuro ? 'neuro' : (s.booked.pt ? 'pt' : 'neuro');
+    const home = A[activeKey];
+    const secKey = ['neuro','pt'].find(k => k !== activeKey && !s.booked[k]);
+    const homeDark = s.today ? `Be ready downstairs at ${home.start}.` : `You’re set for ${home.day}.`;
+    const homeGray = s.today ? `Your ride to ${home.title.toLowerCase()} picks you up between ${home.window.replace(' – ', ' and ')}. Wait from the start of the window.` : `Be ready downstairs at ${home.start}. EBP confirmed your pickup window.`;
+    // call
+    const yes = [
+      { who:'LEEWAY', t:'Hi, I’m calling for Denise Carter. She has a 10:30 neurology appointment with Dr. Patel, and her paratransit ride is running about 15 minutes late.' },
+      { who:'FRONT DESK', t:'Let me check with Dr. Patel’s team …' },
+      { who:'FRONT DESK', t:'She can come at 11:00. Same doctor.' },
+      { who:'LEEWAY', t:'Great, please move her to 11:00. Thank you.' } ];
+    const no = [ yes[0], yes[1],
+      { who:'FRONT DESK', t:'Dr. Patel is full after 10:45 today. The next opening is Thursday at 9:00.' },
+      { who:'LEEWAY', t:'Thank you. I’ll check with Denise before changing anything.' } ];
+    const L = s.callPath === 'yes' ? yes : no;
+    const shown = Math.min(4, Math.floor(n / 2.5) + 1);
+    const waitingFor = shown >= 4 ? 'Call finished. Updating your plan.' : shown >= 2 ? 'Waiting for: whether Dr. Patel can see you after 10:45.' : 'Waiting for: the front desk to pick up the request.';
+    // outcome
+    const out = s.outKind === 'moved'
+      ? { dark:'Kaiser moved you to 11:00 AM.', gray:'Same doctor. Keep waiting downstairs; your ride is still coming.', was:'10:30', now:'11:00 AM', detail:'Neurology with Dr. Patel. Confirmed by the front desk at 9:24 AM.', oddsLabel:'Chance of arriving by 11:00', odds:'91%', oddsColor:'#1F6B4A', showLoc:true, first:'View calendar', firstGo: () => {} }
+      : { dark:'You’re moved to Thursday, 9:00 AM.', gray:'Same doctor. Today’s ride is cancelled, so it won’t count as a no-show.', was:'Tue 10:30', now:'Thu 9:00 AM', detail:'Kaiser confirmed at 9:31 AM. EBP cancelled ride #48213.', oddsLabel:'Ride for Thursday', odds:'Not booked yet', oddsColor:'#6B6E72', showLoc:false, first:'Plan Thursday’s ride', firstGo: () => this.go('recommend', { queue:['neuro'], qi:0 }) };
+    // decision
+    const OPTS = [
+      { k:'thu', title:'Move to Thursday, 9:00 AM', tag:'Recommended', sub:'I’ll cancel today’s ride so it isn’t a no-show, then plan Thursday’s ride with you.', label:'Confirm' },
+      { k:'car', title:'Look for an accessible ride now', tag:'', sub:'I’d check what’s available and what it costs. Nothing is booked until you approve.', label:'Check accessible rides' },
+      { k:'go', title:'Keep today’s ride', tag:'', sub:'The front desk says you may need to rebook when you arrive.', label:'Keep today’s ride' } ];
+    const options = OPTS.map(o => ({ ...o, hasTag: !!o.tag, checked: s.choice === o.k ? 'true' : 'false', dot: s.choice === o.k ? '#141618' : 'transparent', border: s.choice === o.k ? '#141618' : '#FFFFFF', pick: () => this.setState({ choice:o.k }) }));
+    const approve = () => s.choice === 'thu' ? this.go('working', { work:'thu' }) : s.choice === 'car' ? this.go('working', { work:'car' }) : this.go('home', { today:true });
+    // discover
+    const discoverItems = ['neuro','pt'].map(k => ({ title: A[k].title, when: `${A[k].date} · ${A[k].time}`, checked: s.sel[k] ? 'true' : 'false', checkBg: s.sel[k] ? '#141618' : 'transparent', mark: s.sel[k] ? '✓' : '', border: s.sel[k] ? '#141618' : '#FFFFFF', toggle: () => this.setState(x => ({ sel: { ...x.sel, [k]: !x.sel[k] } })) }));
+    const selKeys = ['neuro','pt'].filter(k => s.sel[k]);
+    // flow panel
+    const active = s.screen === 'home' ? (s.today ? 'homeC' : 'homeB') : s.screen === 'call' ? (s.callPath === 'yes' ? 'call' : 'callNo') : s.screen === 'outcome' ? (s.outKind === 'moved' ? 'outcome' : 'outThu') : s.screen === 'working' ? (s.work === 'book' ? 'booking' : s.work === 'thu' ? 'workThu' : 'decision') : s.screen === 'chat' ? (s.msgs.length ? 'chat' : 'chatNew') : s.screen;
+    const J = {
+      discover: () => this.restart(),
+      recommend: () => this.go('recommend', { queue: selKeys.length ? selKeys : ['neuro'], qi:0 }),
+      booking: () => this.go('working', { work:'book', queue: s.queue.length ? s.queue : ['neuro'] }),
+      homeB: () => this.go('home', { today:false, booked:{ neuro:true, pt:false } }),
+      homeC: this.toTuesday,
+      call: this.delay('yes'),
+      outcome: () => this.go('outcome', { outKind:'moved', today:true }),
+      callNo: this.delay('no'),
+      decision: () => this.go('decision', { today:true }),
+      workThu: () => this.go('working', { work:'thu', today:true }),
+      outThu: () => this.go('outcome', { outKind:'thursday', today:true }),
+      empty: () => this.go('empty', { today:false }),
+      everyday: () => this.go('everyday', { today:false }),
+      chatNew: () => this.go('chat', { msgs:[], typing:false, back: s.screen === 'chat' ? s.back : s.screen }),
+      chat: () => this.go('chat', { ...this.STEPS.chat, typing:false, back: s.screen === 'chat' ? s.back : s.screen })
+    };
+    const G = [
+      { title:'PLANNING', steps:[['discover','1','Calendar discovery'],['recommend','2','Recommended booking'],['booking','2b','Leeway books with EBP']] },
+      { title:'HOME', steps:[['empty','3a','Nothing to plan'],['everyday','3c','Everyday home'],['homeB','3','Ride booked, future day'],['homeC','3b','Day of ride']] },
+      { title:'RIDE AT RISK', steps:[['call','4','Calling the clinic'],['outcome','5','Rescheduled']] },
+      { title:'CLINIC CAN’T MOVE IT', steps:[['callNo','4b','Calling the clinic'],['decision','6','Rider decision'],['workThu','6b','Leeway makes the change'],['outThu','6c','Moved to Thursday']] },
+      { title:'ASK LEEWAY', steps:[['chatNew','7','New chat'],['chat','7b','Conversation']] } ];
+    const groups = G.map(g => ({ title:g.title, steps: g.steps.map(([k,num,label]) => ({ n:num, label, go: J[k], bg: active === k ? '#141618' : 'transparent', fg: active === k ? '#FFFFFF' : '#141618' })) }));
+    const clock = s.screen === 'call' ? `9:${String(20 + Math.floor(n / 4)).padStart(2,'0')}` : (s.screen === 'outcome' || s.screen === 'decision' || (s.screen === 'working' && s.work !== 'book')) ? '9:26' : s.today ? '8:52' : '6:41';
+    const phoneOnly = !!this.props.phoneOnly;
+    return {
+      clock, showPanel: !phoneOnly, outerPad: phoneOnly ? '0' : '48px', outerMinH: phoneOnly ? '0' : '100vh',
+      isDiscover: s.screen === 'discover', isRecommend: s.screen === 'recommend', isWorking: s.screen === 'working', isHome: s.screen === 'home',
+      isCall: s.screen === 'call', isEmpty: s.screen === 'empty', isEveryday: s.screen === 'everyday', restartFn: this.restart, isOutcome: s.screen === 'outcome', isDecision: s.screen === 'decision',
+      showBar: s.screen !== 'recommend' && s.screen !== 'decision',
+      isChat: s.screen === 'chat', notChat: s.screen !== 'chat', chatEmpty: s.screen === 'chat' && !s.msgs.length && !s.typing, chatHas: s.screen === 'chat' && (s.msgs.length > 0 || s.typing), typing: s.typing,
+      openChat: () => this.go('chat', { msgs:[], draft:'', typing:false, back: s.screen }),
+      closeChat: () => this.go(s.back || 'home', { typing:false }),
+      suggestions: this.SUGG.map(([q, k]) => ({ q, go: () => this.send(q, k) })),
+      msgs: s.msgs.map((m, i) => { const c = m.from === 'lw' ? this.CHAT[m.k] : null; const last = i === s.msgs.length - 1 && !s.typing; return { isMe: m.from === 'me', isLw: m.from === 'lw', t: c ? c.a : m.t, hasCard: !!(c && c.card), hasActions: !!(c && c.actions && last), actions: c && c.actions ? c.actions.map(([label, k], j) => ({ label, go: () => this.send(label, k), bg: j ? 'transparent' : '#141618', fg: j ? '#141618' : '#FFFFFF', border: j ? '#E1E0DC' : '#141618' })) : [] }; }),
+      draft: s.draft, hasDraft: s.screen === 'chat' && !!s.draft.trim(), noDraft: !(s.screen === 'chat' && s.draft.trim()),
+      onDraft: e => this.setState({ draft: e.target.value }),
+      onKey: e => { if (e.key === 'Enter') this.send(s.draft); },
+      sendDraft: () => this.send(s.draft),
+      discoverItems,
+      arrangeLabel: selKeys.length ? `Arrange rides (${selKeys.length})` : 'Select an appointment',
+      arrangeBg: selKeys.length ? '#141618' : '#B9B8B4',
+      arrange: () => { if (selKeys.length) this.go('recommend', { queue: selKeys, qi:0 }); },
+      rec, recStep: s.queue.length > 1 ? `APPOINTMENT ${s.qi + 1} OF ${s.queue.length}` : 'APPOINTMENT',
+      recGray: `For ${rec.title.toLowerCase()} on ${rec.date.replace(',', '')} at ${rec.time}, this gives you the best chance of arriving on time.`,
+      startBooking: () => this.go('working', { work:'book' }),
+      workDark, workGray, workTasks: workTasks.map((t, i) => ({ ...t, line: i === 0 ? 'transparent' : t.line })), workDone, workNextLabel, workNext,
+      home, homeDark, homeGray, homeOdds: `${home.odds}%`, homeTimeCaps: home.time.toUpperCase(), homeWhen: s.today ? home.time : `${home.date.split(', ')[0]}, ${home.time}`,
+      monitorText: s.today ? `I’m watching this trip. If it starts to look late, I’ll call Kaiser for you.` : `I’ll remind you the night before and watch the trip on ${home.day}.`,
+      hasSecondary: !!secKey && !s.today, secondary: secKey ? A[secKey] : A.pt,
+      planSecondary: () => this.go('recommend', { queue:[secKey], qi:0 }),
+      callStatus: s.listening ? 'Listening in' : (shown >= 4 ? 'Call ended' : 'On a call'),
+      callTime: `${Math.floor(n * 4 / 60)}:${String((n * 4) % 60).padStart(2,'0')}`,
+      lines: L.slice(0, shown).slice(-2).map(l => ({ ...l, color: l.who === 'LEEWAY' ? '#4A3BB8' : '#6B6E72' })),
+      waitingFor,
+      toggleListen: () => this.setState(x => ({ listening: !x.listening })),
+      listenLabel: s.listening ? 'Stop listening' : 'Listen in', listenBg: s.listening ? '#ECE9FA' : 'transparent',
+      out, options, approve, approveLabel: OPTS.find(o => o.k === s.choice).label,
+      barText: s.mic ? 'Listening…' : 'Ask Leeway', barBorder: s.mic ? '#4A3BB8' : '#E6E5E2', micBg: s.mic ? '#4A3BB8' : '#141618',
+      micDown: () => this.setState({ mic:true }), micUp: () => this.setState({ mic:false }),
+      sims: [
+        { label:'It’s Tuesday morning', go: this.toTuesday },
+        { label:'EBP delay notice · clinic says yes', go: this.delay('yes') },
+        { label:'EBP delay notice · clinic says no', go: this.delay('no') },
+        { label:'Restart', go: this.restart } ],
+      groups
+    };
+  }
+}
+</script>
+</body>
+</html>
