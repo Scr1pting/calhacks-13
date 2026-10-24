@@ -102,6 +102,25 @@ export async function loadFleet(url = '/data/fleet.json') {
   }
 }
 
+// Just the position at time t, with no side effects (for looking ahead).
+export function positionAt(van, t) {
+  const { path, times } = van
+  const ct = Math.min(Math.max(t, van.start), van.end)
+  const i = Math.max(0, Math.min(floorIndex(times, ct), times.length - 2))
+  const span = times[i + 1] - times[i]
+  const f = span > 0 ? Math.min(1, Math.max(0, (ct - times[i]) / span)) : 1
+  return [path[i][0] + (path[i + 1][0] - path[i][0]) * f, path[i][1] + (path[i + 1][1] - path[i][1]) * f]
+}
+
+// Which way the road goes over the next stretch: steadier than the current
+// segment's heading, which jumps at every vertex. Null when the van is parked.
+export function headingAhead(van, t, minutes = 0.35) {
+  const a = positionAt(van, t)
+  const b = positionAt(van, t + minutes)
+  const metersApart = Math.hypot((b[0] - a[0]) * 88_000, (b[1] - a[1]) * 111_000)
+  return metersApart > 12 ? bearing(a, b) : null
+}
+
 // Where a van is at time t: position, heading (degrees from north), moving?
 export function vanState(van, t) {
   if (t < van.start || t > van.end) return null

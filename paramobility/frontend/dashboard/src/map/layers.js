@@ -21,8 +21,19 @@ const WHITE = [255, 255, 255]
 // the same height, which made the route flicker into dashes.
 const ON_TOP = { depthCompare: 'always', depthWriteEnabled: false }
 
+// deck.gl compares `data` by reference, so hand it the same array while the
+// marker is unchanged instead of a fresh one each frame.
+const NONE = []
+const wrapped = new WeakMap()
+const asData = (item) => {
+  if (!item) return NONE
+  if (!wrapped.has(item)) wrapped.set(item, [item])
+  return wrapped.get(item)
+}
+
 // Each frame, new layers with the same ids: deck.gl only updates what changed.
 export function buildLayers({ fleet, t, states, selectedId, mariaWaiting, onPick }) {
+  const mariaData = asData(mariaWaiting)
   const selectedVan = selectedId != null ? fleet.vansById[selectedId] : null
   const ahead = selectedVan ? routeAhead(selectedVan, t, 50) : []
   const aheadData = ahead.length > 1 ? [{ path: ahead }] : []
@@ -81,7 +92,7 @@ export function buildLayers({ fleet, t, states, selectedId, mariaWaiting, onPick
     }),
     new ScatterplotLayer({
       id: 'maria',
-      data: mariaWaiting ? [mariaWaiting] : [],
+      data: mariaData,
       getPosition: (d) => d.pos,
       getRadius: 26 + 8 * Math.sin(t * 6),
       radiusMinPixels: 7,
@@ -93,7 +104,7 @@ export function buildLayers({ fleet, t, states, selectedId, mariaWaiting, onPick
     }),
     new TextLayer({
       id: 'maria-label',
-      data: mariaWaiting ? [mariaWaiting] : [],
+      data: mariaData,
       getPosition: (d) => d.pos,
       getText: () => 'Maria is waiting',
       getColor: ACCENT,

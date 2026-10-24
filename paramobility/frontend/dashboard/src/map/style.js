@@ -124,10 +124,11 @@ export const mapStyle = {
       type: 'fill-extrusion',
       source: 'osm',
       'source-layer': 'building',
-      minzoom: 13,
+      // From zoom 14 only: further out there are far too many to draw smoothly.
+      minzoom: 14,
       paint: {
         'fill-extrusion-color': buildingColor,
-        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 13, 0, 14, ['coalesce', ['get', 'render_height'], 6]],
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 14.5, ['coalesce', ['get', 'render_height'], 6]],
         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
         'fill-extrusion-opacity': 0.96,
         'fill-extrusion-vertical-gradient': true,
