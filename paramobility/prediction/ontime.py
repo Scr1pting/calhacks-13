@@ -57,20 +57,21 @@ def p_on_time(appointment, window_start, drive_min, history: tuple[Trip, ...] = 
 
 
 def evaluate_window(appointment, window_start, drive_min, history=(), today=0,
-                    early_min=30.0, quantiles=(0.1, 0.5, 0.9), key=None) -> dict:
+                    early_min=30.0, quantiles=(0.1, 0.5, 0.9), key=None, now=None) -> dict:
     """P(on time), P(more than early_min early) and arrival quantiles relative to the appointment.
 
     The quantiles invert arrival_cdf on a 1-min grid that covers the arrival's support, from the
-    window start to well past the 99.9th percentiles of pickup and ride.
+    window start to well past the top pickup quantile plus the ride's 99.9th percentile. With
+    `now`, the rider is still waiting at that time.
     """
-    L = lateness(window_start, history, today, key)
-    hi = window_start + max(L.ppf(0.999), 0.0) + ride_time(drive_min).ppf(0.999)
+    L = pickup_quantiles(window_start, history, today, now, key=key)
+    hi = window_start + L.max() + ride_time(drive_min).ppf(0.999)
     grid = np.arange(window_start, np.ceil(hi) + 1.0)
-    cdf = arrival_cdf(grid, window_start, drive_min, history, today, key=key)
+    cdf = arrival_cdf(grid, window_start, drive_min, history, today, now, key)
     return {
-        "p_on_time": p_on_time(appointment, window_start, drive_min, history, today, key=key),
+        "p_on_time": p_on_time(appointment, window_start, drive_min, history, today, now, key),
         "p_very_early": float(arrival_cdf(appointment - early_min, window_start, drive_min,
-                                          history, today, key=key)[0]),
+                                          history, today, now, key)[0]),
         "arrival_vs_appointment": {q: float(np.interp(q, cdf, grid) - appointment) for q in quantiles},
     }
 
