@@ -28,7 +28,7 @@ Docker Compose (`deploy/docker-compose.yml`, project `paramobility`) runs:
 2. **Webhook.** In GitHub, open the repo's Settings → Webhooks → Add webhook:
    - Payload URL: `https://hooks.cal.fuzz.li/github`
    - Content type: `application/json`
-   - Secret: `GITHUB_WEBHOOK_SECRET` from `/opt/paramobility/webhook.env` on the server. To print it: `ssh root@2.29.114.245 'grep SECRET /opt/paramobility/webhook.env'`
+   - Secret: the value of `GITHUB_WEBHOOK_SECRET` in `/opt/paramobility/webhook.env` on the server, without the `GITHUB_WEBHOOK_SECRET=` part. To print just the value: `ssh root@2.29.114.245 "sed -n 's/^GITHUB_WEBHOOK_SECRET=//p' /opt/paramobility/webhook.env"`
    - Events: "Let me select individual events" → only **Workflow runs**
 
    GitHub sends a ping when the webhook is saved, and the listener answers `pong`.

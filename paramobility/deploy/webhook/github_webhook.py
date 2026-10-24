@@ -60,9 +60,19 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != "/github":
             return self._reply(404, "not found")
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        if not signature_ok(body, self.headers.get("X-Hub-Signature-256", "")):
-            return self._reply(401, "bad signature")
         event = self.headers.get("X-GitHub-Event", "")
+        signature = self.headers.get("X-Hub-Signature-256", "")
+        if not signature_ok(body, signature):
+            # GitHub shows this reply under the webhook's Recent Deliveries.
+            reason = (
+                "signature mismatch: the webhook's secret on GitHub differs from "
+                "GITHUB_WEBHOOK_SECRET on the server"
+                if signature
+                else "no signature: set a secret on the GitHub webhook"
+            )
+            log.warning("rejected %s delivery %s: %s", event or "unknown",
+                        self.headers.get("X-GitHub-Delivery", "?"), reason)
+            return self._reply(401, reason)
         if event == "ping":
             return self._reply(200, "pong")
         sha = deploy_sha(event, json.loads(body))
