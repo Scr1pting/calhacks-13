@@ -34,8 +34,10 @@ def _cfg(args) -> SimConfig:
 
 def cmd_calibrate(args):
     os.makedirs(args.out, exist_ok=True)
-    print(f"Calibrating schedule tightness to on-time target {SimConfig().target_otp:.1%} ...")
-    cfg, report = calibrate(SimConfig())
+    base = SimConfig(speed_profile_csv=getattr(args, "speed_profile", None))
+    src = f"hourly speeds from {base.speed_profile_csv}" if base.speed_profile_csv else "default hourly speeds"
+    print(f"Calibrating schedule tightness to on-time target {base.target_otp:.1%} ({src}) ...")
+    cfg, report = calibrate(base)
     cfg.save(os.path.join(args.out, "calibrated_config.json"))
     with open(os.path.join(args.out, "calibration_report.json"), "w") as f:
         json.dump(report, f, indent=2)
@@ -87,6 +89,16 @@ def cmd_replay(args):
     print(f"replay: {len(events)} events, {meta['vans']} vans, persona: {persona}")
 
 
+def cmd_bus_collect(args):
+    from .bus511 import collect
+    collect(args.out, args.interval, args.agency)
+
+
+def cmd_bus_profile(args):
+    from .bus511 import profile
+    profile(args.out, args.csv or os.path.join(args.out, "speed_profile_511.csv"))
+
+
 def cmd_serve(args):
     from .server import serve
     serve(args.out, args.port, args.speed, args.start)
@@ -96,7 +108,13 @@ def main():
     ap = argparse.ArgumentParser(prog="paratransit_sim")
     ap.add_argument("--out", default="data")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("calibrate")
+    cb = sub.add_parser("calibrate")
+    cb.add_argument("--speed-profile", help="hour,speed_mph,sigma CSV, e.g. from bus511-profile")
+    bc = sub.add_parser("bus511-collect", help="record AC Transit bus positions from 511.org")
+    bc.add_argument("--interval", type=float, default=90.0, help="seconds between polls (511 allows 60/hour)")
+    bc.add_argument("--agency", default="AC")
+    bp = sub.add_parser("bus511-profile", help="hourly speed CSV from recorded bus positions")
+    bp.add_argument("--csv", help="output path (default <out>/speed_profile_511.csv)")
     g = sub.add_parser("generate")
     g.add_argument("--days", type=int, default=14)
     g.add_argument("--config")
@@ -111,6 +129,7 @@ def main():
     ra.add_argument("--days", type=int, default=14)
     ra.add_argument("--day", type=int, default=15)
     ra.add_argument("--config")
+    ra.add_argument("--speed-profile", help="hour,speed_mph,sigma CSV, e.g. from bus511-profile")
     args = ap.parse_args()
     if args.cmd == "run-all":
         cmd_calibrate(args)
@@ -118,7 +137,8 @@ def main():
         cmd_generate(args)
         cmd_replay(args)
     else:
-        {"calibrate": cmd_calibrate, "generate": cmd_generate, "replay": cmd_replay, "serve": cmd_serve}[args.cmd](args)
+        {"calibrate": cmd_calibrate, "generate": cmd_generate, "replay": cmd_replay, "serve": cmd_serve,
+         "bus511-collect": cmd_bus_collect, "bus511-profile": cmd_bus_profile}[args.cmd](args)
 
 
 if __name__ == "__main__":

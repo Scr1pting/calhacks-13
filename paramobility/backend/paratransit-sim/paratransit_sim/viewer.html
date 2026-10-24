@@ -22,6 +22,8 @@
   .pill { display:inline-block; padding:1px 7px; border-radius:99px; font-size:12px; color:#fff; }
   #log { font-size:12px; max-height:38vh; overflow:auto; }
   #log div { padding:3px 0; border-bottom:1px solid var(--line); }
+  .heatbar { height:8px; border-radius:4px; margin:8px 0 2px;
+             background:linear-gradient(90deg, rgb(46,125,79), rgb(240,200,60) 27%, rgb(230,120,30) 60%, rgb(192,57,43)); }
   .legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin:0 4px 0 10px; }
   @media (max-width: 760px) { body { grid-template-columns:1fr; grid-template-rows: 55vh auto; } #map { height:55vh; } }
 </style>
@@ -34,6 +36,10 @@
   <div id="clock">--:--</div>
   <div class="legend muted">vans: <span style="background:var(--ok)"></span>on plan
     <span style="background:var(--warn)"></span>10+ min behind <span style="background:var(--bad)"></span>25+ min behind</div>
+  <div class="card"><h2>Delay heatmap</h2>
+    <label class="kv"><span>Average minutes vans arrive behind schedule, last 60 min</span><input type="checkbox" id="heat" checked></label>
+    <div class="heatbar"></div><div class="kv muted"><span>on time</span><span>15</span><span>30+ min</span></div>
+  </div>
   <div class="card" id="persona"><h2>Demo rider</h2><div class="muted">none selected</div></div>
   <div class="card"><h2>Today so far</h2>
     <div class="kv"><span>Pickups</span><b id="n">0</b></div>
@@ -60,6 +66,71 @@ function renderVans() {
                  persona: !!(persona && v.van_id === persona.van_id)}}))});
 }
 
+// Delay surface: kernel-smoothed average of minutes-behind-schedule at recent stops,
+// rasterised onto a canvas and draped over the map as an image overlay.
+const HEAT_WINDOW = 60, BANDWIDTH_KM = 1.5, CELL_KM = 0.4;
+const RAMP = [[0, [46, 125, 79]], [8, [240, 200, 60]], [18, [230, 120, 30]], [30, [192, 57, 43]]];
+let heat = [], lastT = -1, grid = null, heatOn = true;
+
+function rampColor(v) {
+  if (v >= RAMP[RAMP.length - 1][0]) return RAMP[RAMP.length - 1][1];
+  for (let i = 1; i < RAMP.length; i++) if (v < RAMP[i][0]) {
+    const [v0, c0] = RAMP[i - 1], [v1, c1] = RAMP[i], f = (v - v0) / (v1 - v0);
+    return c0.map((c, k) => c + f * (c1[k] - c));
+  }
+}
+
+function setupGrid([[la0, lo0], [la1, lo1]]) {
+  la0 -= .03; lo0 -= .03; la1 += .03; lo1 += .03;
+  const kx = 111 * Math.cos(la0 * Math.PI / 180);
+  const W = Math.ceil((lo1 - lo0) * kx / CELL_KM), H = Math.ceil((la1 - la0) * 111 / CELL_KM);
+  const canvas = Object.assign(document.createElement('canvas'), {width: W, height: H});
+  const ctx = canvas.getContext('2d');
+  grid = {la1, lo0, kx, W, H, canvas, ctx, img: ctx.createImageData(W, H),
+          S: new Float32Array(W * H), SD: new Float32Array(W * H),
+          coords: [[lo0, la1], [lo1, la1], [lo1, la0], [lo0, la0]]};
+}
+
+function renderHeat(now) {
+  heat = heat.filter(h => now - h.t < HEAT_WINDOW);
+  if (!ready || !grid) return;
+  const {la1, lo0, kx, W, H, S, SD, img, ctx, canvas, coords} = grid;
+  S.fill(0); SD.fill(0);
+  const r = Math.ceil(3 * BANDWIDTH_KM / CELL_KM), inv = 1 / (2 * BANDWIDTH_KM ** 2);
+  for (const h of heat) {
+    const fade = 1 - (now - h.t) / HEAT_WINDOW;
+    const cx = (h.lon - lo0) * kx / CELL_KM, cy = (la1 - h.lat) * 111 / CELL_KM;
+    for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(H - 1, Math.ceil(cy + r)); y++) {
+      const dy = (y + .5 - cy) * CELL_KM;
+      for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(W - 1, Math.ceil(cx + r)); x++) {
+        const dx = (x + .5 - cx) * CELL_KM, k = fade * Math.exp(-(dx * dx + dy * dy) * inv), i = y * W + x;
+        S[i] += k; SD[i] += k * h.d;
+      }
+    }
+  }
+  const px = img.data;
+  for (let i = 0; i < W * H; i++) {
+    const a = Math.min(1, S[i] / 2);  // fade out where there is little recent data
+    if (a < .02) { px[4 * i + 3] = 0; continue; }
+    const c = rampColor(SD[i] / S[i]);
+    px[4 * i] = c[0]; px[4 * i + 1] = c[1]; px[4 * i + 2] = c[2]; px[4 * i + 3] = 255 * a;
+  }
+  ctx.putImageData(img, 0, 0);
+  const url = canvas.toDataURL();
+  const src = map.getSource('delays');
+  if (src) return src.updateImage({url, coordinates: coords});
+  map.addSource('delays', {type: 'image', url, coordinates: coords});
+  map.addLayer({id: 'delays', type: 'raster', source: 'delays',
+    layout: {visibility: heatOn ? 'visible' : 'none'},
+    paint: {'raster-opacity': 0.6, 'raster-resampling': 'linear', 'raster-fade-duration': 0}},
+    map.getLayer('building-3d') ? 'building-3d' : 'vans');
+}
+
+document.getElementById('heat').onchange = e => {
+  heatOn = e.target.checked;
+  if (map.getLayer('delays')) map.setLayoutProperty('delays', 'visibility', heatOn ? 'visible' : 'none');
+};
+
 map.on('load', () => {
   map.addSource('vans', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
   map.addLayer({id: 'vans', type: 'circle', source: 'vans', paint: {
@@ -81,6 +152,7 @@ map.on('load', () => {
 fetch('/meta').then(r => r.json()).then(m => {
   const [[la0, lo0], [la1, lo1]] = m.bounds;
   map.fitBounds([[lo0, la0], [lo1, la1]], {padding: 40, pitch: 60, bearing: -20, duration: 0});
+  setupGrid(m.bounds);
   document.getElementById('sub').textContent = `${m.weekday} - ${m.vans} vans - replayed live`;
   persona = m.persona;
   if (persona) {
@@ -98,7 +170,10 @@ const es = new EventSource('/stream');
 es.onmessage = msg => {
   const d = JSON.parse(msg.data);
   document.getElementById('clock').textContent = d.clock;
+  if (d.t < lastT) heat = [];  // replay looped back to the start of the day
+  lastT = d.t;
   for (const e of d.events) {
+    if (e.type === 'stop') heat.push({t: d.t, lat: e.lat, lon: e.lon, d: Math.max(0, e.behind_plan)});
     if (e.type === 'van_pos') {
       vans[e.van_id] = e;
     } else if (e.type === 'stop' && e.kind === 'P') {
@@ -116,6 +191,7 @@ es.onmessage = msg => {
     }
   }
   renderVans();
+  renderHeat(d.t);
   document.getElementById('n').textContent = pickups;
   document.getElementById('otp').textContent = pickups ? (100 * onTime / pickups).toFixed(1) + '%' : '-';
   document.getElementById('ns').textContent = noShows;
