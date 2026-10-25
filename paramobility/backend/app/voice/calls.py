@@ -41,7 +41,8 @@ async def run_voice_task(trip: Trip, kind: VoiceTaskKind, variables: dict) -> Vo
 
     # The last gate before dialling: approved, not a blocked line, not called too often.
     try:
-        number = numbers.authorize_call(trip.appointment.phone)
+        presentation = trip.demo == "presentation"
+        number = numbers.authorize_call(trip.appointment.phone, presentation=presentation)
     except numbers.NumberRejected as e:
         task.status = "blocked"
         store.put_voice_task(task)
@@ -53,7 +54,7 @@ async def run_voice_task(trip: Trip, kind: VoiceTaskKind, variables: dict) -> Vo
     async with CartesiaClient() as cartesia:
         try:
             call_id = await cartesia.start_call(agent_id, number, variables)
-            numbers.record_call(number)
+            numbers.record_call(number, presentation=trip.demo == "presentation")
         except CartesiaError as e:
             task.status = "failed"
             store.put_voice_task(task)

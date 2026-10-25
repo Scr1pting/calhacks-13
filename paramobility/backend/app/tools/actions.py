@@ -38,7 +38,7 @@ def _take_call(trip_id: str) -> Trip:
         if t.calls_used >= t.permissions.max_calls:
             raise NotAllowed(f"The rider's limit of {t.permissions.max_calls} calls is used up.")
         try:
-            numbers.authorize_call(t.appointment.phone)
+            numbers.authorize_call(t.appointment.phone, presentation=t.demo == "presentation")
         except numbers.NumberRejected as e:
             raise NotAllowed(str(e)) from e
         t.calls_used += 1

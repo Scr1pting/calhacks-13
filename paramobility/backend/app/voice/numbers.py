@@ -21,6 +21,10 @@ from app.core.store import get_store
 
 APPROVED_KEY = "call_numbers:approved"
 CALLS_KEY = "call_numbers:calls"
+# The dashboard's presentation rehearses the same call over and over: its calls skip the hourly
+# limit and are counted on their own, with a daily cap, so they don't use up a rider's limits.
+PRESENTATION_CALLS_KEY = "call_numbers:presentation_calls"
+PRESENTATION_PER_DAY = 1000
 HOUR = 3600
 DAY = 24 * HOUR
 
@@ -94,13 +98,20 @@ def approve(raw: str, pin: str) -> str:
     return number
 
 
-def authorize_call(raw: str) -> str:
+def authorize_call(raw: str, presentation: bool = False) -> str:
     """The number to dial, or NumberRejected. Call record_call once it is placed."""
     number = check(raw)
     if number not in approved_numbers():
         raise NumberRejected(f"{number} hasn't been approved for calls.")
     settings = get_settings()
     now = time.time()
+    if presentation:
+        made = (get_store().get_json(PRESENTATION_CALLS_KEY) or {}).get(number, [])
+        if sum(1 for t in made if now - t < DAY) >= PRESENTATION_PER_DAY:
+            raise NumberRejected(
+                f"{number} has had {PRESENTATION_PER_DAY} presentation calls today already."
+            )
+        return number
     recent = [t for t in (get_store().get_json(CALLS_KEY) or {}).get(number, []) if now - t < DAY]
     if sum(1 for t in recent if now - t < HOUR) >= settings.call_limit_per_hour:
         raise NumberRejected(
@@ -111,9 +122,10 @@ def authorize_call(raw: str) -> str:
     return number
 
 
-def record_call(number: str) -> None:
+def record_call(number: str, presentation: bool = False) -> None:
     store = get_store()
     now = time.time()
-    calls = store.get_json(CALLS_KEY) or {}
+    key = PRESENTATION_CALLS_KEY if presentation else CALLS_KEY
+    calls = store.get_json(key) or {}
     calls[number] = [t for t in calls.get(number, []) if now - t < DAY] + [now]
-    store.put_json(CALLS_KEY, calls)
+    store.put_json(key, calls)
