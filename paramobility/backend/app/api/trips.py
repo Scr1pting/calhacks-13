@@ -179,7 +179,11 @@ async def stream(trip_id: str, request: Request):
     app still notices if planning already finished by the time this connects.
     """
     _trip(trip_id)
-    return sse(request, trip_id, backlog=lambda: [e.model_dump_json() for e in get_store().events(trip_id)])
+
+    def backlog() -> list[str]:
+        return [e.model_dump_json() for e in get_store().events(trip_id)]
+
+    return sse(request, trip_id, backlog=backlog)
 
 
 # Dashboard
