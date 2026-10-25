@@ -111,7 +111,7 @@ Pooled across riders (anonymized, and only with their consent), those trips woul
 
 ## Simulation
 
-We don't have much real data, and what we have is coarse: on-time percentages per month, not individual rides. So to train and test our predictions, we **generate synthetic rides** that behave like the real ones, and tune the simulation until its punctuality matches what East Bay Paratransit publishes.
+We don't have much real data, and what we have is coarse: on-time percentages per month, not individual rides. So to test our predictions, we **generate synthetic rides** that behave like the real ones, and tune the simulation until its punctuality matches what East Bay Paratransit publishes.
 
 #### Generating likely trips
 
@@ -133,7 +133,7 @@ Then we drive those routes through a noisy world. Each leg gets **log-normal tra
 
 Every stop also records *why* it ran late, which gives us a labeled dataset for free. One thing stood out: 96% of late pickups came from vans that were already 15+ minutes behind plan when they left the previous stop. **Lateness is mostly inherited**, so you can see it coming long before the van arrives, which is what makes live prediction possible.
 
-![The simulation replayed live: every late pickup is listed with its cause](graphics/sim-replay.png)
+![The Leeway fleet dashboard replaying a simulated day: the late pickups mostly came from vans that were already behind](graphics/sim-dashboard.png)
 
 #### Calibration
 
