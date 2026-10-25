@@ -98,7 +98,7 @@ We conducted online research, reviewed public discussions and forums, and gather
 
 We created wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. The design evolved through several iterations informed by key research findings and feedback from street interviews. We then handed off the design files to Claude Code to develop the front-end prototype.
 
-![Claude Design Screens](claude-design-screens)
+![Claude Design Screens](graphics/claude-design-screens)
 
 
 
