@@ -44,6 +44,8 @@ export const setup = {
     }
     return status
   },
+  // A six-digit code a phone trades for this rider and the key (POST /pairing).
+  pairCode: (riderId) => api('POST', '/pairing', { rider_id: riderId }),
   // A paired phone has opened the app: its rider exists on the server.
   async riderExists(id) {
     try {

@@ -8,7 +8,8 @@
 import { pairedKey } from '../lib/pairing.js'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE || 'https://api.cal.fuzz.li').replace(/\/$/, '')
-const API_KEY = (import.meta.env.VITE_API_KEY || '').trim() || pairedKey()
+// Read when called: a pairing code in the address is traded for the key just before the app starts.
+const apiKey = () => (import.meta.env.VITE_API_KEY || '').trim() || pairedKey()
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -21,7 +22,7 @@ async function send(method, path, { json, form } = {}) {
   const res = await fetch(API_BASE + path, {
     method,
     headers: {
-      'X-API-Key': API_KEY,
+      'X-API-Key': apiKey(),
       ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
     body: json !== undefined ? JSON.stringify(json) : form,
@@ -35,7 +36,7 @@ async function send(method, path, { json, form } = {}) {
     }
     // No key, or the wrong one: say how to get the right one (deployed, the app has none built in).
     if (res.status === 401) {
-      detail = API_KEY
+      detail = apiKey()
         ? 'This phone has an old key. Pair it again: scan the code in the dashboard’s Presentation setup.'
         : 'This phone isn’t paired yet. Scan the code in the dashboard’s Presentation setup.'
     }
@@ -102,7 +103,7 @@ export function streamRider(id, { onMessage, onTrip, onOpen }) {
 }
 
 function stream(path, handlers, onOpen) {
-  const es = new EventSource(`${API_BASE}${path}?api_key=${encodeURIComponent(API_KEY)}`)
+  const es = new EventSource(`${API_BASE}${path}?api_key=${encodeURIComponent(apiKey())}`)
   for (const [event, handle] of Object.entries(handlers)) {
     es.addEventListener(event, (e) => handle(JSON.parse(e.data)))
   }

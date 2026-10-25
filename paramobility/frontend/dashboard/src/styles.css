@@ -1015,9 +1015,22 @@ button {
 
 .setup-qr {
   align-self: center;
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   image-rendering: pixelated;
+}
+
+.setup-code {
+  align-self: center;
+  font: 600 30px/1 var(--font);
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The panel scrolls rather than running off a short screen */
+.setup {
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
 }
 
 .live-caption.is-center {

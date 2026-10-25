@@ -22,6 +22,7 @@ export default function PresentationSetup({ onClose }) {
   const [number, setNumber] = useState({ state: 'idle', text: '' })
   const [riderUrl, setRiderUrl] = useState(saved.riderUrl || riderAppUrl())
   const [qr, setQr] = useState('')
+  const [code, setCode] = useState('') // the pairing code the server gave out
   const [seen, setSeen] = useState(false) // the paired phone has opened the app
 
   // The key: does the server take it?
@@ -72,13 +73,31 @@ export default function PresentationSetup({ onClose }) {
     }
   }
 
-  // Pairing: a rider for the phone to become, and the link it opens.
-  // Only a key the server took goes into the code: a wrong one would pair a phone that can't connect.
+  // Pairing: a rider for the phone to become, and a short code for it from the
+  // server (it lasts 10 minutes, so a fresh one every 9). Only once the server
+  // took the key: otherwise there's nothing to pair with.
   const keyOk = server.state === 'ok'
-  const pairing = saved.rider && saved.key && keyOk ? `${riderUrl}?pair=${encodeURIComponent(saved.rider)}#key=${encodeURIComponent(saved.key)}` : ''
+  const waiting = Boolean(saved.rider && keyOk && !saved.paired && !seen)
+  useEffect(() => {
+    if (!waiting) return setCode('')
+    let live = true
+    const fresh = () =>
+      setup
+        .pairCode(saved.rider)
+        .then((r) => live && setCode(r.code))
+        .catch(() => live && setCode(''))
+    fresh()
+    const id = setInterval(fresh, 9 * 60 * 1000)
+    return () => {
+      live = false
+      clearInterval(id)
+    }
+  }, [waiting, saved.rider])
+  // The QR is just the rider app's address and the code: small, easy to scan.
+  const pairing = code ? `${riderUrl}?c=${code}` : ''
   useEffect(() => {
     if (!pairing) return setQr('')
-    QRCode.toDataURL(pairing, { margin: 1, width: 220, color: { dark: '#141618', light: '#ffffff' } })
+    QRCode.toDataURL(pairing, { margin: 2, width: 320, errorCorrectionLevel: 'L', color: { dark: '#141618', light: '#ffffff' } })
       .then(setQr)
       .catch(() => setQr(''))
     return undefined
@@ -156,10 +175,13 @@ export default function PresentationSetup({ onClose }) {
       ) : saved.rider && qr ? (
         <>
           <p className="setup-note">
-            Scan with the phone. It opens the rider app as Denise; this panel notices when it has. The code carries
-            the API key: keep it off the projector.
+            Scan with the phone’s camera, or open <b>{riderUrl.replace(/^https?:\/\//, '')}</b> on it and type the code.
+            This panel notices when it’s paired.
           </p>
           <img className="setup-qr" src={qr} alt="QR code that pairs a phone" />
+          <div className="setup-code" aria-label="Pairing code">
+            {code.slice(0, 3)} {code.slice(3)}
+          </div>
           <Status state={seen ? 'ok' : 'checking'} text={seen ? 'Paired.' : 'Waiting for the phone…'} />
           <div className="setup-row">
             <button type="button" className="btn btn-outline" onClick={() => save({ rider: '', paired: false })}>
