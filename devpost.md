@@ -1,16 +1,17 @@
 # Leeway
 
-**The Problem:** 
+**The law:** The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit.
 
-The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit. Yet arranging these rides can remain a significant administrative burden: in some areas, including Alameda County, reservations must be made by phone rather than through an app. Riders and their caregivers must coordinate bookings, manage pickup windows, and plan around uncertain arrival times.
+**The problem:** The service exists, but it's burdensome. For East Bay Paratransit:
+- You must call to book (no app available)
+- As long as the van comes **within 30 minutes** of the start of the booking window, the **ride counts as punctual**. Despite that loose definition, 5% arrive even later. So if you take paratransit twice a day to and from work, you arrive more than 30 minutes late every second week. Drivers only wait 5 minutes before they leave.
 
-Service definitions of “on time” may also fail to reflect the rider’s actual needs. For example, East Bay Paratransit provides a 30-minute pickup window, but riders must be ready at its start, and drivers may wait only five minutes when they arrive. A ride can therefore be operationally on time while still leaving riders uncertain about whether they will reach a medical appointment on time.
+**Our Solution:** Leeway
+- Recommends booking windows based on historical ride data
+- Calls to schedule the initial ride using [Cartesia's voice agent](https://www.cartesia.ai/learn/voice-agent).
+- Predicts *live* the likelihood of arriving on time
+- Proactively helps riders navigate delays, including calling the provider to reschedule appointments, also using [Cartesia](https://www.cartesia.ai/learn/voice-agent).
 
-Leeway reduces this burden by recommending booking windows based on historical ride data, predicting the likelihood of arriving at appointments on time, and proactively helping riders navigate delays, so riders and caregivers spend less time coordinating transportation.
-
-**The Problem Summary:**
-
-Paratransit riders and their caregivers must often manually schedule rides and work around unclear pickup times. This creates wasted time and coordination burdens, with potentially serious consequences when riders miss essential medical appointments.
 
 ## Prediction
 
