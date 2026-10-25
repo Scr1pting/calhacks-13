@@ -568,7 +568,12 @@ export function useLeewayFlow() {
       const ev = tripEvents(recTrip)
       const callStarted = lastOf(ev, 'call_started', 'policy_inquiry')
       const callEnded = lastOf(ev, 'call_ended', 'policy_inquiry')
-      const failed = recTrip.status === 'failed'
+      // Planning normally finishes in well under a second. If it's been
+      // sitting here far longer than that with nothing to show for it (a
+      // dropped connection, a stuck backend job), don't leave the rider
+      // staring at "Working out your ride" forever with no way out.
+      const stuckTooLong = now - new Date(recTrip.created_at).getTime() > 45000
+      const failed = recTrip.status === 'failed' || stuckTooLong
       const policy = recTrip.policy
       const appt = recTrip.appointment.name
       const tasks = []
