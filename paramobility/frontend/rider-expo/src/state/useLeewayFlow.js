@@ -406,6 +406,17 @@ export function useLeewayFlow() {
     }
   }, [trips, s.pending])
 
+  // Safety net: if the plan never arrives (a dropped connection, a stuck
+  // backend job), don't leave the rider tapping "Book ride" into silence —
+  // the button would otherwise just go back to normal with no explanation.
+  useEffect(() => {
+    if (!s.pending) return
+    const timer = setTimeout(() => {
+      setS((prev) => (prev.pending ? { ...prev, pending: null, error: 'That took too long — try again.' } : prev))
+    }, 20000)
+    return () => clearTimeout(timer)
+  }, [s.pending])
+
   // If the rider backs out of "working" before the call finishes, the
   // booking shouldn't still go through behind their back.
   const bookingAbortedRef = useRef(new Set())

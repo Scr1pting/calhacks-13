@@ -30,9 +30,14 @@ export default function LiveMap({ progress, heavyTraffic, label }) {
       attributionControl: true,
     })
     map.attributionControl.setPrefix(false)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      subdomains: 'abc', // spreads tile requests across 3 hosts instead of hammering one
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors',
+      // A transparent tile (rather than a broken-image icon) if one fails to
+      // load — the map's own background shows through instead of an error.
+      errorTileUrl:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     }).addTo(map)
     map.getPane('tilePane').style.filter = 'grayscale(1) brightness(1.04) contrast(.88)'
 
