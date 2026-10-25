@@ -108,7 +108,7 @@ export function liveScenes(fleet) {
       maxZoom: 14.4,
       bearing: live.bearing,
       phone: 'off',
-      title: 'A 30-minute window. No live ETA.',
+      title: 'A 30-minute window with no live ETA.',
       line: '1 in 19 pickups comes after the window has closed.',
     },
     // One ride.
