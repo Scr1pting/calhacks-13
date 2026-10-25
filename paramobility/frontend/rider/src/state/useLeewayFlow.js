@@ -155,39 +155,42 @@ export function useLeewayFlow() {
     let cancelled = false
     ;(async () => {
       try {
-        // Sync the profile, then the calendar (the backend keeps the entries
-        // that need a ride) and everything else Leeway knows.
         await api.putRider(riderId, riderProfile(callPhone))
         if (!cancelled) setSyncedRider(riderId)
-        const [checked, list, thread] = await Promise.all([
-          api.syncCalendar(riderId, entriesFor(callPhone)),
-          api.riderTrips(riderId),
-          api.riderMessages(riderId),
-        ])
+        // Trips and messages don't need the calendar sync (Haiku decides
+        // which entries need a ride — a real LLM round trip) — fetch those
+        // separately so a returning rider sees Chat as home, with "Next
+        // ride" already on it, as soon as they're in, instead of every
+        // single open waiting on calendar classification too.
+        const [list, thread] = await Promise.all([api.riderTrips(riderId), api.riderMessages(riderId)])
         const evs = await Promise.all(list.map((t) => api.events(t.id)))
         if (cancelled) return
-        const appts = checked.calendar.map(appointmentOf)
-        setAppointments(appts)
-        setSkipped(checked.skipped)
         setEvents(Object.fromEntries(list.map((t, i) => [t.id, evs[i]])))
         setMessages({ [riderId]: thread })
         setTrips(Object.fromEntries(list.map((t) => [t.id, t])))
+        const alreadyBooked = list.some((t) => ACTIVE.includes(t.status))
         // Chat as home is always where the app opens — a trip still being
         // planned or waiting to be booked shows up there (Coming Up already
         // renders "Planning…"/"Book ride" for exactly that), rather than
         // dropping the rider straight onto the recommend screen for it.
-        // Auto-book the first appointment that's never had a trip, as long
-        // as nothing is currently booked — not just on a rider's very first
-        // trip ever. Gating on "list.length === 0" meant any leftover trip
-        // (a demo run, a failed attempt) permanently blocked this, leaving
-        // Chat as home with no "Next ride" every time the app reopened.
-        const untried = appts.find((a) => !list.some((t) => t.calendar_event_id === a.id))
-        if (!demoMode.current && untried && !list.some((t) => ACTIVE.includes(t.status))) {
+        if (alreadyBooked) go('chatHome')
+
+        const checked = await api.syncCalendar(riderId, entriesFor(callPhone))
+        if (cancelled) return
+        const appts = checked.calendar.map(appointmentOf)
+        setAppointments(appts)
+        setSkipped(checked.skipped)
+        if (!alreadyBooked) {
+          // Auto-book the first appointment that's never had a trip, as
+          // long as nothing is currently booked — not just on a rider's
+          // very first trip ever. Gating on "list.length === 0" meant any
+          // leftover trip (a demo run, a failed attempt) permanently
+          // blocked this, leaving Chat as home with no "Next ride" every
+          // time the app reopened.
+          const untried = appts.find((a) => !list.some((t) => t.calendar_event_id === a.id))
           // Stays on the loading screen meanwhile.
-          await autoBookFirst(untried)
+          if (!demoMode.current && untried) await autoBookFirst(untried)
           if (!cancelled) go('chatHome')
-        } else {
-          go('chatHome')
         }
       } catch (e) {
         if (!cancelled) fail(e)
