@@ -155,7 +155,12 @@ export default function PresentationSetup({ onClose }) {
           Approve
         </button>
       </div>
-      <Status {...number} idle={saved.key ? 'New numbers need the server’s PIN (CALL_PIN).' : 'Needs the server.'} />
+      <Status
+        {...(saved.phone || number.state !== 'idle'
+          ? number
+          : { state: 'error', text: 'No number yet: Leeway won’t call anyone. Approve one (new numbers need the server’s PIN).' })}
+        idle={saved.key ? 'New numbers need the server’s PIN (CALL_PIN).' : 'Needs the server.'}
+      />
 
       <h3 className="setup-title">{saved.rider ? 'Denise’s phone' : 'Denise’s phone: on screen'}</h3>
       {saved.paired && saved.rider ? (

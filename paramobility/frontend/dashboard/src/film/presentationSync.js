@@ -120,12 +120,14 @@ export const presentationSync = {
     run.trip = null
     if (!online) return
     const { rider, phone } = config()
-    if (!rider && info.trip_id) {
-      run.tripId = info.trip_id
-      return
+    // Always a fresh trip that carries the clinic's number (a trip started without one may
+    // not call), for the paired phone's rider, else the rider of the trip the phone started.
+    let riderId = rider
+    if (!riderId && info.trip_id) {
+      riderId = await api('GET', `/trips/${info.trip_id}`).then((t) => t.rider_id, () => '')
     }
     try {
-      const trip = await api('POST', '/presentation/start', { rider_id: rider || 'rider_presentation', appointment_phone: phone })
+      const trip = await api('POST', '/presentation/start', { rider_id: riderId || 'rider_presentation', appointment_phone: phone })
       run.tripId = trip.id
     } catch (e) {
       run.error = e.message
