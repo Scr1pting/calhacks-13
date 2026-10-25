@@ -1137,7 +1137,7 @@ export function useLeewayFlow() {
     .slice(0, 2)
 
   const chatHome = {
-    nextRide: booked.length && {
+    nextRide: booked.length ? {
       dateCaps: shortDate(booked[0].arrive_by).toUpperCase(),
       window: windowText(pickupWindow(booked[0])),
       title: `${titleOf(booked[0])}, ${booked[0].appointment.name}`,
@@ -1145,8 +1145,8 @@ export function useLeewayFlow() {
       oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
       oddsColor: oddsColor(odds(booked[0])),
       onClick: () => go('home'),
-    },
-    comingUp: nextOnCalendar.length && {
+    } : null,
+    comingUp: nextOnCalendar.length ? {
       items: nextOnCalendar.map((a) => {
         const trip = linked.find((t) => t.calendar_event_id === a.id)
         const date = `${shortDate(a.start)} · ${clock(a.start)}`
@@ -1166,7 +1166,7 @@ export function useLeewayFlow() {
         }
       }),
       onSeeAll: () => go('everyday'),
-    },
+    } : null,
     suggestions: [
       'Can someone ride with me?',
       booked.length ? `Cancel ${weekday(booked[0].arrive_by)}’s ride` : 'Cancel my next ride',
