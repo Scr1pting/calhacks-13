@@ -52,6 +52,25 @@ export default function EverydayHomeScreen({ everyday }) {
         </div>
       </div>
       )}
+
+      {everyday.upcoming.length > 0 && (
+      <div className="lw-also-booked">
+        <EyebrowLabel>In the next 7 days</EyebrowLabel>
+        <div className="lw-also-booked-list" role="list">
+          {everyday.upcoming.map((item, i) => (
+            <div key={item.key} className={`lw-also-booked-row${i === 0 ? ' lw-also-booked-row-first' : ''}`}>
+              <div className="lw-also-booked-info">
+                <span className="lw-also-booked-title">{item.title}</span>
+                <span className="lw-also-booked-date">{item.date}</span>
+              </div>
+              <button type="button" className="lw-everyday-book-btn" onClick={item.onBook}>
+                Book ride
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      )}
     </>
   )
 }

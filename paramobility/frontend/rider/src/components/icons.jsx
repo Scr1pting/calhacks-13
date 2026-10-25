@@ -18,3 +18,16 @@ export const PhoneIcon = (
     />
   </svg>
 )
+
+export const ChevronIcon = (
+  <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true">
+    <path
+      d="M1.5 1.5 L6.5 7 L1.5 12.5"
+      fill="none"
+      stroke="#6B6E72"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)

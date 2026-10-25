@@ -152,7 +152,7 @@ export function useLeewayFlow() {
         // Pick up where the rider left off: plans still waiting to be booked first.
         const waiting = list.filter((t) => WAITING.includes(t.status)).map((t) => t.id)
         if (waiting.length) go('recommend', { queue: waiting, qi: 0 })
-        else go(list.length ? 'home' : 'discover')
+        else go('chatHome')
       } catch (e) {
         if (!cancelled) fail(e)
       }
@@ -429,6 +429,7 @@ export function useLeewayFlow() {
         : 'Select an appointment',
     arrangeDisabled: !!s.pending || selectedApps.length === 0,
     onArrange: () => selectedApps.length && arrange(selectedApps),
+    onNotNow: () => go('chatHome'),
   }
 
   // ---- which home screen ------------------------------------------------------
@@ -436,7 +437,10 @@ export function useLeewayFlow() {
   let homeScreen = 'home'
   if (!booked.length) homeScreen = waiting.length ? 'recommend' : unplanned.length ? 'discover' : 'empty'
   else if (booked.length > 1 && !isToday(booked[0].arrive_by) && booked[0].status !== 'riding') homeScreen = 'everyday'
-  const viewScreen = s.screen === 'home' ? homeScreen : s.screen
+  // A demo-panel preview of the home screen wants "home" itself, regardless
+  // of what the rider's real trips would otherwise show here.
+  const previewingHome = s.preview === 'homeToday' || s.preview === 'homeFuture'
+  const viewScreen = s.screen === 'home' ? (previewingHome ? 'home' : homeScreen) : s.screen
 
   // ---- recommend (and planning, which shows as "working") ------------------
 
@@ -447,7 +451,23 @@ export function useLeewayFlow() {
   const recTrip = trips[queue[qi]]
   let recommend = null
   let planning = null
-  if (viewScreen === 'recommend' && recTrip) {
+  if (viewScreen === 'recommend' && s.preview === 'recommend') {
+    recommend = {
+      ready: true,
+      stepLabel: 'APPOINTMENT',
+      headlineGray: 'For neurology on Tue, Nov 3 at 10:30 AM, this gives you the best chance of arriving on time.',
+      locationName: 'Kaiser Oakland',
+      locationAddress: '3600 Broadway, Oakland',
+      windowValue: '9:15 – 9:45',
+      dayLine: 'Tuesday. Be ready at 9:15.',
+      oddsLabel: 'Chance of arriving by 10:30 AM',
+      oddsValue: '86%',
+      oddsColor: oddsColor(0.86),
+      explanation: 'Weekday morning rides from your area to Kaiser took 35 to 60 minutes over the last 3 months.',
+      onConfirm: () => go('working', { preview: 'working' }),
+      onNotNow: () => go('chatHome', { preview: null }),
+    }
+  } else if (viewScreen === 'recommend' && recTrip) {
     if (recTrip.status === 'planned' && recTrip.plan) {
       const w = pickupWindow(recTrip)
       const arrive = clock(recTrip.arrive_by)
@@ -467,6 +487,7 @@ export function useLeewayFlow() {
           if (!fromQueue) go('recommend', { queue, qi })
           startBooking(recTrip)
         },
+        onNotNow: () => go('chatHome'),
       }
     } else {
       const ev = tripEvents(recTrip)
@@ -514,6 +535,7 @@ export function useLeewayFlow() {
         failed,
         headlineGray: planning.headlineGray,
         onRetry: planning.onNext,
+        onNotNow: () => go('chatHome'),
       }
     }
   }
@@ -521,7 +543,30 @@ export function useLeewayFlow() {
   // ---- working: booking with EBP --------------------------------------------
 
   let working = planning
-  if (s.screen === 'working' && s.booking) {
+  if (s.screen === 'working' && s.preview === 'working') {
+    working = {
+      headlineLead: 'Booked for Tuesday.',
+      headlineGray: 'EBP confirmed your pickup window. Be ready at 9:15.',
+      tasks: [
+        { label: 'Connected to EBP reservations', state: 'done' },
+        { label: 'Pickup window 9:15 – 9:45 accepted', state: 'done' },
+        { label: 'Confirmation #48213', state: 'done' },
+      ],
+      done: true,
+      transcript: [
+        { who: 'LEEWAY', t: 'Hi, I’m calling to book a paratransit ride for Denise Carter to Kaiser Oakland.' },
+        { who: 'EBP', t: 'One moment, let me check availability.' },
+        { who: 'LEEWAY', t: 'Could I request a pickup window of 9:15 – 9:45?' },
+        { who: 'EBP', t: 'That works for us.' },
+        { who: 'EBP', t: 'Confirmed. Your confirmation number is #48213.' },
+      ],
+      showTranscript: s.showTranscript,
+      onToggleTranscript: () => setS((prev) => ({ ...prev, showTranscript: !prev.showTranscript })),
+      nextLabel: 'Done',
+      nextDisabled: false,
+      onNext: () => go('chatHome'),
+    }
+  } else if (s.screen === 'working' && s.booking) {
     const t = trips[s.booking.tripId]
     const w = t && pickupWindow(t)
     const step = s.booking.step
@@ -574,7 +619,7 @@ export function useLeewayFlow() {
           onNext: () =>
             nextTrip
               ? setS((prev) => ({ ...prev, pending: { queue: s.queue, qi: s.qi + 1 } }))
-              : go('home', { booking: null }),
+              : go('chatHome', { booking: null }),
         }
   }
 
@@ -583,7 +628,36 @@ export function useLeewayFlow() {
   const lastTripDone = linked.filter((t) => t.status === 'completed').sort(byTime).at(-1)
 
   let home = null
-  if (current && pickupWindow(current)) {
+  if (s.screen === 'home' && (s.preview === 'homeToday' || s.preview === 'homeFuture')) {
+    const today = s.preview === 'homeToday'
+    home = {
+      today,
+      headlineLead: today ? 'Be ready downstairs at 9:15.' : 'You’re set for Tuesday.',
+      headlineGray: today
+        ? 'Your ride to neurology picks you up between 9:15 and 9:45. Wait from the start of the window.'
+        : 'Be ready downstairs at 9:15. EBP confirmed your pickup window.',
+      oddsEyebrow: 'Chance of arriving by 10:30 AM',
+      oddsValue: '86%',
+      oddsColor: oddsColor(0.86),
+      pickupWindow: '9:15 – 9:45',
+      locationName: 'Kaiser Oakland',
+      locationAddress: '3600 Broadway, Oakland',
+      monitorText: today
+        ? 'I’m watching this trip. If it starts to look late, I’ll call Kaiser for you.'
+        : 'I’ll watch the trip on Tuesday.',
+      hasSecondary: !today,
+      secondary: today
+        ? null
+        : {
+            visitReason: 'Physical Therapy',
+            date: 'Thu, Nov 5',
+            sub: 'Needs a ride',
+            action: 'Plan',
+            onClick: () => go('recommend', { preview: 'recommend' }),
+          },
+      onPlanSecondary: () => go('recommend', { preview: 'recommend' }),
+    }
+  } else if (current && pickupWindow(current)) {
     const w = pickupWindow(current)
     const riding = current.status === 'riding'
     const today = isToday(current.arrive_by)
@@ -639,7 +713,22 @@ export function useLeewayFlow() {
   // Odds, the reason and the timing are the real backend outlook.
 
   let ride = null
-  if (current?.status === 'riding') {
+  if (s.screen === 'ride' && s.preview === 'ride') {
+    ride = {
+      headlineLead: 'You’re on your way.',
+      headlineGray: 'Picked up at 9:22 AM. I’m watching this trip and will update your chance of arriving on time.',
+      mapLabel: 'Map of your ride to Kaiser Oakland',
+      progress: 0.4,
+      heavyTraffic: false,
+      label: 'Chance of arriving by 10:30 AM',
+      big: '86%',
+      color: oddsColor(0.86),
+      delta: 'Up from 74%',
+      reason: 'Traffic around you is light.',
+      rowLabel: 'Distance to Kaiser Oakland',
+      rowValue: `${milesBetween(routeAt(0.4), DESTINATION).toFixed(1)} mi`,
+    }
+  } else if (current?.status === 'riding') {
     const pickedUpAt = current.live.picked_up_at ? new Date(current.live.picked_up_at).getTime() : null
     const expectedArrival = current.outlook?.expected_arrival
       ? new Date(current.outlook.expected_arrival).getTime()
@@ -680,37 +769,82 @@ export function useLeewayFlow() {
     }
   }
 
-  const everyday = booked.length
-    ? {
-        next: {
-          title: titleOf(booked[0]),
-          day: weekday(booked[0].arrive_by),
-          location: booked[0].appointment.name,
-          date: shortDate(booked[0].arrive_by).toUpperCase(),
-          oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
-          oddsColor: oddsColor(odds(booked[0])),
-          arriveByTime: clock(booked[0].arrive_by),
-          pickupWindow: windowText(pickupWindow(booked[0])),
-        },
-        alsoBooked: booked.slice(1).map((t) => ({
-          title: titleOf(t),
-          date: `${shortDate(t.arrive_by)} · ${clock(t.arrive_by)}`,
-          oddsText: odds(t) != null ? percent(odds(t)) : '–',
-          oddsColor: oddsColor(odds(t)),
-        })),
-      }
-    : null
+  // Calendar appointments in the next week that aren't booked (or riding) yet
+  // — distinct from "Also booked", which is other trips already confirmed.
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+  const inNextWeek = calendar.filter((a) => {
+    if (a.start <= Date.now() || a.start > Date.now() + WEEK_MS) return false
+    const trip = linked.find((t) => t.calendar_event_id === a.id)
+    return !trip || !ACTIVE.includes(trip.status)
+  })
 
-  const empty = {
-    lastTrip: lastTripDone && {
-      title: titleOf(lastTripDone),
-      date: shortDate(lastTripDone.arrive_by),
-      arrivedText: lastTripDone.live.arrived_at
-        ? `${clock(lastTripDone.live.arrived_at)}, ${new Date(lastTripDone.live.arrived_at) <= new Date(lastTripDone.arrive_by) ? 'on time' : 'late'}`
-        : 'Done',
-    },
-    onRestart: () => go('discover'),
-  }
+  const everyday =
+    s.screen === 'everyday' && s.preview === 'everyday'
+      ? {
+          next: {
+            title: 'Neurology',
+            day: 'Tuesday',
+            location: 'Kaiser Oakland',
+            date: 'TUE, NOV 3',
+            oddsValue: '86%',
+            oddsColor: oddsColor(0.86),
+            arriveByTime: '10:30 AM',
+            pickupWindow: '9:15 – 9:45',
+          },
+          alsoBooked: [
+            { title: 'Physical Therapy', date: 'Thu, Nov 5 · 2:00 PM', oddsText: '82%', oddsColor: oddsColor(0.82) },
+            { title: 'Dentist', date: 'Mon, Nov 16 · 11:00 AM', oddsText: '88%', oddsColor: oddsColor(0.88) },
+          ],
+          upcoming: [{ key: 'preview-eye', title: 'Eye exam', date: 'Wed, Nov 18 · 1:00 PM', onBook: () => {} }],
+        }
+      : booked.length
+        ? {
+            next: {
+              title: titleOf(booked[0]),
+              day: weekday(booked[0].arrive_by),
+              location: booked[0].appointment.name,
+              date: shortDate(booked[0].arrive_by).toUpperCase(),
+              oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+              oddsColor: oddsColor(odds(booked[0])),
+              arriveByTime: clock(booked[0].arrive_by),
+              pickupWindow: windowText(pickupWindow(booked[0])),
+            },
+            alsoBooked: booked.slice(1).map((t) => ({
+              title: titleOf(t),
+              date: `${shortDate(t.arrive_by)} · ${clock(t.arrive_by)}`,
+              oddsText: odds(t) != null ? percent(odds(t)) : '–',
+              oddsColor: oddsColor(odds(t)),
+            })),
+            upcoming: inNextWeek.map((a) => {
+              const trip = linked.find((t) => t.calendar_event_id === a.id)
+              return {
+                key: a.id,
+                title: a.title,
+                date: `${shortDate(a.start)} · ${clock(a.start)}`,
+                onBook: trip
+                  ? () => go('recommend', { queue: [trip.id], qi: 0 })
+                  : () => arrange([a]),
+              }
+            }),
+          }
+        : null
+
+  const empty =
+    s.screen === 'empty' && s.preview === 'empty'
+      ? {
+          lastTrip: { title: 'Physical Therapy', date: 'Thu, Nov 5', arrivedText: '1:41 PM, on time' },
+          onRestart: () => go('discover', { preview: null }),
+        }
+      : {
+          lastTrip: lastTripDone && {
+            title: titleOf(lastTripDone),
+            date: shortDate(lastTripDone.arrive_by),
+            arrivedText: lastTripDone.live.arrived_at
+              ? `${clock(lastTripDone.live.arrived_at)}, ${new Date(lastTripDone.live.arrived_at) <= new Date(lastTripDone.arrive_by) ? 'on time' : 'late'}`
+              : 'Done',
+          },
+          onRestart: () => go('discover'),
+        }
 
   // ---- call -----------------------------------------------------------------
 
@@ -961,15 +1095,66 @@ export function useLeewayFlow() {
       'What’s coming up for me?',
       'I have a new appointment',
       'When should I be ready?',
-    ].map((q) => ({ text: q, onClick: () => send(q) })),
+    ].map((q) => ({ text: q, onClick: () => openChat(q) })),
     draft: s.draft,
     onDraftChange: (value) => setS((prev) => ({ ...prev, draft: value })),
-    onSend: () => send(s.draft),
+    // Routes through openChat (not send directly) so sending from the
+    // "chat as home" screen also switches to the thread screen.
+    onSend: () => openChat(s.draft),
     onEnter: (e) => {
-      if (e.key === 'Enter') send(s.draft)
+      if (e.key === 'Enter') openChat(s.draft)
     },
   }
   const closeChat = () => go(s.back === 'chat' ? 'home' : s.back || 'home')
+
+  // ---- chat as home (screen 7c) ---------------------------------------------
+  // An alternative home screen where the Ask Leeway bar is the main surface.
+  // Widgets read the same trip state as the regular home/everyday screens.
+
+  // The next 2 calendar appointments, whatever their booking state — not
+  // just the unplanned ones, so "coming up" always reflects the calendar.
+  // Whichever one is already shown in the "next ride" card isn't repeated here.
+  const nextOnCalendar = calendar
+    .filter((a) => a.start > Date.now() && a.id !== booked[0]?.calendar_event_id)
+    .sort((a, b) => a.start - b.start)
+    .slice(0, 2)
+
+  const chatHome = {
+    nextRide: booked.length && {
+      dateCaps: shortDate(booked[0].arrive_by).toUpperCase(),
+      window: windowText(pickupWindow(booked[0])),
+      title: `${titleOf(booked[0])}, ${booked[0].appointment.name}`,
+      time: clock(booked[0].arrive_by),
+      oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+      oddsColor: oddsColor(odds(booked[0])),
+      onClick: () => go('home'),
+    },
+    comingUp: nextOnCalendar.length && {
+      items: nextOnCalendar.map((a) => {
+        const trip = linked.find((t) => t.calendar_event_id === a.id)
+        const date = `${shortDate(a.start)} · ${clock(a.start)}`
+        if (!trip) {
+          return { key: a.id, title: a.title, date, status: null, actionLabel: 'Book ride', onAction: () => arrange([a]) }
+        }
+        if (ACTIVE.includes(trip.status)) {
+          return { key: a.id, title: a.title, date, status: 'Booked', actionLabel: null, onAction: null }
+        }
+        return {
+          key: a.id,
+          title: a.title,
+          date,
+          status: null,
+          actionLabel: 'Book ride',
+          onAction: () => go('recommend', { queue: [trip.id], qi: 0 }),
+        }
+      }),
+      onSeeAll: () => go('everyday'),
+    },
+    suggestions: [
+      'Can someone ride with me?',
+      booked.length ? `Cancel ${weekday(booked[0].arrive_by)}’s ride` : 'Cancel my next ride',
+    ].map((q) => ({ text: q, onClick: () => openChat(q) })),
+  }
 
   // ---- demo panel: live state and simulated ride updates -----------------------
 
@@ -979,8 +1164,67 @@ export function useLeewayFlow() {
     setTrips({})
     setEvents({})
     setMessages({})
-    setS({ ...INIT, screen: 'discover' })
+    setS({ ...INIT, screen: 'chatHome' })
   }
+  // ---- which screen to show ----------------------------------------------------
+
+  let screen = viewScreen
+  // While planning, stay on "recommend" (it shows its own pending headline)
+  // rather than detouring through a separate "working" screen — only a
+  // trip that hasn't synced locally at all yet needs the loading screen.
+  if (screen === 'recommend' && !recommend) screen = 'loading'
+  if (screen === 'home' && !home) screen = 'loading'
+  if (screen === 'everyday' && !everyday) screen = 'loading'
+  if (screen === 'ride' && !ride) screen = 'loading'
+
+  // ---- demo panel: jump to any screen, and simulate ride updates ---------------
+
+  // Every screen the app has, with sample data so each opens on its own —
+  // independent of the rider's real trips — for reviewing the whole app.
+  // `active` highlights whichever one is currently on screen.
+  const navStep = (n, label, active, onClick) => ({ n, label, active, onClick })
+  const groups = [
+    {
+      title: 'HOME',
+      steps: [
+        navStep('3b', 'Day of ride', screen === 'home' && home?.today === true, () => go('home', { preview: 'homeToday' })),
+        navStep('3', 'Ride booked, future day', screen === 'home' && home?.today === false, () => go('home', { preview: 'homeFuture' })),
+        navStep('3c', 'Everyday home', screen === 'everyday', () => go('everyday', { preview: 'everyday' })),
+        navStep('3a', 'Nothing to plan', screen === 'empty', () => go('empty', { preview: 'empty' })),
+      ],
+    },
+    {
+      title: 'PLANNING',
+      steps: [
+        navStep('1', 'Calendar discovery', screen === 'discover', () => go('discover', { preview: null })),
+        navStep('2', 'Recommended booking', screen === 'recommend', () => go('recommend', { preview: 'recommend' })),
+        navStep('2b', 'Leeway books with EBP', screen === 'working', () => go('working', { preview: 'working' })),
+      ],
+    },
+    {
+      title: 'ON THE WAY',
+      steps: [navStep('8', 'Live trip', screen === 'ride', () => go('ride', { preview: 'ride' }))],
+    },
+    {
+      title: 'RIDE AT RISK',
+      steps: [
+        navStep('4', 'Calling the clinic', screen === 'call', () => go('call', { preview: 'call' })),
+        navStep('5', 'Rescheduled', screen === 'outcome', () => go('outcome', { preview: 'outcome' })),
+      ],
+    },
+    {
+      title: 'RIDER DECISION',
+      steps: [navStep('6', 'Rider decision', screen === 'decision', () => go('decision', { preview: 'decision' }))],
+    },
+    {
+      title: 'ASK LEEWAY',
+      steps: [
+        navStep('7', 'Ask Leeway', screen === 'chat', () => openChat()),
+        navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome')),
+      ],
+    },
+  ]
+
   const simTrip = booked[0]
   const simulate = (label, run) => ({
     label,
@@ -1009,15 +1253,9 @@ export function useLeewayFlow() {
       simulate('Picked up on time', (t) => api.status(t.id, 'picked_up', toLocalISO(t.booked_pickup))),
       simulate('Picked up 45 min late', (t) => api.status(t.id, 'picked_up', toLocalISO(addMinutes(t.booked_pickup, 45)))),
       simulate('Arrived', (t) => api.status(t.id, 'arrived')),
-      // These three need a real call to the clinic to trigger normally (see
-      // the warning above when VITE_DEMO_CLINIC_PHONE isn't set) — jump
-      // straight to them with sample data instead, matching the original
-      // design prototype's own copy.
-      { label: 'Preview: calling the clinic', disabled: false, onClick: () => go('call', { preview: 'call' }) },
-      { label: 'Preview: rescheduled', disabled: false, onClick: () => go('outcome', { preview: 'outcome' }) },
-      { label: 'Preview: rider decision', disabled: false, onClick: () => go('decision', { preview: 'decision' }) },
       { label: 'Start over', disabled: false, onClick: restart },
     ],
+    groups,
     trip: current && {
       title: `${titleOf(current)} · ${shortDate(current.arrive_by)} ${clock(current.arrive_by)}`,
       rows: [
@@ -1036,25 +1274,20 @@ export function useLeewayFlow() {
       .map((e) => ({ id: e.id, time: clock(e.at), text: e.message })),
   }
 
-  // ---- which screen to show ----------------------------------------------------
-
-  let screen = viewScreen
-  // While planning, stay on "recommend" (it shows its own pending headline)
-  // rather than detouring through a separate "working" screen — only a
-  // trip that hasn't synced locally at all yet needs the loading screen.
-  if (screen === 'recommend' && !recTrip) screen = 'loading'
-  if (screen === 'home' && !home) screen = 'loading'
-  if (screen === 'everyday' && !everyday) screen = 'loading'
-
   return {
     screen,
     error: s.error,
     onDismissError: () => setS((prev) => ({ ...prev, error: '' })),
     // No chat bar on screens whose only action is a forced next step.
     showBar: !['recommend', 'decision', 'loading', 'working'].includes(screen),
-    topBar: screen === 'chat' ? 'back' : 'logo',
+    // "Chat as home" is the app's main screen now — every detail/list screen
+    // reached from it (the day's ride, all rides, nothing-to-plan) gets a
+    // back button instead of the logo, so there's always a way back to it.
+    // Screens with their own primary action (discover, recommend) instead
+    // get a "Not now" link under that button — see their own onNotNow.
+    topBar: ['chat', 'home', 'everyday', 'empty'].includes(screen) ? 'back' : 'logo',
     onOpenChat: () => openChat(),
-    onCloseChat: closeChat,
+    onCloseChat: screen === 'chat' ? closeChat : () => go('chatHome'),
     voice: {
       state: s.voice,
       onHoldStart: holdStart,
@@ -1071,6 +1304,7 @@ export function useLeewayFlow() {
     empty,
     everyday,
     chat,
+    chatHome,
     demo,
   }
 }

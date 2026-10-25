@@ -64,6 +64,34 @@
   color: #8a5a00;
 }
 
+.lw-demo-nav-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--lw-ink);
+  font-family: inherit;
+  font-size: var(--lw-fs-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lw-demo-nav-button-active {
+  background: var(--lw-ink);
+  color: #ffffff;
+}
+
+.lw-demo-nav-n {
+  font-size: var(--lw-fs-eyebrow);
+  opacity: 0.6;
+  width: 22px;
+  flex: none;
+}
+
 .lw-demo-trip-title {
   font-size: var(--lw-fs-secondary);
   font-weight: 500;

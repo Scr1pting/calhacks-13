@@ -4,6 +4,7 @@ import BigNumber from '../components/BigNumber.jsx'
 import Divider from '../components/Divider.jsx'
 import LocationCard from '../components/LocationCard.jsx'
 import Button from '../components/Button.jsx'
+import NotNowButton from '../components/NotNowButton.jsx'
 import './RecommendedBookingScreen.css'
 
 // Screen 2: "Recommended booking". No bottom bar on this screen.
@@ -25,6 +26,7 @@ export default function RecommendedBookingScreen({ recommend }) {
             Try again
           </Button>
         )}
+        <NotNowButton onClick={recommend.onNotNow} />
       </>
     )
   }
@@ -60,6 +62,7 @@ export default function RecommendedBookingScreen({ recommend }) {
       <Button variant="primary" onClick={recommend.onConfirm}>
         Confirm
       </Button>
+      <NotNowButton onClick={recommend.onNotNow} />
     </>
   )
 }

@@ -1,6 +1,7 @@
 import Headline from '../components/Headline.jsx'
 import SelectRow from '../components/SelectRow.jsx'
 import Button from '../components/Button.jsx'
+import NotNowButton from '../components/NotNowButton.jsx'
 import './CalendarDiscoveryScreen.css'
 
 // Screen 1: "Calendar discovery".
@@ -43,6 +44,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
       >
         {discover.arrangeLabel}
       </Button>
+      <NotNowButton onClick={discover.onNotNow} />
     </>
   )
 }
