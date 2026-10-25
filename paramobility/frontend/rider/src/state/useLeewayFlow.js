@@ -1169,9 +1169,12 @@ export function useLeewayFlow() {
   // Whichever one is already shown in the "next ride" card isn't repeated here.
   const nextOnCalendar = calendar
     .filter((a) => {
-      if (a.start <= Date.now()) return false
+      if (a.start <= Date.now() || a.id === booked[0]?.calendar_event_id) return false
+      // Completed drops off (nothing left to do) — booked/riding stays, so
+      // the item's own "Book ride" can turn into "Booked" in place rather
+      // than disappearing.
       const trip = linked.find((t) => t.calendar_event_id === a.id)
-      return !trip || !DONE.includes(trip.status)
+      return !trip || trip.status !== 'completed'
     })
     .sort((a, b) => a.start - b.start)
     .slice(0, 2)
