@@ -49,6 +49,8 @@ export const api = {
 
   // The rider: profile and calendar, all their trips, and their conversation with Leeway.
   putRider: (id, profile) => request('PUT', `/riders/${id}`, profile),
+  // Every calendar entry in; {calendar, skipped} out: the ones that need a ride.
+  syncCalendar: (id, entries) => request('PUT', `/riders/${id}/calendar`, { entries }),
   riderTrips: (id) => request('GET', `/riders/${id}/trips`),
   riderMessages: (id) => request('GET', `/riders/${id}/messages`),
   sendRiderMessage: (id, text) => request('POST', `/riders/${id}/messages`, { text }),
@@ -72,20 +74,27 @@ export const api = {
 // Live updates for one trip's activity log. The stream functions return a
 // function that closes the stream. EventSource can't send headers, so the key
 // goes in the query string.
-export function streamTrip(id, { onEvent }) {
-  return stream(`/trips/${id}/stream`, { events: onEvent })
+//
+// The backend doesn't replay what it published before a stream connected, so
+// `onOpen` runs each time the stream (re)connects: fetch the current state
+// then, or whatever happened in between (a plan failing in the first second, a
+// backend restart) never reaches the app.
+export function streamTrip(id, { onEvent, onOpen }) {
+  return stream(`/trips/${id}/stream`, { events: onEvent }, onOpen)
 }
 
 // The rider's conversation (`onMessage`) and trips created for them, e.g. by
-// the chat agent (`onTrip`).
-export function streamRider(id, { onMessage, onTrip }) {
-  return stream(`/riders/${id}/stream`, { messages: onMessage, trips: onTrip })
+// the chat agent (`onTrip`). Open it only once the rider exists on the
+// backend (after putRider), or the backend answers 404 and EventSource gives up.
+export function streamRider(id, { onMessage, onTrip, onOpen }) {
+  return stream(`/riders/${id}/stream`, { messages: onMessage, trips: onTrip }, onOpen)
 }
 
-function stream(path, handlers) {
+function stream(path, handlers, onOpen) {
   const es = new EventSource(`${API_BASE}${path}?api_key=${encodeURIComponent(API_KEY)}`)
   for (const [event, handle] of Object.entries(handlers)) {
     es.addEventListener(event, (e) => handle(JSON.parse(e.data)))
   }
+  if (onOpen) es.addEventListener('open', () => onOpen())
   return () => es.close()
 }

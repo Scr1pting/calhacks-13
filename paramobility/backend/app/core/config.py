@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     planner_model: str = "claude-sonnet-5-5"
     extract_model: str = "claude-haiku-5-5"
+    calendar_model: str = "claude-haiku-5-5"  # decides which calendar entries need a ride
 
     cartesia_api_key: str = ""
     cartesia_api_base: str = "https://api.cartesia.ai"

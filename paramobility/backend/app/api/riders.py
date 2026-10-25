@@ -6,8 +6,16 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app.agents import chat
-from app.core.schemas import CalendarEvent, ChatMessage, Permissions, RiderProfile, Trip, now
+from app.agents import calendar_check, chat
+from app.core.schemas import (
+    CalendarEntry,
+    CalendarEvent,
+    ChatMessage,
+    Permissions,
+    RiderProfile,
+    Trip,
+    now,
+)
 from app.core.store import get_store
 from app.voice import numbers, speech
 
@@ -30,14 +38,18 @@ class RiderUpdate(BaseModel):
     name: str
     home: str
     time_zone: str = "UTC"
-    calendar: list[CalendarEvent] = []
+    calendar: list[CalendarEvent] | None = None  # left out: keep the synced calendar
     permissions: Permissions = Permissions()
 
 
 @router.put("/riders/{rider_id}")
 async def put_rider(rider_id: str, body: RiderUpdate) -> RiderProfile:
     """Create or update the rider, including their calendar (the app syncs it on start)."""
-    rider = RiderProfile(id=rider_id, updated_at=now(), **body.model_dump())
+    fields = body.model_dump()
+    if body.calendar is None:
+        old = get_store().get_rider(rider_id)
+        fields["calendar"] = old.calendar if old else []
+    rider = RiderProfile(id=rider_id, updated_at=now(), **fields)
     get_store().put_rider(rider)
     return rider
 
@@ -45,6 +57,26 @@ async def put_rider(rider_id: str, body: RiderUpdate) -> RiderProfile:
 @router.get("/riders/{rider_id}")
 async def get_rider(rider_id: str) -> RiderProfile:
     return _rider(rider_id)
+
+
+class CalendarSync(BaseModel):
+    entries: list[CalendarEntry] = Field(max_length=500)
+
+
+@router.put("/riders/{rider_id}/calendar")
+async def put_calendar(rider_id: str, body: CalendarSync) -> calendar_check.CalendarCheck:
+    """Sync the phone's calendar: Haiku keeps the entries that need a ride.
+
+    They become the rider's calendar. The rest only count towards `skipped`.
+    """
+    result = await calendar_check.check(_rider(rider_id), body.entries)
+
+    def change(r: RiderProfile) -> None:
+        r.calendar = result.calendar
+        r.updated_at = now()
+
+    get_store().update_rider(rider_id, change)
+    return result
 
 
 @router.get("/riders/{rider_id}/trips")

@@ -22,7 +22,7 @@ POST /trips ──► planning ──► planned ──book──► booked ─�
 
 ## Riders and talking to Leeway
 
-The app keeps one **rider profile** per rider: their name, home address (where pickups start), time zone and calendar. Send it with `PUT /riders/{rider_id}` when the app starts. The app picks the `rider_id`, for example a random id it stores. Calendar events are what Leeway can see and plan rides for. Today the app sends its mock calendar; a real calendar integration would send the same shape. Create trips with `rider_id` (and `calendar_event_id` when the trip is for a calendar event), and `GET /riders/{rider_id}/trips` lists them all.
+The app keeps one **rider profile** per rider: their name, home address (where pickups start), time zone and calendar. Send it with `PUT /riders/{rider_id}` when the app starts. The app picks the `rider_id`, for example a random id it stores. Calendar events are what Leeway can see and plan rides for. Send the phone's whole calendar with `PUT /riders/{rider_id}/calendar`: Haiku judges each entry in the next two weeks and keeps the in-person appointments that need a ride (work meetings, calls and reminders are skipped). The kept ones become the rider's calendar, and the response says how many were skipped. Verdicts are cached per entry, so syncing on every start is cheap. `PUT /riders/{rider_id}` without `calendar` keeps the synced one. Create trips with `rider_id` (and `calendar_event_id` when the trip is for a calendar event), and `GET /riders/{rider_id}/trips` lists them all.
 
 Each rider has **one conversation** with Leeway, by text or voice, covering all their trips and calendar appointments. The rider can:
 
@@ -66,6 +66,7 @@ A trip created without a `rider_id` gets its own conversation at `/trips/{id}/me
 | `POST` | `/trips` | `TripRequest` | `Trip` (202, status `planning`) |
 | `GET` | `/trips` | | `Trip[]`, newest first |
 | `PUT` | `/riders/{rider_id}` | `RiderProfile` (without `id`) | `RiderProfile`; create or update, including the calendar |
+| `PUT` | `/riders/{rider_id}/calendar` | `{"entries": [CalendarEntry]}` | `{"calendar": [CalendarEvent], "skipped": 4}`; the entries that need a ride |
 | `GET` | `/riders/{rider_id}` | | `RiderProfile` |
 | `GET` | `/riders/{rider_id}/trips` | | `Trip[]`, soonest first |
 | `GET` | `/riders/{rider_id}/messages` | | `ChatMessage[]` |
@@ -147,7 +148,12 @@ Every call is checked again just before it is dialled (`app/voice/numbers.py`): 
                                         // defaults for trips Leeway schedules
 }
 
-// CalendarEvent
+// CalendarEntry: an entry as the phone's calendar has it
+{"id": "evt-123", "title": "Neurology follow-up – Dr. Patel", "start": "2026-11-03T10:30:00-08:00",
+ "end": "2026-11-03T11:30:00-08:00", "all_day": false, "location": "Kaiser, 3600 Broadway, Oakland",
+ "notes": ""}
+
+// CalendarEvent: an entry that needs a ride, as Haiku read it
 {"id": "cal-neuro", "title": "Neurology", "start": "2026-11-03T10:30:00-08:00",
  "place_name": "Kaiser Oakland", "place_address": "3600 Broadway, Oakland", "place_phone": "+15105550123"}
 

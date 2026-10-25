@@ -6,6 +6,8 @@
     "@expo-google-fonts/instrument-sans": "^0.4.2",
     "@expo/metro-runtime": "~58.0.15",
     "expo": "~58.0.19",
+    "expo-calendar": "~58.0.6",
+    "expo-dev-client": "~58.0.15",
     "expo-font": "~58.0.10",
     "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",

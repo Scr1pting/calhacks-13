@@ -1,13 +1,17 @@
-// MOCK calendar provider. Stands in for reading the rider's real calendar
-// until a calendar API is connected. Appointments are dated relative to now,
-// so the live demo works whenever it runs: one soon, one in two days.
+// MOCK calendar provider. Stands in for the rider's phone calendar (a browser
+// can't read it; the Expo app does): every entry, as the phone has it, work
+// meetings and calls included. The backend decides with Haiku which of them
+// need a ride. Entries are dated relative to now, so the live demo works
+// whenever it runs: two appointments, one soon and one in two days, plus four
+// that don't need a ride.
 //
 // The clinic's phone number is the one set in the demo panel (approved by the
 // server, see backend app/voice/numbers.py), or VITE_DEMO_CLINIC_PHONE to
-// start with. Without one, trips are created with calls to the clinic turned
-// off, so the demo never phones a stranger.
+// start with. It's written in the clinic entries' notes, where Haiku finds it.
+// Without one, trips are created with calls to the clinic turned off, so the
+// demo never phones a stranger.
 
-import { riderTime, wallClock } from '../lib/time.js'
+import { riderTime, toLocalISO, wallClock } from '../lib/time.js'
 
 export const DEMO_CLINIC_PHONE = import.meta.env.VITE_DEMO_CLINIC_PHONE || ''
 
@@ -16,11 +20,8 @@ export const RIDER = {
   home: '1520 Grand Ave, Oakland',
 }
 
-const KAISER = {
-  name: 'Kaiser Oakland',
-  address: '3600 Broadway, Oakland',
-  phone: DEMO_CLINIC_PHONE,
-}
+const KAISER = 'Kaiser Permanente Oakland Medical Center, 3600 Broadway, Oakland, CA 94611'
+const clinicNotes = (phone) => (phone ? `Questions? Call the clinic at ${phone}.` : '')
 
 // Times are in the rider's zone (Bay Area), not the demo machine's, and fall
 // in clinic hours there. The first appointment is the next half hour at least
@@ -35,13 +36,20 @@ function soonest() {
   return riderTime(1, 10, 30)
 }
 
-export function upcomingAppointments() {
-  return [
-    { id: 'cal-neuro', title: 'Neurology', start: soonest(), location: KAISER },
-    { id: 'cal-pt', title: 'Physical Therapy', start: riderTime(2, 14, 0), location: KAISER },
-  ]
+const hourLater = (start) => new Date(start.getTime() + 60 * 60 * 1000)
+
+function entry(id, title, start, location = '', notes = '') {
+  return { id, title, start: toLocalISO(start), end: toLocalISO(hourLater(start)), location, notes }
 }
 
-// How many calendar events were left out because they don't look like they
-// need a ride (work meetings, calls). Shown on the discovery screen.
-export const SKIPPED_EVENTS = 4
+// `phone`: the number Leeway calls as the clinic.
+export function calendarEntries(phone) {
+  return [
+    entry('cal-neuro', 'Neurology follow-up – Dr. Patel', soonest(), KAISER, clinicNotes(phone)),
+    entry('cal-pt', 'PT session', riderTime(2, 14, 0), KAISER, clinicNotes(phone)),
+    entry('cal-standup', 'Team stand-up', riderTime(1, 9, 0), 'https://zoom.us/j/84121'),
+    entry('cal-mom', 'Call with Mom', riderTime(1, 18, 0)),
+    entry('cal-review', 'Quarterly review', riderTime(3, 11, 0), 'Google Meet', 'meet.google.com/abc-defg-hij'),
+    entry('cal-plants', 'Water the plants', riderTime(4, 8, 0), RIDER.home),
+  ]
+}

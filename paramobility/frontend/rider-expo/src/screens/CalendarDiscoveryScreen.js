@@ -24,7 +24,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
       </View>
 
       <Text style={styles.note}>
-        I skipped 4 events that don't look like they need a ride, like work
+        I skipped {discover.skipped} events that don't look like they need a ride, like work
         meetings and calls.
       </Text>
 

@@ -26,6 +26,44 @@ Then either:
 - press `w` to run it in a browser (useful for a quick check, not a
   substitute for testing on-device).
 
+## Calendar
+
+The first screen lists the appointments in the phone's calendar that need a
+ride. The app asks iOS/Android for calendar permission, reads the next two
+weeks of events and sends them to the backend (`PUT /riders/{id}/calendar`),
+where Haiku judges each entry; work meetings, calls and reminders are
+skipped. The screens after "Arrange" still use the sample data.
+
+`expo-calendar` doesn't run in Expo Go or on web, so use a development build.
+Put the backend key in `.env` (git-ignored):
+
+```
+EXPO_PUBLIC_API_KEY=<same value as API_KEY in the backend .env>
+```
+
+Build it once in the cloud with EAS (free Expo account), then install the
+APK on an Android phone from the link or QR code it prints:
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest build --profile development --platform android
+```
+
+Rebuild only when native parts change (new modules, `app.json`). Day to day,
+start the dev server and open the installed app; `--tunnel` lets the phone
+reach it from WSL or another network:
+
+```bash
+npx expo start --dev-client --tunnel
+```
+
+iOS needs a paid Apple Developer account for `--platform ios`, or a Mac
+with `npx expo run:ios --device`.
+
+`EXPO_PUBLIC_API_BASE` points it at another backend (default
+`https://api.cal.fuzz.li`). On web, in Expo Go, or if the rider declines,
+the sample appointments are shown instead.
+
 ## Notes
 
 - There's no device status bar mocked in here (unlike the earlier web
