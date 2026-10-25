@@ -8,6 +8,10 @@ Service definitions of “on time” may also fail to reflect the rider’s actu
 
 Leeway reduces this burden by recommending booking windows based on historical ride data, predicting the likelihood of arriving at appointments on time, and proactively helping riders navigate delays, so riders and caregivers spend less time coordinating transportation.
 
+**The Problem Summary:**
+
+Paratransit riders and their caregivers must often manually schedule rides and work around unclear pickup times. This creates wasted time and coordination burdens, with potentially serious consequences when riders miss essential medical appointments.
+
 ## Prediction
 
 
