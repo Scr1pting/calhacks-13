@@ -133,7 +133,7 @@ Then we drive those routes through a noisy world. Each leg gets **log-normal tra
 
 Every stop also records *why* it ran late, which gives us a labeled dataset for free. One thing stood out: 96% of late pickups came from vans that were already 15+ minutes behind plan when they left the previous stop. **Lateness is mostly inherited**, so you can see it coming long before the van arrives, which is what makes live prediction possible.
 
-![The simulation replayed live: every late pickup is listed with its cause](graphics/sim-replay.png)
+![The Leeway fleet dashboard replaying a simulated day: the late pickups mostly came from vans that were already behind](graphics/sim-dashboard.png)
 
 #### Calibration
 
