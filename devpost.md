@@ -1,6 +1,8 @@
 # Leeway
 
-We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
+Leeway was inspired by a team member’s former boss, who lives with primary progressive multiple sclerosis (PPMS) and is quadriplegic. Because he uses a specialized wheelchair, paratransit is essential for getting to appointments. The service’s unpredictability means he must spend significant time planning around rides and scheduling extra time to account for potential delays, placing an additional burden on both him and his caretaker.
+
+We designed Leeway to reduce this burden for both riders and caregivers, helping people navigate delays and find alternatives without letting an unreliable ride disrupt their entire day.
 
 **The law:** The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit.
 
