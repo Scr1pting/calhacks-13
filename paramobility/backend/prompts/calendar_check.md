@@ -14,7 +14,7 @@ Take the entry at face value: it's the rider's own calendar. Don't second-guess 
 If you are unsure whether there is anywhere to go, prefer false: the rider can always ask for a ride themselves.
 
 When `needs_ride` is true, also fill in:
-- `title`: what the appointment is for, short and capitalized as on a sign, e.g. "Neurology", "Physical Therapy", "Dentist". Drop the rider's name, times and booking codes.
+- `title`: what the appointment is for, short and capitalized as on a sign, e.g. "Neurology", "Physical Therapy", "Dentist". Drop the rider's name, times and booking codes. If the entry's own title is already this short, use it exactly — don't add words like "follow-up", "appointment" or "visit" that aren't already there.
 - `place_name`: the place, e.g. "Kaiser Oakland". Use the location or notes; empty if there is none.
 - `place_address`: the street address with city, taken from the location or notes. If only a place name is given, write the name and city as given, so it can be looked up. Never make up an address.
 - `place_phone`: a phone number for the place written in the entry, in E.164 (+1 for US numbers). Empty if the entry has none. Never guess one.
