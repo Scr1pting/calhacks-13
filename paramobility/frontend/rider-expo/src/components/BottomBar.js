@@ -13,7 +13,7 @@ const HIDE_MS = 250
 
 // The Ask Leeway bar, once for the whole app, floating over the navigation
 // stack like a tab bar: it stays put while pages slide underneath, and slides
-// away on the pages without it. Tapping it opens the chat; holding its mic
+// away on the pages without it. Tapping it opens the chat; tapping its mic
 // talks to Leeway. src/app/_layout.js renders it; pages leave room for it
 // (`footerHeight`, from onHeight).
 //

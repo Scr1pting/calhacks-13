@@ -9,8 +9,8 @@ import Glass from './Glass'
 // `mode="input"` (the chat page) it becomes a real text field, and
 // the mic becomes a send button once there's a draft.
 //
-// The mic is hold-to-talk: press and hold, speak, let go. `voice.state` is
-// idle | listening | thinking | speaking.
+// The mic is tap-to-talk: tap to start, speak, tap again to stop. `voice.state`
+// is idle | listening | thinking | speaking.
 const STATUS = {
   listening: 'Listening…',
   thinking: 'Thinking…',
@@ -77,14 +77,14 @@ export default function AskBar({
       ) : (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Hold to talk to Leeway"
+          accessibilityLabel={listening ? 'Stop talking to Leeway' : 'Talk to Leeway'}
           accessibilityState={{ selected: listening, disabled: voice.state === 'thinking' }}
           disabled={voice.state === 'thinking'}
-          onPressIn={() => {
+          onPress={() => {
             press()
-            voice.onHoldStart?.()
+            if (listening) voice.onHoldEnd?.()
+            else voice.onHoldStart?.()
           }}
-          onPressOut={() => voice.onHoldEnd?.()}
           style={[
             styles.micButton,
             listening && { backgroundColor: colors.accent },

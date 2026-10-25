@@ -1,4 +1,4 @@
-// Hold-to-talk recording. start() asks for the microphone and begins
+// Tap-to-talk recording. start() asks for the microphone and begins
 // recording; the returned stop() resolves with the recording as a 16 kHz mono
 // WAV Blob.
 //

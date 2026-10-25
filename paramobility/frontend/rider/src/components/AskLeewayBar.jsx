@@ -4,8 +4,8 @@ import './AskLeewayBar.css'
 // button that opens chat. In `mode="input"` (the chat screen) it becomes a
 // real text field, and the mic becomes a send button once there's a draft.
 //
-// The mic is hold-to-talk: press and hold (or hold Space/Enter on it), speak,
-// let go. `voice.state` is idle | listening | thinking | speaking.
+// The mic is tap-to-talk: tap (or press Space/Enter) to start, speak, tap
+// again to stop. `voice.state` is idle | listening | thinking | speaking.
 const STATUS = {
   listening: 'Listening…',
   thinking: 'Thinking…',
@@ -25,23 +25,7 @@ export default function AskLeewayBar({
   const status = STATUS[voice.state]
   const hasDraft = mode === 'input' && value.trim().length > 0 && !status
 
-  const hold = {
-    onPointerDown: (e) => {
-      e.preventDefault()
-      voice.onHoldStart?.()
-    },
-    onPointerUp: () => voice.onHoldEnd?.(),
-    onPointerLeave: () => listening && voice.onHoldEnd?.(),
-    onKeyDown: (e) => {
-      if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) {
-        e.preventDefault()
-        voice.onHoldStart?.()
-      }
-    },
-    onKeyUp: (e) => {
-      if (e.key === ' ' || e.key === 'Enter') voice.onHoldEnd?.()
-    },
-  }
+  const toggleTalk = () => (listening ? voice.onHoldEnd?.() : voice.onHoldStart?.())
 
   return (
     <div className={`lw-ask-bar ${listening ? 'lw-ask-bar-listening' : ''}`}>
@@ -82,10 +66,10 @@ export default function AskLeewayBar({
         <button
           type="button"
           className="lw-mic-button"
-          aria-label="Hold to talk to Leeway"
+          aria-label={listening ? 'Stop talking to Leeway' : 'Talk to Leeway'}
           aria-pressed={listening}
           disabled={voice.state === 'thinking'}
-          {...hold}
+          onClick={toggleTalk}
         >
           <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true">
             <rect x="5" y="1" width="6" height="11" rx="3" fill="#FFFFFF" />

@@ -1,4 +1,4 @@
-// Hold-to-talk recording in the browser (recorder.js is the iOS/Android
+// Tap-to-talk recording in the browser (recorder.js is the iOS/Android
 // version, same interface). startRecording() asks for the microphone and
 // begins recording; the returned stop() resolves with the recording as a
 // 16 kHz mono WAV Blob.

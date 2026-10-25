@@ -8,7 +8,7 @@ import {
   useAudioRecorder,
 } from 'expo-audio'
 
-// Hold-to-talk recording and Leeway's spoken reply on iOS/Android, with
+// Tap-to-talk recording and Leeway's spoken reply on iOS/Android, with
 // expo-audio (recorder.web.js is the browser version, same interface).
 // startRecording() asks for the microphone and begins recording; the
 // returned stop() resolves with {blob, seconds}, the blob being the finished
