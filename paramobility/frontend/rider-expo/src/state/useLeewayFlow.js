@@ -1355,7 +1355,7 @@ export function useLeewayFlow() {
   const groups = [
     {
       title: 'HOME',
-      steps: [navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: 'chatHome' }))],
+      steps: [navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: null }))],
     },
   ]
   const graveyard = [
