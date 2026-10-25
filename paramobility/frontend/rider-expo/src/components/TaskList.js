@@ -33,6 +33,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
     borderRadius: radii.card,
     paddingHorizontal: 20,
+    paddingVertical: 6,
     ...cardShadow,
   },
   row: {

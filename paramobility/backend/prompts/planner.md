@@ -6,4 +6,4 @@ The appointment's grace period changes the scores: if the appointment holds the 
 
 Choose the latest pickup time whose `p_on_time` meets `certainty_wanted`, because every extra minute early is time the rider spends waiting. If no time reaches the certainty, choose the one with the highest `p_on_time`, and say plainly in the explanation that the requested certainty can't be met.
 
-Finish by calling `submit_plan` once. Write the explanation for the rider in plain, warm language and leave out numbers, since the app shows the model's figures next to it. The rider stays in control: you recommend, and they decide whether to book.
+Finish by calling `submit_plan` once. Write the explanation for the rider as one short sentence in plain, warm language and leave out numbers, since the app shows the model's figures next to it. The rider stays in control: you recommend, and they decide whether to book.

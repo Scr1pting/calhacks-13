@@ -9,9 +9,7 @@ import { colors, fonts, type } from '../theme/tokens'
 export default function RiderDecisionScreen({ decision }) {
   return (
     <>
-      <Headline lead="Kaiser can't see you late today.">
-        Dr. Patel's next opening is Thursday at 9:00 AM. Here's what I'd do.
-      </Headline>
+      <Headline lead={decision.headlineLead}>{decision.headlineGray}</Headline>
 
       <View accessibilityRole="radiogroup" style={styles.options}>
         {decision.options.map((option) => (

@@ -15,6 +15,7 @@ export default function EmptyHomeScreen({ empty }) {
         I'll let you know when one does.
       </Headline>
 
+      {empty.lastTrip && (
       <Card>
         <EyebrowLabel>Last trip</EyebrowLabel>
         <View style={styles.row}>
@@ -26,6 +27,7 @@ export default function EmptyHomeScreen({ empty }) {
           value={<Text style={styles.arrived}>{empty.lastTrip.arrivedText}</Text>}
         />
       </Card>
+      )}
 
       <Button variant="secondary" onPress={empty.onRestart}>
         Book a ride yourself

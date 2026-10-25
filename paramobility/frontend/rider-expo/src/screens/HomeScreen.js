@@ -19,7 +19,7 @@ export default function HomeScreen({ home }) {
       <Card>
         <View style={styles.forecastMain}>
           <EyebrowLabel>{home.oddsEyebrow}</EyebrowLabel>
-          <BigNumber size="xl" color={colors.success}>
+          <BigNumber size="xl" color={home.oddsColor}>
             {home.oddsValue}
           </BigNumber>
           <Text style={styles.note}>Based on similar trips over the last 3 months.</Text>
@@ -38,10 +38,10 @@ export default function HomeScreen({ home }) {
             <Text style={styles.secondaryTitle}>
               {home.secondary.visitReason} {'·'} {home.secondary.date}
             </Text>
-            <Text style={styles.secondarySub}>Needs a ride</Text>
+            <Text style={styles.secondarySub}>{home.secondary.sub}</Text>
           </View>
           <Button variant="compact-solid" onPress={home.onPlanSecondary}>
-            Plan
+            {home.secondary.action}
           </Button>
         </View>
       )}

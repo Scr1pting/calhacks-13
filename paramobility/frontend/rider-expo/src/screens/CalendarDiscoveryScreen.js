@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import Headline from '../components/Headline'
 import SelectRow from '../components/SelectRow'
 import Button from '../components/Button'
+import NotNowButton from '../components/NotNowButton'
 import { colors, fonts, type } from '../theme/tokens'
 
 // Screen 1: "Calendar discovery".
@@ -13,7 +14,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
         me to arrange transportation?
       </Headline>
 
-      <View accessibilityRole="radiogroup" style={styles.list}>
+      <View accessibilityLabel="Appointments that may need a ride" style={styles.list}>
         {discover.items.map((item) => (
           <SelectRow key={item.key} as="checkbox" selected={item.selected} onPress={item.onToggle}>
             <Text style={styles.title}>{item.title}</Text>
@@ -31,6 +32,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
       <Button variant="primary" disabled={discover.arrangeDisabled} onPress={discover.onArrange}>
         {discover.arrangeLabel}
       </Button>
+      <NotNowButton onPress={discover.onNotNow} />
     </>
   )
 }

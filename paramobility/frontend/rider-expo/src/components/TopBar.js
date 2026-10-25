@@ -12,7 +12,7 @@ export default function TopBar({ variant = 'logo', onBack, onMenuPress }) {
           accessibilityRole="button"
           accessibilityLabel="Back"
           onPress={onBack}
-          style={styles.circleButton}
+          style={[styles.circleButton, styles.backButton]}
         >
           <Svg width={10} height={16} viewBox="0 0 10 16">
             <Path
@@ -57,8 +57,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingLeft: 26,
+    paddingRight: 20,
     paddingTop: 4,
+  },
+  // The back button's circle lines up with the content, not the logo.
+  backButton: {
+    marginLeft: -6,
   },
   circleButton: {
     width: hitMin,

@@ -117,7 +117,7 @@ def build_tools(trip_id: str):
         Args:
             pickup_time: A pickup_time from get_tradeoff or get_options, copied
                 exactly.
-            explanation: Two or three plain sentences for the rider on why this
+            explanation: One short, plain sentence for the rider on why this
                 time. Leave out probabilities and minutes; the app shows the
                 model's numbers next to it.
         """
@@ -167,17 +167,9 @@ async def finalize_plan(
 
 
 def _fast_explanation(reached_certainty: bool) -> str:
-    base = (
-        "This is the latest pickup that still meets the chance you asked for, so you "
-        "won't wait around longer than you need to."
-        if reached_certainty
-        else "I couldn't find a pickup that reaches the chance you asked for, so this is "
-        "the best option I found."
-    )
-    return (
-        f"{base} I didn't check with the appointment for a grace period, so this doesn't "
-        "count on them holding your slot. It's your call whether to book it."
-    )
+    if reached_certainty:
+        return "The latest pickup that meets your chance, so you won't wait longer than needed."
+    return "No pickup reaches the chance you asked for, so this is the best one."
 
 
 async def plan_fast(trip_id: str, trip: Trip) -> bool:

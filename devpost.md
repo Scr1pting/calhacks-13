@@ -42,26 +42,26 @@ We ultimately settled for a **cubic spline to interpolate** the datapoints. We c
 
 #### Previous Trips
 
-Once a user has done a couple of trips, we can use when they arrived to make better predictions.
+Once a user has done a couple of trips, we can use when they were actually picked up to make better predictions.
 
-We have three requirements:
-- Older trips should be weighted less strongly
-- Trips to the same location should count more than unrelated trips (those only tell us about general trends like whether vans in their neighborhood are late more often)
-- We should trust a user's trips more the more trips they've done
+We add **two personal offsets** to the general estimate: one that follows the rider everywhere (maybe their building is hard to find) and one per recurring trip (maybe the Tuesday dialysis ride is always rough), so $\,\mu(t) = \mu_{\text{base}} + g(t) + \delta_{\text{rider}} + \delta_{\text{trip}}\,$. Both start at zero, and a trip only counts by how much it *surprised* us: 15 minutes late is normal at 5pm, but not at 10am.
 
-To satisfy these
-- We keep the as a prior (i.e. we mix it together with our other estimate, making )
+- **Older trips count less:** each trip loses 10% of its weight per week
+- **Same-route trips count more:** they move both offsets, other trips only move the rider offset
+- **More trips, more trust:** the general estimate is our prior, so one late pickup barely moves the offsets, but ten do
 
-(heteroscedastic noise!)
+Under the hood this is a **Bayesian linear regression**: fading old trips = treating them as noisier measurements (heteroscedastic noise!).
 
 
 ### R
 
-Our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. This 
+Our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. It knows the traffic for the exact route and departure time, which beats going by distance: ten miles on the freeway and ten miles through downtown are very different drives.
 
-How can we address this?
+The catch is that **a shared van takes longer than driving straight there**, since it picks up and drops off other riders along the way.
 
-A shared van takes longer than driving straight there. 
+How can we address this? We multiply the drive time by a **shared-ride factor** $\kappa$. East Bay Paratransit reports an average ride of 48.9 minutes for an average trip of 11.43 miles, so we sampled similar trips (homes near BART to clinics and stations), asked Google how long they'd take to drive, and picked $\kappa$ so the averages match. We got $\kappa \approx 2.2$: a paratransit ride takes a bit more than twice as long as driving.
+
+The ride time is a **log-normal** too ($\,R = \kappa \cdot T_{\text{drive}} \cdot e^{\eta}\,$). We take its spread from how far NYC's actual ride times stray from the scheduled ones, plus a little extra because we don't know in advance who else will be on the van.
 
 
 

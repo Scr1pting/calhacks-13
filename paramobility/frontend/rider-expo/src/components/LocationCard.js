@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     backgroundColor: colors.mapPin,
-    borderWidth: 3,
-    borderColor: colors.white,
+    // A ring outside the pin, as in the design (a border would shrink the pin).
+    boxShadow: `0 0 0 3px ${colors.white}`,
   },
 })

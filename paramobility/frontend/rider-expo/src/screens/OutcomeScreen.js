@@ -1,42 +1,25 @@
 import { StyleSheet, Text, View } from 'react-native'
-import Svg, { Path, Rect } from 'react-native-svg'
 import Headline from '../components/Headline'
 import Card from '../components/Card'
 import StatusPill from '../components/StatusPill'
 import Divider from '../components/Divider'
 import LocationCard from '../components/LocationCard'
 import Button from '../components/Button'
+import CallTranscript from '../components/CallTranscript'
+import { CalendarIcon, PhoneIcon } from '../components/icons'
 import { colors, fonts, type } from '../theme/tokens'
 
-const CalendarIcon = (
-  <Svg width={16} height={16} viewBox="0 0 18 18">
-    <Rect x={2} y={3} width={14} height={13} rx={2} fill="none" stroke={colors.ink} strokeWidth={2} />
-    <Path d="M6 1 V5 M12 1 V5 M2 7 H16" stroke={colors.ink} strokeWidth={2} />
-  </Svg>
-)
-
-const PhoneIcon = (
-  <Svg width={16} height={16} viewBox="0 0 18 18">
-    <Path
-      d="M3 2 H6.5 L8 6 L6 7.5 A9 9 0 0 0 10.5 12 L12 10 L16 11.5 V15 A1.5 1.5 0 0 1 14.5 16.5 A13 13 0 0 1 1.5 3.5 A1.5 1.5 0 0 1 3 2Z"
-      fill="none"
-      stroke={colors.ink}
-      strokeWidth={1.7}
-      strokeLinejoin="round"
-    />
-  </Svg>
-)
-
-// Screens 5 / 6c: "Outcome" (rescheduled, or moved to Thursday).
+// Screens 5 / 6c: "Outcome" of a call to the appointment: rescheduled, still
+// on, or unclear (`outcome.pill`). "Hear the call" shows the call transcript.
 export default function OutcomeScreen({ outcome }) {
   return (
     <>
       <Headline lead={outcome.headlineLead}>{outcome.headlineGray}</Headline>
 
       <Card>
-        <StatusPill tone="green">Rescheduled</StatusPill>
+        <StatusPill tone="green">{outcome.pill || 'Rescheduled'}</StatusPill>
         <View style={styles.times}>
-          <Text style={styles.was}>{outcome.was}</Text>
+          {!!outcome.was && <Text style={styles.was}>{outcome.was}</Text>}
           <Text style={styles.now}>{outcome.now}</Text>
         </View>
         <Text style={styles.detail}>{outcome.detail}</Text>
@@ -55,10 +38,14 @@ export default function OutcomeScreen({ outcome }) {
         <Button variant="compact-outline" icon={CalendarIcon} onPress={outcome.onFirst}>
           {outcome.firstLabel}
         </Button>
-        <Button variant="compact-outline" icon={PhoneIcon}>
-          Hear the call
-        </Button>
+        {outcome.transcript?.length > 0 && (
+          <Button variant="compact-outline" icon={PhoneIcon} onPress={outcome.onToggleTranscript}>
+            {outcome.showTranscript ? 'Hide the call' : 'Hear the call'}
+          </Button>
+        )}
       </View>
+
+      {outcome.showTranscript && <CallTranscript lines={outcome.transcript} />}
     </>
   )
 }
@@ -80,7 +67,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   odds: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
-  oddsLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },
+  oddsLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary, flexShrink: 1 },
   oddsValue: { fontFamily: fonts.medium, fontSize: type.body },
   actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
 })

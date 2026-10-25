@@ -110,8 +110,9 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   suggestionText: { fontFamily: fonts.regular, fontSize: type.body, color: colors.ink, flexShrink: 1 },
-  thread: { flex: 1 },
-  threadContent: { gap: 18, paddingBottom: 4 },
+  // Edge to edge, so the bubbles' shadows aren't clipped at the sides.
+  thread: { flex: 1, marginHorizontal: -24 },
+  threadContent: { gap: 18, paddingHorizontal: 24, paddingBottom: 4 },
   bubbleMeWrap: { alignItems: 'flex-end' },
   bubbleMe: {
     maxWidth: '80%',

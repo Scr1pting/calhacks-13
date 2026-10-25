@@ -20,10 +20,15 @@ export const colors = {
   mapGreenPatch: '#DDE9DE',
   mapPin: '#2FA36B',
 
-  success: '#1F6B4A',
+  success: '#1F6B4A', // on-time odds: 90%+
   successBg: '#E3F1E8',
   accent: '#4A3BB8',
   accentBg: '#ECE9FA',
+  warningText: '#8A5A00',
+  rideAmber: '#9A5B13', // on-time odds: 60-90%
+  danger: '#A4342A', // on-time odds: under 60%
+  errorBg: '#FBE9E7',
+  errorText: '#8C2A1C',
 
   white: '#FFFFFF',
 }
@@ -61,14 +66,12 @@ export const fonts = {
   semiBold: 'InstrumentSans_600SemiBold',
 }
 
-// RN has no box-shadow; this is the closest cross-platform approximation of
-// the design's `0 12px 30px -20px rgba(20,22,24,.18)` card shadow.
+// The design's card shadow, exactly as the web app has it (--lw-shadow-card).
+// React Native's `boxShadow` (iOS, Android and web) takes the CSS value with
+// its negative spread, which the older shadowOffset/shadowRadius props can't
+// express: they draw a darker, tighter shadow.
 export const cardShadow = {
-  shadowColor: 'rgba(20,22,24,1)',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.18,
-  shadowRadius: 10,
-  elevation: 3,
+  boxShadow: '0 12px 30px -20px rgba(20, 22, 24, 0.18)',
 }
 
 export const hitMin = 44

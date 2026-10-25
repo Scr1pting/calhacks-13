@@ -5,17 +5,38 @@ import BigNumber from '../components/BigNumber'
 import Divider from '../components/Divider'
 import LocationCard from '../components/LocationCard'
 import Button from '../components/Button'
+import NotNowButton from '../components/NotNowButton'
 import { colors, fonts, type } from '../theme/tokens'
 
 // Screen 2: "Recommended booking". No bottom bar on this screen.
+// While the plan is still being worked out, `recommend.ready` is false and
+// only the headline shows — the rider lands here directly from "Arrange
+// rides" rather than passing through a separate loading screen.
 export default function RecommendedBookingScreen({ recommend }) {
+  if (!recommend.ready) {
+    return (
+      <>
+        <View style={styles.head}>
+          <Text style={styles.headline}>
+            Here's what I'd book. <Text style={styles.headlineGray}>{recommend.headlineGray}</Text>
+          </Text>
+        </View>
+        {recommend.failed && (
+          <Button variant="primary" onPress={recommend.onRetry}>
+            Try again
+          </Button>
+        )}
+        <NotNowButton onPress={recommend.onNotNow} />
+      </>
+    )
+  }
+
   return (
     <>
       <View style={styles.head}>
         <EyebrowLabel>{recommend.stepLabel}</EyebrowLabel>
         <Text style={styles.headline}>
-          Here's what I'd book.{' '}
-          <Text style={styles.headlineGray}>{recommend.headlineGray}</Text>
+          Here's what I'd book. <Text style={styles.headlineGray}>{recommend.headlineGray}</Text>
         </Text>
       </View>
 
@@ -30,7 +51,7 @@ export default function RecommendedBookingScreen({ recommend }) {
         <Divider />
         <View style={styles.odds}>
           <Text style={styles.oddsLabel}>{recommend.oddsLabel}</Text>
-          <Text style={styles.oddsValue}>{recommend.oddsValue}</Text>
+          <Text style={[styles.oddsValue, { color: recommend.oddsColor }]}>{recommend.oddsValue}</Text>
         </View>
         <Text style={styles.explanation}>{recommend.explanation}</Text>
       </Card>
@@ -38,6 +59,7 @@ export default function RecommendedBookingScreen({ recommend }) {
       <Button variant="primary" onPress={recommend.onConfirm}>
         Confirm
       </Button>
+      <NotNowButton onPress={recommend.onNotNow} />
     </>
   )
 }
@@ -55,8 +77,8 @@ const styles = StyleSheet.create({
   window: { gap: 6 },
   day: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },
   odds: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
-  oddsLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },
-  oddsValue: { fontFamily: fonts.medium, fontSize: 20, color: colors.success },
+  oddsLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary, flexShrink: 1 },
+  oddsValue: { fontFamily: fonts.medium, fontSize: 20 },
   explanation: {
     fontFamily: fonts.regular,
     fontSize: type.secondary,

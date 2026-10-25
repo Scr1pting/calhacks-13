@@ -33,7 +33,14 @@
         {
           "calendarPermission": "Leeway reads your calendar to find appointments you may need a ride to."
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Hold the mic to talk to Leeway about your rides."
+        }
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {

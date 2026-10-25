@@ -1,76 +1,76 @@
 # Leeway rider app — Expo / React Native
 
-The same Leeway rider-app design and flow as [`../rider/`](../rider/) (the
-web/Vite version), rebuilt with React Native so it runs on Expo Go, iOS, and
-Android. The original design file lives at
-[`../rider/design-reference/`](../rider/design-reference/) — both apps are
-built from it.
+The Leeway rider app for iOS, Android and the browser, from one codebase. It
+has every screen and feature of the web/Vite version in
+[`../rider/`](../rider/): planning and booking rides on the live backend, the
+live trip with its map, calls to the clinic, chat and talking to Leeway by
+voice, and the demo panel. The design comes from
+[`../rider/design-reference/`](../rider/design-reference/).
 
-`src/state/useLeewayFlow.js` and `src/data/leewayDemoData.js` are copied
-verbatim from the web app: pure JS/React logic with no DOM dependency, so
-both frontends share the exact same flow behavior and sample data. Only the
-UI layer (components, screens) is React Native instead of HTML/CSS.
+`src/state/useLeewayFlow.js` is the web app's hook, ported with only the
+platform parts changed (saved state in AsyncStorage, the phone's calendar,
+the recorder), so a diff against `../rider/src/state/useLeewayFlow.js` shows
+exactly what differs. The screens are React Native versions of the web
+screens, with the same design tokens (`src/theme/tokens.js`).
 
 ## Running it
 
 ```bash
 cd paramobility/frontend/rider-expo
+cp .env.example .env    # set EXPO_PUBLIC_API_KEY for the deployed backend
 npm install
 npx expo start
 ```
 
-Then either:
-- press `i` / `a` to open in an iOS/Android simulator (requires Xcode /
-  Android Studio),
-- scan the QR code with the **Expo Go** app on your phone, or
-- press `w` to run it in a browser (useful for a quick check, not a
-  substitute for testing on-device).
+Then press `w` for the browser, `i` / `a` for an iOS/Android simulator, or
+scan the QR code with Expo Go. A browser window wider than 820px shows the app
+in a phone frame with the demo panel beside it; on a phone, the demo panel is
+behind the menu button (top right).
 
-## Calendar
+Against a local backend (`uvicorn app.main:app --reload --host 0.0.0.0` in
+`paramobility/backend`), set `EXPO_PUBLIC_API_BASE` to `http://localhost:8000`
+for the browser or the iOS simulator, `http://10.0.2.2:8000` for the Android
+emulator, or your computer's LAN address for a phone on the same Wi-Fi.
+Restart `expo start` after changing `.env`.
 
-The first screen lists the appointments in the phone's calendar that need a
-ride. The app asks iOS/Android for calendar permission, reads the next two
-weeks of events and sends them to the backend (`PUT /riders/{id}/calendar`),
-where Haiku judges each entry; work meetings, calls and reminders are
-skipped. The screens after "Arrange" still use the sample data.
+## Platform notes
 
-`expo-calendar` doesn't run in Expo Go or on web, so use a development build.
-Put the backend key in `.env` (git-ignored):
+- **Calendar.** On a phone with a development build, the app reads the phone's
+  calendar (two weeks ahead) and the backend picks the entries that need a
+  ride. On web, in Expo Go, or if the rider says no, it uses the mock calendar
+  in `src/mocks/calendar.js`; the demo panel says which.
+- **Live updates.** The backend's server-sent event streams are read with
+  `fetch` (`src/api/client.js`), which streams on every platform; React Native
+  has no `EventSource`.
+- **Voice.** Hold the mic to talk. The phone records `.m4a` with expo-audio
+  (`src/lib/recorder.js`); the browser records and converts to WAV
+  (`src/lib/recorder.web.js`). The browser only allows the microphone on
+  `localhost` or HTTPS.
+- **Map.** `src/components/LiveMap.js` is an Expo DOM component: the same
+  Leaflet/OpenStreetMap map as the web app, rendered in a webview on the phone.
+- **Times** are shown in Bay Area time wherever the phone is
+  (`src/lib/time.js`); the demo panel shows the current Bay Area time as a check.
 
-```
-EXPO_PUBLIC_API_KEY=<same value as API_KEY in the backend .env>
-```
+## Development builds
 
-Build it once in the cloud with EAS (free Expo account), then install the
-APK on an Android phone from the link or QR code it prints:
+The phone calendar needs a development build, not Expo Go. Build once in the
+cloud with EAS (free Expo account) and install it from the link it prints:
 
 ```bash
 npx eas-cli@latest login
 npx eas-cli@latest build --profile development --platform android
 ```
 
-Rebuild only when native parts change (new modules, `app.json`). Day to day,
-start the dev server and open the installed app; `--tunnel` lets the phone
-reach it from WSL or another network:
-
-```bash
-npx expo start --dev-client --tunnel
-```
-
-iOS needs a paid Apple Developer account for `--platform ios`, or a Mac
-with `npx expo run:ios --device`.
-
-`EXPO_PUBLIC_API_BASE` points it at another backend (default
-`https://api.cal.fuzz.li`). On web, in Expo Go, or if the rider declines,
-the sample appointments are shown instead.
+Rebuild whenever native parts change (new native modules or `app.json`), then
+day to day run `npx expo start --dev-client` and open the installed app
+(`--tunnel` if the phone is on another network). iOS needs a paid Apple
+Developer account for `--platform ios`, or a Mac with Xcode and
+`npx expo run:ios --device`.
 
 ## Notes
 
-- There's no device status bar mocked in here (unlike the earlier web
-  prototype) — on a real phone or Expo Go, the OS shows its own.
-- The design prototype's own "jump to any screen" review panel is here too,
-  but adapted as a modal opened from the top-right menu button (there's no
-  room for a side panel on a phone). Dev/review tool only — remove before
-  shipping to riders.
-- A couple of sample-data fields aren't in the backend's `Trip` schema yet;
-  see the comments in `src/data/leewayDemoData.js`.
+- The demo panel (jump to any screen, simulate ride updates, set the number
+  Leeway calls as the clinic) is a dev/review tool; remove it before shipping
+  to riders.
+- The East Bay Paratransit booking call is a mock (`src/mocks/paratransit.js`),
+  as in the web app.

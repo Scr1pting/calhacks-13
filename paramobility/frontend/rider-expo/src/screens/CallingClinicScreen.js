@@ -6,7 +6,8 @@ import Divider from '../components/Divider'
 import Button from '../components/Button'
 import { colors, fonts, type } from '../theme/tokens'
 
-// Screens 4 / 4b: "Calling the clinic".
+// Screens 4 / 4b: "Calling the clinic". `call.onToggleListen` is optional:
+// listening in needs live call audio the backend doesn't expose yet.
 export default function CallingClinicScreen({ call }) {
   return (
     <>
@@ -37,13 +38,15 @@ export default function CallingClinicScreen({ call }) {
         <Divider />
         <Text style={styles.waiting}>{call.waitingFor}</Text>
 
-        <Button
-          variant="secondary"
-          background={call.listening ? colors.accentBg : undefined}
-          onPress={call.onToggleListen}
-        >
-          {call.listenLabel}
-        </Button>
+        {call.onToggleListen && (
+          <Button
+            variant="secondary"
+            background={call.listening ? colors.accentBg : undefined}
+            onPress={call.onToggleListen}
+          >
+            {call.listenLabel}
+          </Button>
+        )}
       </Card>
     </>
   )
