@@ -20,7 +20,9 @@ export default function EverydayHomeScreen({ everyday }) {
           {everyday.next.title}, {everyday.next.location}
         </div>
         <div className="lw-everyday-odds">
-          <span className="lw-everyday-odds-value">{everyday.next.oddsValue}</span>
+          <span className="lw-everyday-odds-value" style={{ color: everyday.next.oddsColor }}>
+            {everyday.next.oddsValue}
+          </span>
           <span className="lw-everyday-odds-label">
             chance of arriving by {everyday.next.arriveByTime}
           </span>
@@ -42,7 +44,9 @@ export default function EverydayHomeScreen({ everyday }) {
                 <span className="lw-also-booked-title">{item.title}</span>
                 <span className="lw-also-booked-date">{item.date}</span>
               </div>
-              <span className="lw-also-booked-value">{item.oddsText}</span>
+              <span className="lw-also-booked-value" style={{ color: item.oddsColor }}>
+                {item.oddsText}
+              </span>
             </div>
           ))}
         </div>

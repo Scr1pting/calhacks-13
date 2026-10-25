@@ -23,7 +23,7 @@ export default function DemoPanel({ demo }) {
       </div>
 
       <div className="lw-demo-panel-section">
-        <div className="lw-demo-panel-heading">SIMULATE THE RIDE</div>
+        <div className="lw-demo-panel-heading">SIMULATE</div>
         {demo.simulate.map((sm) => (
           <button
             key={sm.label}

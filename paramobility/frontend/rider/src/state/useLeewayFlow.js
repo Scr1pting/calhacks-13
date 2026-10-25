@@ -3,7 +3,7 @@ import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
 import { DEMO_CLINIC_PHONE, RIDER, SKIPPED_EVENTS, upcomingAppointments } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
-import { TIME_ZONE, addMinutes, clock, clockShort, isToday, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
+import { TIME_ZONE, addMinutes, clock, clockShort, isToday, oddsColor, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
 import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 
 // The rider app's logic, backed by the Paramobility API. Screens stay
@@ -75,6 +75,7 @@ const INIT = {
   outcome: null, // {tripId, kind: held | moved | unclear, was}
   decision: { tripId: null, choice: 'offer' },
   pending: null, // {queue, qi} of a recommendation we're waiting to become ready
+  preview: null, // 'call' | 'outcome' | 'decision' — demo-panel preview, no real trip needed
   showTranscript: false,
   back: 'home',
   voice: 'idle', // idle | listening | thinking | speaking
@@ -105,7 +106,10 @@ export function useLeewayFlow() {
   const tripsRef = useRef(trips)
   tripsRef.current = trips
 
-  const go = (screen, extra = {}) => setS((prev) => ({ ...prev, ...extra, screen }))
+  // `preview` defaults to cleared on every navigation, so a demo-panel
+  // preview can't leak into a real call/outcome/decision screen reached
+  // afterwards — pass it explicitly in extra to start or keep one.
+  const go = (screen, extra = {}) => setS((prev) => ({ ...prev, preview: null, ...extra, screen }))
   const fail = (e) => setS((prev) => ({ ...prev, error: e.message || String(e) }))
 
   const updateSaved = useCallback((change) => {
@@ -280,7 +284,7 @@ export function useLeewayFlow() {
   }, [trips, s.pending])
 
   async function startBooking(trip) {
-    go('working', { booking: { tripId: trip.id, step: 0 } })
+    go('working', { booking: { tripId: trip.id, step: 0 }, showTranscript: false })
     const step = (n, extra = {}) =>
       setS((prev) => ({ ...prev, booking: { ...prev.booking, step: n, ...extra } }))
     try {
@@ -440,6 +444,7 @@ export function useLeewayFlow() {
         dayLine: `${isToday(w.start) ? 'Today' : weekday(w.start)}. Be ready at ${clockShort(w.start)}.`,
         oddsLabel: `Chance of arriving by ${arrive}`,
         oddsValue: percent(recTrip.plan.recommended.p_on_time),
+        oddsColor: oddsColor(recTrip.plan.recommended.p_on_time),
         explanation: recTrip.plan.explanation,
         onConfirm: () => {
           if (!fromQueue) go('recommend', { queue, qi })
@@ -506,6 +511,21 @@ export function useLeewayFlow() {
     const done = step >= 3
     const more = s.qi + 1 < s.queue.length && s.queue[s.qi] === s.booking.tripId
     const nextTrip = more ? trips[s.queue[s.qi + 1]] : null
+    // EBP only takes bookings by phone (see mocks/paratransit.js) — a sample
+    // transcript of that mock call, built up to how far the call has gotten.
+    const appt = t?.appointment.name || 'the clinic'
+    const transcript = []
+    if (step >= 1) {
+      transcript.push({ who: 'LEEWAY', t: `Hi, I’m calling to book a paratransit ride for Denise Carter to ${appt}.` })
+      transcript.push({ who: 'EBP', t: 'One moment, let me check availability.' })
+    }
+    if (w && step >= 2) {
+      transcript.push({ who: 'LEEWAY', t: `Could I request a pickup window of ${windowText(w)}?` })
+      transcript.push({ who: 'EBP', t: 'That works for us.' })
+    }
+    if (done) {
+      transcript.push({ who: 'EBP', t: `Confirmed. Your confirmation number is ${s.booking.confirmation}.` })
+    }
     working = s.booking.error
       ? {
           headlineLead: 'That didn’t go through.',
@@ -526,6 +546,9 @@ export function useLeewayFlow() {
             pendingTask('Waiting for confirmation', done, `Confirmation ${s.booking.confirmation}`, step >= 2),
           ],
           done,
+          transcript,
+          showTranscript: s.showTranscript,
+          onToggleTranscript: () => setS((prev) => ({ ...prev, showTranscript: !prev.showTranscript })),
           nextLabel: s.pending ? 'Finding your next ride…' : nextTrip ? `Next: ${titleOf(nextTrip)}` : 'Done',
           nextDisabled: !!s.pending,
           // Stay on this screen (booking stays set so it keeps rendering)
@@ -579,6 +602,7 @@ export function useLeewayFlow() {
           : `Be ready downstairs at ${clockShort(w.start)}. EBP confirmed your pickup window.`,
       oddsEyebrow: `Chance of arriving by ${clock(current.arrive_by)}`,
       oddsValue: odds(current) != null ? percent(odds(current)) : '–',
+      oddsColor: oddsColor(odds(current)),
       pickupWindow: windowText(w),
       locationName: appt,
       locationAddress: current.dest,
@@ -628,7 +652,7 @@ export function useLeewayFlow() {
       heavyTraffic: minutesLate >= 10,
       label: `Chance of arriving by ${clock(current.arrive_by)}`,
       big: pOnTime != null ? percent(pOnTime) : '–',
-      color: pOnTime != null && pOnTime < 0.8 ? 'var(--lw-ride-amber)' : 'var(--lw-success)',
+      color: oddsColor(pOnTime),
       delta,
       reason:
         minutesLate > 0
@@ -647,6 +671,7 @@ export function useLeewayFlow() {
           location: booked[0].appointment.name,
           date: shortDate(booked[0].arrive_by).toUpperCase(),
           oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+          oddsColor: oddsColor(odds(booked[0])),
           arriveByTime: clock(booked[0].arrive_by),
           pickupWindow: windowText(pickupWindow(booked[0])),
         },
@@ -654,6 +679,7 @@ export function useLeewayFlow() {
           title: titleOf(t),
           date: `${shortDate(t.arrive_by)} · ${clock(t.arrive_by)}`,
           oddsText: odds(t) != null ? percent(odds(t)) : '–',
+          oddsColor: oddsColor(odds(t)),
         })),
       }
     : null
@@ -673,7 +699,23 @@ export function useLeewayFlow() {
 
   const callTrip = trips[s.callTripId]
   let call = null
-  if (s.screen === 'call' && callTrip) {
+  if (s.screen === 'call' && s.preview === 'call') {
+    call = {
+      headlineLead: 'You may be 15 minutes late.',
+      headlineGray: 'I’m calling Kaiser Oakland to ask if they can still see you.',
+      statusLabel: 'On a call',
+      callTime: '0:20',
+      lines: [
+        {
+          who: 'FRONT DESK',
+          t: 'Let me check with Dr. Patel’s team …',
+          tone: 'secondary',
+        },
+        { who: 'FRONT DESK', t: 'She can come at 11:00. Same doctor.', tone: 'secondary' },
+      ],
+      waitingFor: 'Waiting for: whether Dr. Patel can see you after 10:45.',
+    }
+  } else if (s.screen === 'call' && callTrip) {
     const ev = tripEvents(callTrip)
     const started = lastOf(ev, 'call_started', 'late_notice')
     const since = started ? ev.slice(ev.indexOf(started)) : []
@@ -705,7 +747,35 @@ export function useLeewayFlow() {
 
   const outTrip = s.outcome && trips[s.outcome.tripId]
   let outcome = null
-  if (s.screen === 'outcome' && outTrip) {
+  if (s.screen === 'outcome' && s.preview === 'outcome') {
+    outcome = {
+      pill: 'Rescheduled',
+      headlineLead: 'Kaiser moved you to 11:00 AM.',
+      headlineGray: 'Same doctor. Keep waiting downstairs; your ride is still coming.',
+      was: '10:30',
+      now: '11:00 AM',
+      detail: 'Neurology with Dr. Patel. Confirmed by the front desk at 9:24 AM.',
+      oddsLabel: 'Chance of arriving by 11:00',
+      oddsValue: '91%',
+      oddsColor: oddsColor(0.91),
+      showLocation: true,
+      locationName: 'Kaiser Oakland',
+      locationAddress: '3600 Broadway, Oakland',
+      transcript: [
+        {
+          who: 'LEEWAY',
+          t: 'Hi, I’m calling for Denise Carter. She has a 10:30 appointment with Dr. Patel, and her paratransit ride is running about 15 minutes late.',
+        },
+        { who: 'FRONT DESK', t: 'Let me check with Dr. Patel’s team …' },
+        { who: 'FRONT DESK', t: 'She can come at 11:00. Same doctor.' },
+        { who: 'LEEWAY', t: 'Great, please move her to 11:00. Thank you.' },
+      ],
+      showTranscript: false,
+      onToggleTranscript: () => setS((prev) => ({ ...prev, showTranscript: !prev.showTranscript })),
+      firstLabel: 'Back to my ride',
+      onFirst: () => go('home', { preview: null }),
+    }
+  } else if (s.screen === 'outcome' && outTrip) {
     const ev = tripEvents(outTrip)
     const lastCall = lastOf(ev, 'call_ended')
     const result = lastCall?.data.result || {}
@@ -720,7 +790,7 @@ export function useLeewayFlow() {
       onToggleTranscript: () => setS((prev) => ({ ...prev, showTranscript: !prev.showTranscript })),
       oddsLabel: `Chance of arriving by ${clock(outTrip.arrive_by)}`,
       oddsValue: odds(outTrip) != null ? percent(odds(outTrip)) : '–',
-      oddsColor: 'var(--lw-success)',
+      oddsColor: oddsColor(odds(outTrip)),
       showLocation: true,
       locationName: appt,
       locationAddress: outTrip.dest,
@@ -766,7 +836,43 @@ export function useLeewayFlow() {
 
   const decTrip = trips[s.decision.tripId]
   let decision = null
-  if (s.screen === 'decision' && decTrip) {
+  if (s.screen === 'decision' && s.preview === 'decision') {
+    const previewOptions = [
+      {
+        key: 'offer',
+        title: 'Move to Thursday, 9:00 AM',
+        tag: 'Recommended',
+        sub: 'I’ll cancel today’s ride so it isn’t a no-show, then plan Thursday’s ride with you.',
+        label: 'Confirm',
+      },
+      {
+        key: 'keep',
+        title: 'Keep today’s ride',
+        tag: '',
+        sub: 'The front desk says you may need to rebook when you arrive.',
+        label: 'Keep today’s ride',
+      },
+      {
+        key: 'talk',
+        title: 'Talk it through with me',
+        tag: '',
+        sub: 'Ask about other times or anything else first.',
+        label: 'Open chat',
+      },
+    ]
+    const chosen = previewOptions.find((o) => o.key === s.decision.choice) || previewOptions[0]
+    decision = {
+      headlineLead: 'Kaiser can’t see you late today.',
+      headlineGray: 'Dr. Patel’s next opening is Thursday at 9:00 AM. Here’s what I’d do.',
+      options: previewOptions.map((o) => ({
+        ...o,
+        selected: o.key === chosen.key,
+        onSelect: () => setS((prev) => ({ ...prev, decision: { ...prev.decision, choice: o.key } })),
+      })),
+      approveLabel: chosen.label,
+      onApprove: () => go('home', { preview: null }),
+    }
+  } else if (s.screen === 'decision' && decTrip) {
     const lastCall = lastOf(tripEvents(decTrip), 'call_ended', 'late_notice')
     const notes = lastCall?.data.result?.notes || ''
     const appt = decTrip.appointment.name
@@ -868,10 +974,18 @@ export function useLeewayFlow() {
     apiBase: API_BASE,
     callsEnabled: !!DEMO_CLINIC_PHONE,
     simulate: [
+      { label: 'Calendar event detected', disabled: false, onClick: () => go('discover') },
       simulate('Van is 40 min late', (t) => api.status(t.id, 'van_eta', toLocalISO(addMinutes(t.booked_pickup, 40)))),
       simulate('Picked up on time', (t) => api.status(t.id, 'picked_up', toLocalISO(t.booked_pickup))),
       simulate('Picked up 45 min late', (t) => api.status(t.id, 'picked_up', toLocalISO(addMinutes(t.booked_pickup, 45)))),
       simulate('Arrived', (t) => api.status(t.id, 'arrived')),
+      // These three need a real call to the clinic to trigger normally (see
+      // the warning above when VITE_DEMO_CLINIC_PHONE isn't set) — jump
+      // straight to them with sample data instead, matching the original
+      // design prototype's own copy.
+      { label: 'Preview: calling the clinic', disabled: false, onClick: () => go('call', { preview: 'call' }) },
+      { label: 'Preview: rescheduled', disabled: false, onClick: () => go('outcome', { preview: 'outcome' }) },
+      { label: 'Preview: rider decision', disabled: false, onClick: () => go('decision', { preview: 'decision' }) },
       { label: 'Start over', disabled: false, onClick: restart },
     ],
     trip: current && {
@@ -906,7 +1020,8 @@ export function useLeewayFlow() {
     screen,
     error: s.error,
     onDismissError: () => setS((prev) => ({ ...prev, error: '' })),
-    showBar: !['recommend', 'decision', 'loading'].includes(screen),
+    // No chat bar on screens whose only action is a forced next step.
+    showBar: !['recommend', 'decision', 'loading', 'working'].includes(screen),
     topBar: screen === 'chat' ? 'back' : 'logo',
     onOpenChat: () => openChat(),
     onCloseChat: closeChat,

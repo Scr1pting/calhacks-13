@@ -50,7 +50,9 @@ export default function RecommendedBookingScreen({ recommend }) {
         <Divider />
         <div className="lw-recommend-odds">
           <span className="lw-recommend-odds-label">{recommend.oddsLabel}</span>
-          <span className="lw-recommend-odds-value">{recommend.oddsValue}</span>
+          <span className="lw-recommend-odds-value" style={{ color: recommend.oddsColor }}>
+            {recommend.oddsValue}
+          </span>
         </div>
         <p className="lw-recommend-explanation">{recommend.explanation}</p>
       </Card>

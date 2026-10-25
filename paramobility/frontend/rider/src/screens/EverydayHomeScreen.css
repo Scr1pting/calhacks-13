@@ -15,7 +15,6 @@
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--lw-success);
 }
 
 .lw-everyday-odds-label {
@@ -73,5 +72,4 @@
 
 .lw-also-booked-value {
   font-size: var(--lw-fs-secondary);
-  color: var(--lw-success);
 }
