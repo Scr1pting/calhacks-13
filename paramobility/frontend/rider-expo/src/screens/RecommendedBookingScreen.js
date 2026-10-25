@@ -38,7 +38,7 @@ export default function RecommendedBookingScreen({ recommend }) {
       <Card>
         <View style={styles.window}>
           <EyebrowLabel>Recommended pickup window</EyebrowLabel>
-          <BigNumber size="md">{recommend.windowValue}</BigNumber>
+          <BigNumber size="sm">{recommend.windowValue}</BigNumber>
           <Text style={styles.day}>{recommend.dayLine}</Text>
         </View>
         <Divider />

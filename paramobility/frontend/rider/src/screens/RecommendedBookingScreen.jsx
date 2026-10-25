@@ -46,7 +46,7 @@ export default function RecommendedBookingScreen({ recommend }) {
       <Card>
         <div className="lw-recommend-window">
           <EyebrowLabel>Recommended pickup window</EyebrowLabel>
-          <BigNumber size="md">{recommend.windowValue}</BigNumber>
+          <BigNumber size="sm">{recommend.windowValue}</BigNumber>
           <p className="lw-recommend-day">{recommend.dayLine}</p>
         </div>
         <Divider />
