@@ -1,9 +1,12 @@
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { colors, fonts, hitMin, radii, type } from '../theme/tokens'
 import { tap } from '../lib/haptics'
+import Glass, { GLASS_AVAILABLE } from './Glass'
 
 // One component covering every button variant in the design:
-//   primary          – full-width, 56px, black (e.g. "Confirm")
+//   primary          – full-width, 56px, black (e.g. "Confirm"); dark-tinted
+//                      Liquid Glass where the phone has it, like iOS's own
+//                      prominent buttons
 //   secondary         – full-width, 52px, outlined (e.g. "Book a ride yourself")
 //   compact-outline   – inline, 44px, outlined (e.g. "View calendar")
 //   compact-solid     – inline, 44px, filled black (e.g. "Plan", chat actions)
@@ -21,6 +24,7 @@ export default function Button({
   const v = VARIANTS[variant]
   // The filled buttons commit to something; they tap back.
   const solid = variant === 'primary' || variant === 'compact-solid'
+  const glass = variant === 'primary' && GLASS_AVAILABLE && background == null
   return (
     <Pressable
       onPress={(e) => {
@@ -28,24 +32,49 @@ export default function Button({
         onPress?.(e)
       }}
       disabled={disabled}
-      style={({ pressed }) => [
-        styles.base,
-        v.container,
-        background != null && { backgroundColor: background },
-        disabled && variant === 'primary' && { backgroundColor: colors.buttonDisabled },
-        pressed && !disabled && styles.pressed,
-      ]}
+      style={v.outer}
     >
-      {icon}
-      <Text style={[styles.label, v.label, color != null && { color }]}>{children}</Text>
+      {({ pressed }) => {
+        const content = (
+          <>
+            {icon}
+            <Text style={[styles.label, v.label, color != null && { color }]}>{children}</Text>
+          </>
+        )
+        if (glass) {
+          // Glass answers the touch itself (it's interactive), so no dimming.
+          return (
+            <Glass
+              interactive
+              tintColor={disabled ? colors.buttonDisabled : colors.ink}
+              style={[styles.base, v.container, styles.clear]}
+            >
+              {content}
+            </Glass>
+          )
+        }
+        return (
+          <View
+            style={[
+              styles.base,
+              v.container,
+              background != null && { backgroundColor: background },
+              disabled && variant === 'primary' && { backgroundColor: colors.buttonDisabled },
+              pressed && !disabled && styles.pressed,
+            ]}
+          >
+            {content}
+          </View>
+        )
+      }}
     </Pressable>
   )
 }
 
 const VARIANTS = {
   primary: {
+    outer: { width: '100%' },
     container: {
-      width: '100%',
       minHeight: 56,
       borderRadius: radii.buttonLg,
       backgroundColor: colors.ink,
@@ -54,8 +83,8 @@ const VARIANTS = {
     label: { fontSize: type.body, fontFamily: fonts.medium, color: colors.white },
   },
   secondary: {
+    outer: { width: '100%' },
     container: {
-      width: '100%',
       minHeight: 52,
       borderRadius: radii.button,
       borderWidth: 1,
@@ -90,6 +119,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  clear: {
+    backgroundColor: 'transparent',
   },
   pressed: {
     opacity: 0.8,

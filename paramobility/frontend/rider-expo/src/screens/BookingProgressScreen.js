@@ -26,11 +26,16 @@ export default function BookingProgressScreen({ working }) {
         </Button>
       )}
       {working.showTranscript && <CallTranscript lines={working.transcript} />}
-      {working.done && (
-        <Button variant="primary" disabled={working.nextDisabled} onPress={working.onNext}>
-          {working.nextLabel}
-        </Button>
-      )}
     </>
+  )
+}
+
+// Fixed at the bottom by Page, once there's a next step.
+export function WorkingActions({ working }) {
+  if (!working.done) return null
+  return (
+    <Button variant="primary" disabled={working.nextDisabled} onPress={working.onNext}>
+      {working.nextLabel}
+    </Button>
   )
 }

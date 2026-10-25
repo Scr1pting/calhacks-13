@@ -17,6 +17,7 @@ import { ShellContext } from '../components/ShellContext'
 import DemoMenu from '../components/DemoMenu'
 import DemoPanel from '../components/DemoPanel'
 import BottomBar, { useKeyboardShift } from '../components/BottomBar'
+import Page from '../components/Page'
 import { colors } from '../theme/tokens'
 
 SplashScreen.preventAutoHideAsync()
@@ -83,22 +84,16 @@ function Shell() {
         headerTintColor: colors.ink,
         contentStyle: { backgroundColor: colors.screenBg },
       }}
-    >
-      {/* Opening the chat feels like tapping a search field: it comes in
-          over the page, which blurs behind it, while the Ask Leeway bar stays
-          put and becomes its text field. The page runs that animation itself
-          (see Page and ChatBackdrop), and closes with its X, not a swipe. */}
-      <Stack.Screen
-        name="chat"
-        options={{
-          presentation: 'transparentModal',
-          animation: 'none',
-          headerShown: false,
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: 'transparent' },
-        }}
-      />
-    </Stack>
+    />
+  )
+  // The chat isn't a page of the stack but an overlay over it: opening it
+  // feels like tapping a search field, the page beneath blurring while the
+  // Ask Leeway bar stays put in front and becomes its text field (see Page and
+  // ChatBackdrop). A native modal would cover the bar.
+  const chat = flow.route === 'chat' && (
+    <View style={StyleSheet.absoluteFill}>
+      <Page name="chat" />
+    </View>
   )
   // Over the stack, not in each page, so it stays still as pages slide.
   const bar = <BottomBar shift={keyboardShift} bottomGap={bottomGap} onHeight={setFooterHeight} />
@@ -110,6 +105,7 @@ function Shell() {
         <ScrollView style={styles.desk} contentContainerStyle={styles.deskContent}>
           <View style={styles.frame}>
             {stack}
+            {chat}
             {bar}
             <View style={styles.homeIndicator} pointerEvents="none" />
           </View>
@@ -127,6 +123,7 @@ function Shell() {
       <StatusBar style="dark" />
       <View style={styles.app}>
         {stack}
+        {chat}
         {bar}
       </View>
       {menu}

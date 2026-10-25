@@ -86,6 +86,7 @@ const INIT = {
   voice: 'idle', // idle | listening | thinking | speaking
   draft: '',
   sending: false,
+  outgoing: null, // the rider's message while it's being sent
   error: '',
 }
 
@@ -384,16 +385,18 @@ export function useLeewayFlow() {
     }
   }
 
+  // The rider's message shows in the thread right away (`outgoing`), not only
+  // once Leeway has answered; if it can't be sent, it goes back in the field.
   async function send(text) {
     if (!text.trim() || s.sending) return
-    setS((prev) => ({ ...prev, draft: '', sending: true }))
+    setS((prev) => ({ ...prev, draft: '', sending: true, outgoing: text }))
     try {
       const msgs = await api.sendRiderMessage(riderId, text)
       msgs.forEach(onMessage)
+      setS((prev) => ({ ...prev, sending: false, outgoing: null }))
     } catch (e) {
+      setS((prev) => ({ ...prev, sending: false, outgoing: null, draft: prev.draft || text }))
       fail(e)
-    } finally {
-      setS((prev) => ({ ...prev, sending: false }))
     }
   }
 
@@ -1150,7 +1153,14 @@ export function useLeewayFlow() {
     if (text) send(text)
   }
 
-  const thread = messages[riderId] || []
+  const savedThread = messages[riderId] || []
+  // The message being sent, until the backend has it (its stream may deliver
+  // it before the reply does; then it's already in the thread).
+  const lastMine = savedThread.findLast((m) => m.sender === 'rider')
+  const thread =
+    s.outgoing && lastMine?.text !== s.outgoing
+      ? [...savedThread, { id: 'outgoing', sender: 'rider', text: s.outgoing }]
+      : savedThread
   const chat = {
     isEmpty: !thread.length && !s.sending,
     messages: thread.map((m) => ({

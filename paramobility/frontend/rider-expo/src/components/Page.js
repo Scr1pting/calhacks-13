@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Animated, BackHandler, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { HeaderHeightContext } from 'expo-router/react-navigation'
 import Svg, { Path } from 'react-native-svg'
@@ -13,15 +13,16 @@ import Headline from './Headline'
 import ChatBackdrop from './ChatBackdrop'
 import { hasBar as routeHasBar } from './BottomBar'
 
-import CalendarDiscoveryScreen from '../screens/CalendarDiscoveryScreen'
-import RecommendedBookingScreen from '../screens/RecommendedBookingScreen'
-import BookingProgressScreen from '../screens/BookingProgressScreen'
+import ActionBar from './ActionBar'
+import CalendarDiscoveryScreen, { DiscoverActions } from '../screens/CalendarDiscoveryScreen'
+import RecommendedBookingScreen, { RecommendActions } from '../screens/RecommendedBookingScreen'
+import BookingProgressScreen, { WorkingActions } from '../screens/BookingProgressScreen'
 import HomeScreen from '../screens/HomeScreen'
 import EmptyHomeScreen from '../screens/EmptyHomeScreen'
 import EverydayHomeScreen from '../screens/EverydayHomeScreen'
 import CallingClinicScreen from '../screens/CallingClinicScreen'
 import OutcomeScreen from '../screens/OutcomeScreen'
-import RiderDecisionScreen from '../screens/RiderDecisionScreen'
+import RiderDecisionScreen, { DecisionActions } from '../screens/RiderDecisionScreen'
 import ChatScreen from '../screens/ChatScreen'
 import ChatHomeScreen, { ChatHomeSuggestions } from '../screens/ChatHomeScreen'
 import LiveTripScreen from '../screens/LiveTripScreen'
@@ -47,6 +48,14 @@ const SCREENS = {
   chatHome: (v) => <ChatHomeScreen chatHome={v} />,
 }
 
+// The buttons of pages that end in a decision, fixed at the bottom.
+const ACTIONS = {
+  discover: (v) => <DiscoverActions discover={v} />,
+  recommend: (v) => <RecommendActions recommend={v} />,
+  working: (v) => v.done && <WorkingActions working={v} />,
+  decision: (v) => <DecisionActions decision={v} />,
+}
+
 const viewOf = (name, flow) =>
   name === 'home' ? (flow.ride ? { ride: flow.ride } : flow.home && { home: flow.home }) : flow[name]
 
@@ -69,6 +78,9 @@ export default function Page({ name }) {
 
   const isRoot = name === 'chatHome'
   const isChat = name === 'chat'
+  // A chat with messages reads bottom up, from the bar; an empty one shows its
+  // headline and suggestions from the top.
+  const isThread = isChat && !flow.chat.isEmpty
   const hasBar = routeHasBar(name)
   // The chat is an overlay without a native header (see _layout); it draws
   // its own close button.
@@ -95,20 +107,37 @@ export default function Page({ name }) {
     if (isChat) animateReveal(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const closeChat = () => animateReveal(0, goBack)
+  // The chat is an overlay, not a page of the stack (see _layout): closing it
+  // goes back to the page beneath it through the flow, not the router.
+  const closeChat = () => animateReveal(0, flow.onCloseChat)
+  useEffect(() => {
+    if (!isChat) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeChat()
+      return true
+    })
+    return () => sub.remove()
+  })
 
   // The home page's suggestion chips float just above the bar, and belong to
   // the page (they slide away with it); measured to leave room for them too.
   const hasChips = name === 'chatHome'
   const [chipsHeight, setChipsHeight] = useState(0)
-  const bottomCovered = hasBar ? footerHeight + (hasChips ? chipsHeight : 0) : bottomGap
+  // A decision page's own buttons, fixed at the bottom (ActionBar).
+  const actions = shown && ACTIONS[name] ? ACTIONS[name](shown) : null
+  const [actionsHeight, setActionsHeight] = useState(0)
+  const bottomCovered = hasBar
+    ? footerHeight + (hasChips ? chipsHeight : 0)
+    : actions
+      ? actionsHeight
+      : bottomGap
 
   // The chat thread reads bottom up. It opens already at the newest message
   // (no visible scroll while the page fades in); after that, new messages
   // scroll into view.
   const scrolledToEnd = useRef(false)
   const onContentSizeChange = () => {
-    if (!isChat) return
+    if (!isThread) return
     scrollRef.current?.scrollToEnd({ animated: scrolledToEnd.current })
     scrolledToEnd.current = true
   }
@@ -146,14 +175,15 @@ export default function Page({ name }) {
         ref={scrollRef}
         style={[
           styles.flex,
-          // In the chat the whole thread rises with the keyboard, on the same
-          // animation as the bar, so the newest message stays right above it.
-          isChat && { transform: [{ translateY: keyboardShift }] },
+          // A chat thread rises with the keyboard, on the same animation as
+          // the bar, so the newest message stays right above it. (Content
+          // that starts at the top, like the empty chat, stays put.)
+          isThread && { transform: [{ translateY: keyboardShift }] },
         ]}
         contentContainerStyle={[
           styles.content,
-          // The chat fills the page so its thread can sit at the bottom.
-          isChat && styles.fill,
+          // A chat thread fills the page so it can sit at the bottom.
+          isThread && styles.fill,
           { paddingTop: contentTop, paddingBottom: bottomCovered + 16 },
         ]}
         // The page pads itself for the header and the bar it scrolls under.
@@ -161,7 +191,7 @@ export default function Page({ name }) {
         scrollIndicatorInsets={{ top: contentTop - 26, bottom: bottomCovered }}
         // Elsewhere iOS makes room for the keyboard natively, in step with it.
         // Scrolling puts the keyboard away (the bar slides down with it).
-        automaticallyAdjustKeyboardInsets={!isChat}
+        automaticallyAdjustKeyboardInsets={!isThread}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={onContentSizeChange}
@@ -187,6 +217,12 @@ export default function Page({ name }) {
         />
       )}
       </Animated.View>
+
+      {actions && (
+        <ActionBar bottomGap={bottomGap} onHeight={setActionsHeight}>
+          {actions}
+        </ActionBar>
+      )}
 
       {hasChips && (
         <Animated.View

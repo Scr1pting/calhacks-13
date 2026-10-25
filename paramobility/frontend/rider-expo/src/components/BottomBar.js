@@ -3,8 +3,9 @@ import { Animated, Easing, Keyboard, Platform, StyleSheet } from 'react-native'
 import { useFlow } from '../state/FlowContext'
 import AskBar from './AskBar'
 
-// No Ask Leeway bar on pages whose only action is a forced next step.
-export const NO_BAR = ['recommend', 'decision', 'working']
+// No Ask Leeway bar on pages that end in their own decision (their buttons
+// sit at the bottom instead, see ActionBar).
+export const NO_BAR = ['discover', 'recommend', 'decision', 'working']
 export const hasBar = (route) => !NO_BAR.includes(route)
 
 const HIDE_MS = 250
