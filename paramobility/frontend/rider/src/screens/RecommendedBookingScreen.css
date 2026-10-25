@@ -20,7 +20,7 @@
 .lw-recommend-window {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .lw-recommend-day {

@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mapBg,
     ...cardShadow,
   },
-  main: { gap: 6 },
+  main: { gap: 10 },
   bigRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   big: {
     fontFamily: fonts.regular,

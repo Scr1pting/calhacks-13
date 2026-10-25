@@ -35,7 +35,7 @@ export default function HomeScreen({ home }) {
 }
 
 const styles = StyleSheet.create({
-  forecastMain: { gap: 6 },
+  forecastMain: { gap: 10 },
   note: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },
   monitor: {
     fontFamily: fonts.regular,

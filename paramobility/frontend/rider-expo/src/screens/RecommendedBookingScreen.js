@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   headlineGray: { color: colors.textSecondary },
-  window: { gap: 6 },
+  window: { gap: 10 },
   day: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },
   odds: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
   oddsLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary, flexShrink: 1 },

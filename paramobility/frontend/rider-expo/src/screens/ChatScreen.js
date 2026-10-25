@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     gap: 12,
     ...cardShadow,
   },
-  cardHead: { gap: 6 },
+  cardHead: { gap: 10 },
   cardSubtitle: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },
   cardOdds: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
   cardOddsLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.textSecondary },

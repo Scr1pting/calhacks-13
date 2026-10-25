@@ -83,7 +83,7 @@
 .lw-chat-card-head {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .lw-chat-card-subtitle {
