@@ -675,7 +675,7 @@ export function useLeewayFlow() {
       today,
       headlineLead: today ? 'Be ready downstairs at 9:15.' : 'You’re set for Tuesday.',
       headlineGray: today
-        ? 'Your ride to neurology picks you up between 9:15 and 9:45. Wait from the start of the window.'
+        ? 'Your ride to neurology picks you up between 9:15 and 9:45.'
         : 'Be ready downstairs at 9:15. EBP confirmed your pickup window.',
       oddsEyebrow: 'Chance of arriving by 10:30 AM',
       oddsValue: '86%',
@@ -730,7 +730,7 @@ export function useLeewayFlow() {
       headlineGray: riding
         ? `I’m watching the trip. If it starts to look late, I’ll call ${firstWord(appt)} for you.`
         : today
-          ? `Your ride to ${titleOf(current).toLowerCase()} picks you up between ${clockShort(w.start)} and ${clockShort(w.end)}. Wait from the start of the window.`
+          ? `Your ride to ${titleOf(current).toLowerCase()} picks you up between ${clockShort(w.start)} and ${clockShort(w.end)}.`
           : `Be ready downstairs at ${clockShort(w.start)}. EBP confirmed your pickup window.`,
       oddsEyebrow: `Chance of arriving by ${clock(current.arrive_by)}`,
       oddsValue: odds(current) != null ? percent(odds(current)) : '–',
@@ -838,18 +838,20 @@ export function useLeewayFlow() {
           ],
           upcoming: [{ key: 'preview-eye', title: 'Eye exam', date: 'Wed, Nov 18 · 1:00 PM', onBook: () => {} }],
         }
-      : booked.length
+      : booked.length || inNextWeek.length
         ? {
-            next: {
-              title: titleOf(booked[0]),
-              day: weekday(booked[0].arrive_by),
-              location: booked[0].appointment.name,
-              date: shortDate(booked[0].arrive_by).toUpperCase(),
-              oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
-              oddsColor: oddsColor(odds(booked[0])),
-              arriveByTime: clock(booked[0].arrive_by),
-              pickupWindow: windowText(pickupWindow(booked[0])),
-            },
+            next: booked.length
+              ? {
+                  title: titleOf(booked[0]),
+                  day: weekday(booked[0].arrive_by),
+                  location: booked[0].appointment.name,
+                  date: shortDate(booked[0].arrive_by).toUpperCase(),
+                  oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+                  oddsColor: oddsColor(odds(booked[0])),
+                  arriveByTime: clock(booked[0].arrive_by),
+                  pickupWindow: windowText(pickupWindow(booked[0])),
+                }
+              : null,
             alsoBooked: booked.slice(1).map((t) => ({
               title: titleOf(t),
               date: `${shortDate(t.arrive_by)} · ${clock(t.arrive_by)}`,

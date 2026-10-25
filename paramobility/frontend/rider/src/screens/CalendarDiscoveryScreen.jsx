@@ -9,8 +9,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
   return (
     <>
       <Headline lead="Let's plan ahead.">
-        I found a few upcoming appointments in your calendar. Would you like
-        me to arrange transportation?
+        I found a few upcoming appointments in your calendar.
       </Headline>
 
       <div

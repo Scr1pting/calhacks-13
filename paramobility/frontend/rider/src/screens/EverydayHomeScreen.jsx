@@ -9,27 +9,33 @@ import './EverydayHomeScreen.css'
 export default function EverydayHomeScreen({ everyday }) {
   return (
     <>
-      <Headline lead="Your rides are taken care of.">
-        Next up is {everyday.next.title.toLowerCase()} on {everyday.next.day}.
-        I'll watch the trip for you.
-      </Headline>
+      {everyday.next ? (
+        <Headline lead="Your rides are taken care of.">
+          Next up is {everyday.next.title.toLowerCase()} on {everyday.next.day}.
+          I'll watch the trip for you.
+        </Headline>
+      ) : (
+        <Headline lead="Nothing booked yet.">Here's what's coming up on your calendar.</Headline>
+      )}
 
-      <Card>
-        <EyebrowLabel>Next ride {'·'} {everyday.next.date}</EyebrowLabel>
-        <div className="lw-everyday-title">
-          {everyday.next.title}, {everyday.next.location}
-        </div>
-        <div className="lw-everyday-odds">
-          <span className="lw-everyday-odds-value" style={{ color: everyday.next.oddsColor }}>
-            {everyday.next.oddsValue}
-          </span>
-          <span className="lw-everyday-odds-label">
-            chance of arriving by {everyday.next.arriveByTime}
-          </span>
-        </div>
-        <Divider />
-        <KeyValueRow label="Pickup window" value={everyday.next.pickupWindow} />
-      </Card>
+      {everyday.next && (
+        <Card>
+          <EyebrowLabel>Next ride {'·'} {everyday.next.date}</EyebrowLabel>
+          <div className="lw-everyday-title">
+            {everyday.next.title}, {everyday.next.location}
+          </div>
+          <div className="lw-everyday-odds">
+            <span className="lw-everyday-odds-value" style={{ color: everyday.next.oddsColor }}>
+              {everyday.next.oddsValue}
+            </span>
+            <span className="lw-everyday-odds-label">
+              chance of arriving by {everyday.next.arriveByTime}
+            </span>
+          </div>
+          <Divider />
+          <KeyValueRow label="Pickup window" value={everyday.next.pickupWindow} />
+        </Card>
+      )}
 
       {everyday.alsoBooked.length > 0 && (
       <div className="lw-also-booked">
