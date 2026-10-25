@@ -32,7 +32,7 @@ When a user hasn't taken any trips yet, the best we can do is to tell them how t
 | 21–59 minutes past window | 0.79% |
 | 60+ minutes past window | 0.06% |
 
-We assume that the delay is roughly **distributed like a shifted log-normal** and find the parameters that minimize the deviation from those values (our error). We fix the shift at -5 to allow for too early pickups.
+We assume that the delay is roughly distributed like a **shifted log-normal** and find the parameters that minimize the deviation from those values (our error). We fix the shift at -5 to allow for too early pickups.
 
 ![Fitted Shifted Lognormal](graphics/fitted-shifted-lognormal.svg)
 
@@ -46,7 +46,7 @@ We still want to get the same probabilities for falling into the different bucke
 
 ![](graphics/pickup-prior-17h.svg)
 
-We noticed that our mean and therefore our offset $g(t)$ is very ragged, so we wanted to interpolate it using a polynomial. Some might say the result was slightly unrealistic (shoutout to the Runge phenomena):
+NYC only reports one value per hour, so we only know $g(t)$ once per hour, but riders book at any minute. We need a smooth curve through those points, so we first tried a polynomial. Some might say the result was slightly unrealistic (shoutout to Runge's phenomenon):
 
 ![](graphics/runge-mu0.svg)
 
