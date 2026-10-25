@@ -13,9 +13,6 @@ const toDate = (v) => (v instanceof Date ? v : new Date(v))
 export const clock = (v) =>
   toDate(v).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TIME_ZONE })
 
-// "9:15" without AM/PM, for pickup windows like "9:15 – 9:45".
-export const clockShort = (v) => clock(v).replace(/\s?[AP]M$/, '')
-
 export const shortDate = (v) =>
   toDate(v).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: TIME_ZONE })
 

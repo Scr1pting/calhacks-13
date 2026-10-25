@@ -3,7 +3,7 @@ import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
 import { DEMO_CLINIC_PHONE, RIDER, calendarEntries } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
-import { TIME_ZONE, addMinutes, clock, clockShort, isToday, oddsColor, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
+import { TIME_ZONE, addMinutes, clock, isToday, oddsColor, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
 import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 
 // The rider app's logic, backed by the Paramobility API. Screens stay
@@ -469,7 +469,7 @@ export function useLeewayFlow() {
     const start = t.booked_pickup || t.plan?.recommended.pickup_time
     return start ? { start, end: addMinutes(start, WINDOW_MINUTES) } : null
   }
-  const windowText = (w) => `${clockShort(w.start)} – ${clockShort(w.end)}`
+  const windowText = (w) => `${clock(w.start)} – ${clock(w.end)}`
   const odds = (t) => t.outlook?.p_on_time ?? t.plan?.recommended.p_on_time
 
   // ---- discover ------------------------------------------------------------
@@ -522,8 +522,8 @@ export function useLeewayFlow() {
       headlineGray: 'For neurology on Tue, Nov 3 at 10:30 AM, this gives you the best chance of arriving on time.',
       locationName: 'Kaiser Oakland',
       locationAddress: '3600 Broadway, Oakland',
-      windowValue: '9:15 – 9:45',
-      dayLine: 'Tuesday. Be ready at 9:15.',
+      windowValue: '9:15 AM – 9:45 AM',
+      dayLine: 'Tuesday. Be ready at 9:15 AM.',
       oddsLabel: 'Chance of arriving by 10:30 AM',
       oddsValue: '86%',
       oddsColor: oddsColor(0.86),
@@ -542,7 +542,7 @@ export function useLeewayFlow() {
         locationName: recTrip.appointment.name,
         locationAddress: recTrip.dest,
         windowValue: windowText(w),
-        dayLine: `${isToday(w.start) ? 'Today' : weekday(w.start)}. Be ready at ${clockShort(w.start)}.`,
+        dayLine: `${isToday(w.start) ? 'Today' : weekday(w.start)}. Be ready at ${clock(w.start)}.`,
         oddsLabel: `Chance of arriving by ${arrive}`,
         oddsValue: percent(recTrip.plan.recommended.p_on_time),
         oddsColor: oddsColor(recTrip.plan.recommended.p_on_time),
@@ -610,17 +610,17 @@ export function useLeewayFlow() {
   if (s.screen === 'working' && s.preview === 'working') {
     working = {
       headlineLead: 'Booked for Tuesday.',
-      headlineGray: 'EBP confirmed your pickup window. Be ready at 9:15.',
+      headlineGray: 'EBP confirmed your pickup window. Be ready at 9:15 AM.',
       tasks: [
         { label: 'Connected to EBP reservations', state: 'done' },
-        { label: 'Pickup window 9:15 – 9:45 accepted', state: 'done' },
+        { label: 'Pickup window 9:15 AM – 9:45 AM accepted', state: 'done' },
         { label: 'Confirmation #48213', state: 'done' },
       ],
       done: true,
       transcript: [
         { who: 'LEEWAY', t: 'Hi, I’m calling to book a paratransit ride for Denise Carter to Kaiser Oakland.' },
         { who: 'EBP', t: 'One moment, let me check availability.' },
-        { who: 'LEEWAY', t: 'Could I request a pickup window of 9:15 – 9:45?' },
+        { who: 'LEEWAY', t: 'Could I request a pickup window of 9:15 AM – 9:45 AM?' },
         { who: 'EBP', t: 'That works for us.' },
         { who: 'EBP', t: 'Confirmed. Your confirmation number is #48213.' },
       ],
@@ -664,7 +664,7 @@ export function useLeewayFlow() {
       : {
           headlineLead: done ? `Booked for ${isToday(w.start) ? 'today' : weekday(w.start)}.` : 'Calling East Bay Paratransit.',
           headlineGray: done
-            ? `EBP confirmed your pickup window. Be ready at ${clockShort(w.start)}.`
+            ? `EBP confirmed your pickup window. Be ready at ${clock(w.start)}.`
             : 'Nothing is booked until they confirm. You can leave the app.',
           tasks: [
             pendingTask('Calling reservations', step >= 1, 'Connected to EBP reservations', true),
@@ -696,14 +696,14 @@ export function useLeewayFlow() {
     const today = s.preview === 'homeToday'
     home = {
       today,
-      headlineLead: today ? 'Be ready downstairs at 9:15.' : 'You’re set for Tuesday.',
+      headlineLead: today ? 'Be ready downstairs at 9:15 AM.' : 'You’re set for Tuesday.',
       headlineGray: today
-        ? 'Your ride to neurology picks you up between 9:15 and 9:45.'
-        : 'Be ready downstairs at 9:15. EBP confirmed your pickup window.',
+        ? 'Your ride to neurology picks you up between 9:15 AM and 9:45 AM.'
+        : 'Be ready downstairs at 9:15 AM. EBP confirmed your pickup window.',
       oddsEyebrow: 'Chance of arriving by 10:30 AM',
       oddsValue: '86%',
       oddsColor: oddsColor(0.86),
-      pickupWindow: '9:15 – 9:45',
+      pickupWindow: '9:15 AM – 9:45 AM',
       locationName: 'Kaiser Oakland',
       locationAddress: '3600 Broadway, Oakland',
       monitorText: today
@@ -720,13 +720,13 @@ export function useLeewayFlow() {
       headlineLead: riding
         ? 'You’re on your way.'
         : today
-          ? `Be ready downstairs at ${clockShort(w.start)}.`
+          ? `Be ready downstairs at ${clock(w.start)}.`
           : `You’re set for ${weekday(current.arrive_by)}.`,
       headlineGray: riding
         ? `I’m watching the trip. If it starts to look late, I’ll call ${firstWord(appt)} for you.`
         : today
-          ? `Your ride to ${titleOf(current).toLowerCase()} picks you up between ${clockShort(w.start)} and ${clockShort(w.end)}.`
-          : `Be ready downstairs at ${clockShort(w.start)}. EBP confirmed your pickup window.`,
+          ? `Your ride to ${titleOf(current).toLowerCase()} picks you up between ${clock(w.start)} and ${clock(w.end)}.`
+          : `Be ready downstairs at ${clock(w.start)}. EBP confirmed your pickup window.`,
       oddsEyebrow: `Chance of arriving by ${clock(current.arrive_by)}`,
       oddsValue: odds(current) != null ? percent(odds(current)) : '–',
       oddsColor: oddsColor(odds(current)),
@@ -822,7 +822,7 @@ export function useLeewayFlow() {
             oddsValue: '86%',
             oddsColor: oddsColor(0.86),
             arriveByTime: '10:30 AM',
-            pickupWindow: '9:15 – 9:45',
+            pickupWindow: '9:15 AM – 9:45 AM',
           },
           alsoBooked: [
             { title: 'Physical Therapy', date: 'Thu, Nov 5 · 2:00 PM', oddsText: '82%', oddsColor: oddsColor(0.82) },
@@ -897,9 +897,9 @@ export function useLeewayFlow() {
           t: 'Let me check with Dr. Patel’s team …',
           tone: 'secondary',
         },
-        { who: 'FRONT DESK', t: 'She can come at 11:00. Same doctor.', tone: 'secondary' },
+        { who: 'FRONT DESK', t: 'She can come at 11:00 AM. Same doctor.', tone: 'secondary' },
       ],
-      waitingFor: 'Waiting for: whether Dr. Patel can see you after 10:45.',
+      waitingFor: 'Waiting for: whether Dr. Patel can see you after 10:45 AM.',
     }
   } else if (s.screen === 'call' && callTrip) {
     const ev = tripEvents(callTrip)
@@ -938,10 +938,10 @@ export function useLeewayFlow() {
       pill: 'Rescheduled',
       headlineLead: 'Kaiser moved you to 11:00 AM.',
       headlineGray: 'Same doctor. Keep waiting downstairs; your ride is still coming.',
-      was: '10:30',
+      was: '10:30 AM',
       now: '11:00 AM',
       detail: 'Neurology with Dr. Patel. Confirmed by the front desk at 9:24 AM.',
-      oddsLabel: 'Chance of arriving by 11:00',
+      oddsLabel: 'Chance of arriving by 11:00 AM',
       oddsValue: '91%',
       oddsColor: oddsColor(0.91),
       showLocation: true,
@@ -950,11 +950,11 @@ export function useLeewayFlow() {
       transcript: [
         {
           who: 'LEEWAY',
-          t: 'Hi, I’m calling for Denise Carter. She has a 10:30 appointment with Dr. Patel, and her paratransit ride is running about 15 minutes late.',
+          t: 'Hi, I’m calling for Denise Carter. She has a 10:30 AM appointment with Dr. Patel, and her paratransit ride is running about 15 minutes late.',
         },
         { who: 'FRONT DESK', t: 'Let me check with Dr. Patel’s team …' },
-        { who: 'FRONT DESK', t: 'She can come at 11:00. Same doctor.' },
-        { who: 'LEEWAY', t: 'Great, please move her to 11:00. Thank you.' },
+        { who: 'FRONT DESK', t: 'She can come at 11:00 AM. Same doctor.' },
+        { who: 'LEEWAY', t: 'Great, please move her to 11:00 AM. Thank you.' },
       ],
       showTranscript: false,
       onToggleTranscript: () => setS((prev) => ({ ...prev, showTranscript: !prev.showTranscript })),
@@ -991,7 +991,7 @@ export function useLeewayFlow() {
         headlineGray: outTrip.status === 'riding'
           ? 'Same place. Keep going; your ride is still on its way.'
           : 'Your old pickup was for the old time, so I’m planning a new one.',
-        was: s.outcome.was ? clockShort(s.outcome.was) : '',
+        was: s.outcome.was ? clock(s.outcome.was) : '',
         now: clock(outTrip.arrive_by),
         detail: notes || `Confirmed by ${appt}.`,
       }
@@ -1159,7 +1159,7 @@ export function useLeewayFlow() {
       ? {
           nextRide: {
             dateCaps: 'TUE, NOV 3',
-            window: '9:15 – 9:45',
+            window: '9:15 AM – 9:45 AM',
             title: 'Neurology, Kaiser Oakland',
             time: '10:30 AM',
             oddsValue: '86%',

@@ -121,7 +121,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    paddingVertical: 12,
+    // Matches Card's own gap (14), so the rhythm above and below the divider
+    // is the same as the Next Ride card's.
+    paddingVertical: 14,
   },
   // The card's own gap already spaces the first row from the eyebrow.
   upcomingRowFirst: { paddingTop: 0 },
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
   },
   bookLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.accent },
   seeAll: {
-    marginTop: 12,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -22,6 +22,7 @@ export const RIDER = {
 }
 
 const KAISER = 'Kaiser Oakland, 3600 Broadway, Oakland, CA 94611'
+const DENTIST = 'Bright Smile Dental, 2001 Franklin St, Oakland, CA 94612'
 const clinicNotes = (phone) => (phone ? `Questions? Call the clinic at ${phone}.` : '')
 
 // Times are in the rider's zone (Bay Area), not the demo machine's, and fall
@@ -48,6 +49,9 @@ export function calendarEntries(phone) {
   return [
     entry('cal-neuro', 'Neurology', soonest(), KAISER, clinicNotes(phone)),
     entry('cal-pt', 'Physical Therapy', riderTime(2, 14, 0), KAISER, clinicNotes(phone)),
+    // A third ride-needing appointment, further out than the first two, so
+    // "In the next 7 days" still has something once both of those are booked.
+    entry('cal-dentist', 'Dentist', riderTime(5, 11, 0), DENTIST, clinicNotes(phone)),
     entry('cal-standup', 'Team stand-up', riderTime(1, 9, 0), 'https://zoom.us/j/84121'),
     entry('cal-mom', 'Call with Mom', riderTime(1, 18, 0)),
     entry('cal-review', 'Quarterly review', riderTime(3, 11, 0), 'Google Meet', 'meet.google.com/abc-defg-hij'),

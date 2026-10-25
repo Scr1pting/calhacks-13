@@ -54,7 +54,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
+  /* Matches the card's own gap (14px), so the rhythm above and below the
+     divider is the same as the Next Ride card's. */
+  padding: 14px 0;
 }
 
 /* StatusPill defaults to align-self: flex-start for its usual home in a
@@ -77,7 +79,7 @@
 }
 
 /* No margin here — the last row's own bottom padding already gives this
-   divider the same 12px gap above it as the border-top dividers between
+   divider the same 14px gap above it as the border-top dividers between
    rows get above their line, from each row's own padding. */
 
 .lw-chathome-upcoming-info {
@@ -115,7 +117,7 @@
 
 .lw-chathome-seeall {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 14px;
   padding: 0;
   border: none;
   background: transparent;

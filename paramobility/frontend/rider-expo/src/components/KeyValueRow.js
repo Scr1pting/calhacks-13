@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { colors, fonts, type } from '../theme/tokens'
 
-// Label/value row, space-between — e.g. "Pickup window" / "9:15 – 9:45".
+// Label/value row, space-between — e.g. "Pickup window" / "9:15 AM – 9:45 AM".
 export default function KeyValueRow({ label, value }) {
   return (
     <View style={styles.row}>
