@@ -14,6 +14,20 @@ One of our team member’s former boss lives with severe multiple sclerosis (PPM
 - Predicts *live* the likelihood of arriving on time
 - Proactively helps riders navigate delays, including calling the provider to reschedule appointments, also using [Cartesia](https://www.cartesia.ai/learn/voice-agent).
 
+## Table of Contents
+
+- [Prediction](#prediction)
+  - [Pickup Delay](#pickup-delay)
+    - [No Previous Rides](#no-previous-rides)
+    - [Previous Trips](#previous-trips)
+  - [Travel Time](#travel-time)
+  - [Calculating the Arrival](#calculating-the-arrival)
+  - [Future: Waze for Paratransit](#future-waze-for-paratransit)
+- [Solution Development & Research](#solution-development--research)
+- [Mobile App](#mobile-app)
+- [Simulation](#simulation)
+- [Cartesia Integration](#cartesia-integration)
+
 
 ## Prediction
 
@@ -42,13 +56,13 @@ This estimate is still very crude because the time of day makes a big difference
 
 We don't have access to more fine grained information for the East Bay. However, the transit authority in NYC publishes extensive reports on their paratransit system, including delays at different times of day. Our hypothesis is that at times **when the system in NYC is late more often, the system in East Bay is too**. 
 
-In other words, if the the mean lateness in NY at time $t$ is $g(t)$ higher than regular, then the mean lateness in East Bay at time $t$ is also $g(t)$ higher than regular ($\,\mu(t) = \mu_{\text{base}} + g(t)\,$)
+In other words, if the the mean lateness in NY at time *t* is *g*(*t*) higher than regular, then the mean lateness in East Bay at time *t* is also *g*(*t*) higher than regular (`μ(t) = μ_base + g(t)`)
 
-We still want to get the same probabilities for falling into the different buckets from the table earlier, so we optimize $\mu_{\text{base}}$ and our standard deviation so those match.
+We still want to get the same probabilities for falling into the different buckets from the table earlier, so we optimize `μ_base` and our standard deviation so those match.
 
 ![Pickups at 5 pm run later than the all-day average](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/pickup-prior-17h.svg)
 
-NYC only reports one value per hour, so we only know $g(t)$ once per hour, but riders book at any minute. We need a smooth curve through those points, so we first tried a polynomial. Some might say the result was slightly unrealistic (shoutout to Runge's phenomenon):
+NYC only reports one value per hour, so we only know *g*(*t*) once per hour, but riders book at any minute. We need a smooth curve through those points, so we first tried a polynomial. Some might say the result was slightly unrealistic (shoutout to Runge's phenomenon):
 
 ![Polynomial swinging wildly between the hourly points](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/runge-mu0.svg)
 
@@ -58,7 +72,7 @@ We ultimately settled for a **cubic spline to interpolate** the datapoints. We d
 
 Once a user has done a couple of trips, we can use when they were actually picked up to make better predictions.
 
-We add **two personal offsets** to the general estimate: one that follows the rider everywhere (maybe their building is hard to find) and one per recurring trip (maybe the Tuesday dialysis ride is always rough), so $\,\mu(t) = \mu_{\text{base}} + g(t) + \delta_{\text{rider}} + \delta_{\text{trip}}\,$. Both start at zero, and a trip only counts by how much it *surprised* us: 15 minutes late is normal at 5pm, but not at 10am.
+We add **two personal offsets** to the general estimate: one that follows the rider everywhere (maybe their building is hard to find) and one per recurring trip (maybe the Tuesday dialysis ride is always rough), so `μ(t) = μ_base + g(t) + δ_rider + δ_trip`. Both start at zero, and a trip only counts by how much it *surprised* us: 15 minutes late is normal at 5pm, but not at 10am.
 
 - **Older trips count less:** each trip loses 10% of its weight per week
 - **Same-route trips count more:** they move both offsets, other trips only move the rider offset
@@ -96,7 +110,7 @@ We read forums and public discussions and did street interviews. Two priorities 
 
 **Prototyping with Claude:** We wireframed Leeway in Claude Design, starting broad and narrowing to the key screens of one clear user flow. After several rounds of feedback from street interviews, we handed the design files to Claude Code to build the front-end prototype.
 
-![Claude Design Screens](graphics/claude-design-screens.png)
+![Claude Design Screens](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/claude-design-screens.png)
 
 
 
