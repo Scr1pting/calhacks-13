@@ -1,5 +1,6 @@
 """Webhooks the Cartesia phone agents call mid-conversation to report what they learned."""
 
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -8,6 +9,8 @@ from pydantic import BaseModel
 
 from app.core.config import get_settings
 from app.core.store import get_store
+
+log = logging.getLogger(__name__)
 
 
 def require_webhook_secret(authorization: str = Header("")) -> None:
@@ -49,7 +52,12 @@ def _save(report: BaseModel, kind: str) -> None:
     store = get_store()
     task = store.get_voice_task(report.task_id)
     if task is None or task.kind != kind:
-        raise HTTPException(404, "unknown task")
+        # Another backend placed this call (the agents are shared, e.g. with a
+        # local dev server). Accept it anyway: an error here is read out to the
+        # person on the phone, and the backend that placed the call reads the
+        # transcript instead.
+        log.warning("voice report for unknown %s task %s", kind, report.task_id)
+        return
     task.result = report.model_dump(exclude={"task_id"})
     store.put_voice_task(task)
 

@@ -53,6 +53,10 @@ export const api = {
   riderMessages: (id) => request('GET', `/riders/${id}/messages`),
   sendRiderMessage: (id, text) => request('POST', `/riders/${id}/messages`, { text }),
 
+  // The numbers Leeway may call: {phone, approved, reason}. Adding one needs the server's PIN.
+  checkCallNumber: (phone) => request('POST', '/call-numbers/check', { phone }),
+  addCallNumber: (phone, pin) => request('POST', '/call-numbers', { phone, pin }),
+
   // Voice: a recording in, {transcript, messages} out; then Leeway's reply as MP3.
   async sendVoice(id, recording) {
     const form = new FormData()

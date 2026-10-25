@@ -18,8 +18,9 @@ def late(arrive_by):
 
 
 @pytest.fixture
-def voice_calls(monkeypatch):
-    """Capture calls instead of placing them."""
+def voice_calls(monkeypatch, settings):
+    """Capture calls instead of placing them (to the test clinic, approved)."""
+    monkeypatch.setattr(settings, "call_allowlist", "+14155550199")
     placed = []
 
     async def fake_run_voice_task(trip, kind, variables):

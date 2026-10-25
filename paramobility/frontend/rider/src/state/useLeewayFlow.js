@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
 import { DEMO_CLINIC_PHONE, RIDER, SKIPPED_EVENTS, upcomingAppointments } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
@@ -21,7 +21,7 @@ const newRiderId = () => `rider_${Math.random().toString(36).slice(2, 12)}`
 
 // The rider profile the backend keeps: who they are, where pickups start,
 // and their (mock) calendar, so Leeway can talk about all of it.
-function riderProfile(calendar) {
+function riderProfile(calendar, callPhone) {
   return {
     name: RIDER.name,
     home: RIDER.home,
@@ -34,7 +34,7 @@ function riderProfile(calendar) {
       place_address: a.location.address,
       place_phone: a.location.phone,
     })),
-    permissions: { may_call_appointment: !!DEMO_CLINIC_PHONE, share_rider_name: true, max_calls: 3 },
+    permissions: { may_call_appointment: !!callPhone, share_rider_name: true, max_calls: 3 },
   }
 }
 
@@ -85,9 +85,9 @@ const INIT = {
 
 export function useLeewayFlow() {
   const [s, setS] = useState(INIT)
-  const [calendar] = useState(upcomingAppointments)
+  const [appointments] = useState(upcomingAppointments)
   const [saved, setSaved] = useState(() => {
-    const data = { confirmations: {}, ...loadSaved() }
+    const data = { confirmations: {}, callPhone: DEMO_CLINIC_PHONE, ...loadSaved() }
     if (!data.riderId) {
       data.riderId = newRiderId()
       save(data)
@@ -95,6 +95,12 @@ export function useLeewayFlow() {
     return data
   })
   const riderId = saved.riderId
+  // The number Leeway calls as "the clinic": set in the demo panel.
+  const callPhone = saved.callPhone || ''
+  const calendar = useMemo(
+    () => appointments.map((a) => ({ ...a, location: { ...a.location, phone: callPhone } })),
+    [appointments, callPhone],
+  )
   const voiceRef = useRef({ stop: null, stopAudio: null, starting: false, released: false })
   // The rider the backend knows about: its stream 404s until the profile is saved.
   const [syncedRider, setSyncedRider] = useState(null)
@@ -131,7 +137,7 @@ export function useLeewayFlow() {
     ;(async () => {
       try {
         // Sync the profile and calendar, then load everything Leeway knows.
-        await api.putRider(riderId, riderProfile(calendar))
+        await api.putRider(riderId, riderProfile(calendar, callPhone))
         if (!cancelled) setSyncedRider(riderId)
         const [list, thread] = await Promise.all([api.riderTrips(riderId), api.riderMessages(riderId)])
         const evs = await Promise.all(list.map((t) => api.events(t.id)))
@@ -150,7 +156,18 @@ export function useLeewayFlow() {
     return () => {
       cancelled = true
     }
-  }, [riderId, calendar]) // later changes arrive through the streams below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riderId, appointments]) // later changes arrive through the streams below
+
+  // A new number to call only needs the profile saved again; it applies to
+  // rides planned from now on.
+  const syncedPhone = useRef(callPhone)
+  useEffect(() => {
+    if (syncedRider !== riderId || syncedPhone.current === callPhone) return
+    syncedPhone.current = callPhone
+    api.putRider(riderId, riderProfile(calendar, callPhone)).catch(fail)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callPhone, syncedRider, riderId])
 
   // What a new activity event means for the screen the rider is on.
   const onTripEvent = useCallback(
@@ -852,7 +869,7 @@ export function useLeewayFlow() {
 
   const restart = () => {
     voiceRef.current.stopAudio?.()
-    updateSaved(() => ({ riderId: newRiderId(), confirmations: {} }))
+    updateSaved((prev) => ({ riderId: newRiderId(), confirmations: {}, callPhone: prev.callPhone }))
     setTrips({})
     setEvents({})
     setMessages({})
@@ -866,7 +883,20 @@ export function useLeewayFlow() {
   })
   const demo = {
     apiBase: API_BASE,
-    callsEnabled: !!DEMO_CLINIC_PHONE,
+    callsEnabled: !!callPhone,
+    // Choosing the number to call: the server checks it (valid, not an agency
+    // line, approved by PIN, not called too often) before any call is placed.
+    calls: {
+      phone: callPhone,
+      async set(phone, pin) {
+        let status = await api.checkCallNumber(phone)
+        if (!status.approved && status.phone.startsWith('+')) status = await api.addCallNumber(phone, pin)
+        if (!status.approved) throw new Error(status.reason)
+        updateSaved((prev) => ({ ...prev, callPhone: status.phone }))
+        return status.phone
+      },
+      clear: () => updateSaved((prev) => ({ ...prev, callPhone: '' })),
+    },
     simulate: [
       simulate('Van is 40 min late', (t) => api.status(t.id, 'van_eta', toLocalISO(addMinutes(t.booked_pickup, 40)))),
       simulate('Picked up on time', (t) => api.status(t.id, 'picked_up', toLocalISO(t.booked_pickup))),

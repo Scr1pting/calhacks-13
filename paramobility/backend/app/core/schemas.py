@@ -173,6 +173,6 @@ class VoiceTask(BaseModel):
     trip_id: str
     kind: VoiceTaskKind
     call_id: str = ""
-    status: str = "created"  # created | started | completed | failed
+    status: str = "created"  # created | started | completed | failed | skipped | blocked
     result: dict | None = None  # filled by the webhook tool or transcript extraction
     transcript: list[dict] = []

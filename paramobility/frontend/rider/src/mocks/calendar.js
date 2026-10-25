@@ -2,8 +2,9 @@
 // until a calendar API is connected. Appointments are dated relative to now,
 // so the live demo works whenever it runs: one soon, one in two days.
 //
-// The clinic's phone number comes from VITE_DEMO_CLINIC_PHONE (a phone you
-// can answer). Without it, trips are created with calls to the clinic turned
+// The clinic's phone number is the one set in the demo panel (approved by the
+// server, see backend app/voice/numbers.py), or VITE_DEMO_CLINIC_PHONE to
+// start with. Without one, trips are created with calls to the clinic turned
 // off, so the demo never phones a stranger.
 
 import { riderTime, wallClock } from '../lib/time.js'
