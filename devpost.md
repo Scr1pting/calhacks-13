@@ -2,6 +2,11 @@
 
 **The Problem:** 
 
+The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit. Yet arranging these rides can remain a significant administrative burden: in some areas, including Alameda County, reservations must be made by phone rather than through an app. Riders and their caregivers must coordinate bookings, manage pickup windows, and plan around uncertain arrival times.
+
+Service definitions of “on time” may also fail to reflect the rider’s actual needs. For example, East Bay Paratransit provides a 30-minute pickup window, but riders must be ready at its start, and drivers may wait only five minutes when they arrive. A ride can therefore be operationally on time while still leaving riders uncertain about whether they will reach a medical appointment on time.
+
+Leeway reduces this burden by recommending booking windows based on historical ride data, predicting the likelihood of arriving at appointments on time, and proactively helping riders navigate delays, so riders and caregivers spend less time coordinating transportation.
 
 ## Prediction
 
