@@ -30,6 +30,13 @@ export default function DemoPanel({ demo, onAction }) {
         <Text style={styles.desc}>It’s {demo.riderClock}.</Text>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.heading}>JUDGE DEMO</Text>
+        <Pressable accessibilityRole="button" style={styles.demoButton} onPress={act(demo.onStartDemo)}>
+          <Text style={styles.demoLabel}>Start judge demo</Text>
+        </Pressable>
+      </View>
+
       <CallNumber calls={demo.calls} />
 
       <View style={styles.section}>
@@ -244,6 +251,14 @@ const styles = StyleSheet.create({
   },
   simLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.ink },
   disabled: { opacity: 0.45 },
+  demoButton: {
+    minHeight: 48,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: colors.ink,
+    justifyContent: 'center',
+  },
+  demoLabel: { fontFamily: fonts.medium, fontSize: type.body, color: colors.white, textAlign: 'center' },
   navButton: {
     minHeight: 40,
     paddingHorizontal: 14,

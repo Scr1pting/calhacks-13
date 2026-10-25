@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
-import { DEMO_CLINIC_PHONE, RIDER, calendarEntries } from '../mocks/calendar.js'
+import { DEMO_CLINIC_PHONE, RIDER, calendarEntries, demoCalendarEntries } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
 import { TIME_ZONE, addMinutes, clock, isToday, oddsColor, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
@@ -108,6 +108,11 @@ export function useLeewayFlow() {
   const riderId = saved.riderId
   // The number Leeway calls as "the clinic": set in the demo panel.
   const callPhone = saved.callPhone || ''
+  // True once "Start judge demo" has been used: the load effect pulls from
+  // the single demo appointment instead of the mock calendar, and skips
+  // auto-booking it (the presenter walks through booking it live).
+  const demoMode = useRef(false)
+  const entriesFor = (phone) => (demoMode.current ? demoCalendarEntries(phone) : calendarEntries(phone))
   const calendar = useMemo(
     () => appointments.map((a) => ({ ...a, location: { ...a.location, phone: callPhone } })),
     [appointments, callPhone],
@@ -155,7 +160,7 @@ export function useLeewayFlow() {
         await api.putRider(riderId, riderProfile(callPhone))
         if (!cancelled) setSyncedRider(riderId)
         const [checked, list, thread] = await Promise.all([
-          api.syncCalendar(riderId, calendarEntries(callPhone)),
+          api.syncCalendar(riderId, entriesFor(callPhone)),
           api.riderTrips(riderId),
           api.riderMessages(riderId),
         ])
@@ -171,7 +176,7 @@ export function useLeewayFlow() {
         // planned or waiting to be booked shows up there (Coming Up already
         // renders "Planning…"/"Book ride" for exactly that), rather than
         // dropping the rider straight onto the recommend screen for it.
-        if (list.length === 0 && appts.length) {
+        if (!demoMode.current && list.length === 0 && appts.length) {
           // A brand new rider: book the first appointment automatically, so
           // Chat as home opens already showing it instead of the bare
           // "nothing booked yet" state — stays on the loading screen meanwhile.
@@ -198,7 +203,7 @@ export function useLeewayFlow() {
     syncedPhone.current = callPhone
     Promise.all([
       api.putRider(riderId, riderProfile(callPhone)),
-      api.syncCalendar(riderId, calendarEntries(callPhone)).then((checked) => {
+      api.syncCalendar(riderId, entriesFor(callPhone)).then((checked) => {
         setAppointments(checked.calendar.map(appointmentOf))
         setSkipped(checked.skipped)
       }),
@@ -407,7 +412,7 @@ export function useLeewayFlow() {
     }
   }
 
-  // ---- talking to Leeway: hold the mic, speak, let go -----------------------
+  // ---- talking to Leeway: tap the mic, speak, tap again -----------------------
 
   const setVoice = (voice) => setS((prev) => ({ ...prev, voice }))
 
@@ -452,7 +457,7 @@ export function useLeewayFlow() {
       turn.messages.forEach(onMessage)
       const answer = turn.messages.findLast((m) => m.sender === 'agent')
       if (!turn.transcript || !answer) {
-        if (!turn.transcript) fail(new Error('I didn’t catch that. Hold the mic and try again.'))
+        if (!turn.transcript) fail(new Error('I didn’t catch that. Tap the mic and try again.'))
         return setS((prev) => ({ ...prev, voice: 'idle', sending: false }))
       }
       setS((prev) => ({ ...prev, voice: 'speaking', sending: false }))
@@ -1136,7 +1141,6 @@ export function useLeewayFlow() {
 
   const thread = messages[riderId] || []
   const chat = {
-    isEmpty: !thread.length && !s.sending,
     messages: thread.map((m) => ({
       isMe: m.sender === 'rider',
       text: m.text,
@@ -1145,11 +1149,6 @@ export function useLeewayFlow() {
       actions: [],
     })),
     typing: s.sending,
-    suggestions: [
-      'What’s coming up for me?',
-      'I have a new appointment',
-      'When should I be ready?',
-    ].map((q) => ({ text: q, onClick: () => openChat(q) })),
     draft: s.draft,
     onDraftChange: (value) => setS((prev) => ({ ...prev, draft: value })),
     // Routes through openChat (not send directly) so sending from the
@@ -1248,6 +1247,7 @@ export function useLeewayFlow() {
   // ---- demo panel: live state and simulated ride updates -----------------------
 
   const restart = () => {
+    demoMode.current = false
     voiceRef.current.stopAudio?.()
     updateSaved((prev) => ({ riderId: newRiderId(), confirmations: {}, callPhone: prev.callPhone }))
     setTrips({})
@@ -1256,6 +1256,20 @@ export function useLeewayFlow() {
     // Back to 'loading' (INIT's default) — the load effect below picks the
     // new riderId up, books the first appointment, then lands on chatHome
     // already populated.
+    setS(INIT)
+  }
+
+  // "Start judge demo": a fresh rider with just the one demo appointment,
+  // unbooked — the presenter walks through booking it live rather than it
+  // auto-booking, so there's something to show on the "Here's what I'd
+  // book" screen. Keeps the current call-phone number, if one's set.
+  const startDemo = () => {
+    demoMode.current = true
+    voiceRef.current.stopAudio?.()
+    updateSaved((prev) => ({ riderId: newRiderId(), confirmations: {}, callPhone: prev.callPhone }))
+    setTrips({})
+    setEvents({})
+    setMessages({})
     setS(INIT)
   }
   // ---- which screen to show ----------------------------------------------------
@@ -1356,6 +1370,7 @@ export function useLeewayFlow() {
       simulate('Arrived', (t) => api.status(t.id, 'arrived')),
       { label: 'Start over', disabled: false, onClick: restart },
     ],
+    onStartDemo: startDemo,
     groups,
     graveyard,
     graveyardOpen,

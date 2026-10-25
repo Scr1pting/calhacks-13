@@ -32,15 +32,11 @@ export default function ChatPage() {
   const [autoFocus] = useState(!flow.chat.typing)
   const [barHeight, setBarHeight] = useState(0)
 
-  // A chat with messages reads bottom up, from the field; an empty one shows
-  // its headline and suggestions from the top.
-  const isThread = !flow.chat.isEmpty
   // The thread opens already at the newest message; after that, new messages
   // scroll into view.
   const scrollRef = useRef(null)
   const scrolledToEnd = useRef(false)
   const onContentSizeChange = () => {
-    if (!isThread) return
     scrollRef.current?.scrollToEnd({ animated: scrolledToEnd.current })
     scrolledToEnd.current = true
   }
@@ -56,20 +52,12 @@ export default function ChatPage() {
 
       <Animated.ScrollView
         ref={scrollRef}
-        style={[
-          styles.page,
-          // A thread rises with the keyboard, like the field, so the newest
-          // message stays right above it. The empty chat stays put.
-          isThread && { transform: [{ translateY: keyboardShift }] },
-        ]}
-        contentContainerStyle={[
-          styles.content,
-          isThread && styles.fill,
-          { paddingTop: contentTop, paddingBottom: barHeight + 16 },
-        ]}
+        // The thread rises with the keyboard, like the field, so the newest
+        // message stays right above it.
+        style={[styles.page, { transform: [{ translateY: keyboardShift }] }]}
+        contentContainerStyle={[styles.content, styles.fill, { paddingTop: contentTop, paddingBottom: barHeight + 16 }]}
         contentInsetAdjustmentBehavior="never"
         scrollIndicatorInsets={{ top: contentTop - 26, bottom: barHeight }}
-        automaticallyAdjustKeyboardInsets={!isThread}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={onContentSizeChange}

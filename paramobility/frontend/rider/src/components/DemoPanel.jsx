@@ -17,6 +17,13 @@ export default function DemoPanel({ demo }) {
         </p>
       </div>
 
+      <div className="lw-demo-panel-section">
+        <div className="lw-demo-panel-heading">JUDGE DEMO</div>
+        <button type="button" className="lw-demo-start-button" onClick={demo.onStartDemo}>
+          Start judge demo
+        </button>
+      </div>
+
       <CallNumber calls={demo.calls} />
 
       <div className="lw-demo-panel-section">

@@ -1,47 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Svg, { Path } from 'react-native-svg'
-import Headline from '../components/Headline'
+import { StyleSheet, Text, View } from 'react-native'
 import Button from '../components/Button'
 import EyebrowLabel from '../components/EyebrowLabel'
 import BigNumber from '../components/BigNumber'
 import Divider from '../components/Divider'
-import { cardShadow, colors, fonts, radii, type } from '../theme/tokens'
+import { cardShadow, colors, fonts, type } from '../theme/tokens'
 
-const ChevronIcon = (
-  <Svg width={8} height={14} viewBox="0 0 8 14">
-    <Path
-      d="M1.5 1.5 L6.5 7 L1.5 12.5"
-      fill="none"
-      stroke={colors.textSecondary}
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-)
-
-// Screens 7 / 7b: "Ask Leeway".
+// Screens 7 / 7b: "Ask Leeway". Always the thread, even with zero messages
+// yet — no separate "What can I help with?" placeholder screen.
 // The page around it scrolls and keeps the newest message in view (see Page).
 export default function ChatScreen({ chat }) {
-  if (chat.isEmpty) {
-    return (
-      <>
-        <Headline lead="What can I help with?">
-          Ask about your rides, appointments or bookings. You can type or
-          hold the mic to talk.
-        </Headline>
-        <View style={styles.suggestions}>
-          {chat.suggestions.map((s) => (
-            <Pressable key={s.text} style={styles.suggestion} onPress={s.onClick}>
-              <Text style={styles.suggestionText}>{s.text}</Text>
-              {ChevronIcon}
-            </Pressable>
-          ))}
-        </View>
-      </>
-    )
-  }
-
   return (
     <View style={styles.thread} accessibilityLiveRegion="polite">
       {chat.messages.map((m, i) => (
@@ -86,19 +53,6 @@ export default function ChatScreen({ chat }) {
 }
 
 const styles = StyleSheet.create({
-  suggestions: { gap: 10 },
-  suggestion: {
-    minHeight: 60,
-    paddingHorizontal: 18,
-    borderRadius: radii.row,
-    backgroundColor: colors.cardBg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    ...cardShadow,
-  },
-  suggestionText: { fontFamily: fonts.regular, fontSize: type.body, color: colors.ink, flexShrink: 1 },
   // Pushed to the bottom, just above the input, while the thread is short.
   thread: { marginTop: 'auto', gap: 18, paddingBottom: 4 },
   bubbleMeWrap: { alignItems: 'flex-end' },

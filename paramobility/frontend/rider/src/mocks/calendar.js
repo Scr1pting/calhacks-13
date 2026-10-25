@@ -11,7 +11,7 @@
 // Without one, trips are created with calls to the clinic turned off, so the
 // demo never phones a stranger.
 
-import { riderTime, toLocalISO, wallClock } from '../lib/time.js'
+import { addMinutes, riderTime, toLocalISO, wallClock } from '../lib/time.js'
 
 export const DEMO_CLINIC_PHONE = import.meta.env.VITE_DEMO_CLINIC_PHONE || ''
 
@@ -41,6 +41,26 @@ const hourLater = (start) => new Date(start.getTime() + 60 * 60 * 1000)
 
 function entry(id, title, start, location = '', notes = '') {
   return { id, title, start: toLocalISO(start), end: toLocalISO(hourLater(start)), location, notes }
+}
+
+// The delay model has a hard floor — no paratransit service before 5 AM
+// (app/prediction/prior.py SERVICE_START) — planning returns nothing at all
+// for a pickup window before that. +40 minutes from a 4 AM start would land
+// right in that dead zone, so push forward far enough to clear it.
+function demoSoonest() {
+  let start = addMinutes(new Date(), 40)
+  const hour = wallClock(start).hour
+  if (hour < 6) start = addMinutes(start, (6 - hour) * 60)
+  return start
+}
+
+// For the judge demo (DemoPanel's "Start judge demo"): one appointment, timed
+// relative to right now rather than clinic hours — judging could happen at
+// any hour, so this has to work whenever it's run, not just during the day.
+// Close enough that booking it, then running the ride late, fits a short
+// live walkthrough.
+export function demoCalendarEntries(phone) {
+  return [entry('cal-demo', 'Neurology', demoSoonest(), KAISER, clinicNotes(phone))]
 }
 
 // `phone`: the number Leeway calls as the clinic.
