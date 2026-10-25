@@ -246,8 +246,15 @@ def _google_geocode(address: str) -> LatLng:
 
 
 def _drive(name: str, origin: LatLng, destination: LatLng) -> float:
-    """Untimed drive minutes from the keyless providers."""
-    return _osrm(origin, destination) if name == "osrm" else _ors(origin, destination)
+    """Untimed drive minutes from OpenRouteService, or OSRM. When OpenRouteService fails (its
+    free daily quota runs out), OSRM answers instead: both are untimed, so the numbers agree."""
+    if name == "osrm":
+        return _osrm(origin, destination)
+    try:
+        return _ors(origin, destination)
+    except RoutingError as e:
+        log.warning("openrouteservice failed, asking osrm: %s", e)
+        return _osrm(origin, destination)
 
 
 def _osrm(origin: LatLng, destination: LatLng) -> float:

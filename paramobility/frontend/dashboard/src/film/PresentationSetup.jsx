@@ -10,7 +10,7 @@ import { setup } from './presentationSync.js'
 // app from a QR code; once it has, the film leaves its virtual phone out.
 
 const newRider = () => `rider_stage_${Math.random().toString(36).slice(2, 10)}`
-const riderAppUrl = () => `${window.location.origin}/rider/`
+const riderAppUrl = () => `${window.location.origin}/rider/index.html`
 
 export default function PresentationSetup({ onClose }) {
   const [saved, setSaved] = useState(config)

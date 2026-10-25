@@ -78,3 +78,12 @@ def test_geocode_without_a_match(monkeypatch, tmp_path):
     get_settings.cache_clear()
     with pytest.raises(routing.RoutingError, match="can't find"):
         routing.geocode("nowhere")
+
+
+def test_osrm_answers_when_openrouteservice_fails(monkeypatch):
+    def out_of_quota(origin, destination):
+        raise routing.RoutingError("ors: HTTP 403: Quota exceeded")
+
+    monkeypatch.setattr(routing, "_ors", out_of_quota)
+    monkeypatch.setattr(routing, "_osrm", lambda origin, destination: 11.5)
+    assert routing._drive("ors", (37.75, -122.18), (37.80, -122.23)) == 11.5
