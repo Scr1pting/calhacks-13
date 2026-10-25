@@ -111,7 +111,7 @@ Sample 2000 points and
 
 ## Simulation
 
-We don't have much real data, and what we have is coarse: on-time percentages per month, not individual rides. So to train and test our predictions, we **generate synthetic rides** that behave like the real ones, and tune the simulation until its punctuality matches what East Bay Paratransit publishes.
+We don't have much real data, and what we have is coarse: on-time percentages per month, not individual rides. So to test our predictions, we **generate synthetic rides** that behave like the real ones, and tune the simulation until its punctuality matches what East Bay Paratransit publishes.
 
 #### Generating likely trips
 
