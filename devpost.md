@@ -4,7 +4,7 @@
 
 **The problem:** The service exists, but it's burdensome. For East Bay Paratransit:
 - You must call to book (no app available)
-- As long as the van comes **within 30 minutes** of the start of the booking window, the **ride counts as punctual**. Despite that loose definition, 5% arrive even later. So if you take paratransit twice a day to and from work, you arrive more than 30 minutes late every second week. Drivers only wait 5 minutes before they leave.
+- As long as the van comes **within 30 minutes** of the start of the booking window, the **ride counts as punctual**. Despite that loose definition, 5% arrive even later. So if you take paratransit twice a day to and from work, you wait more than 30 minutes every second week. Drivers only wait 5 minutes before they leave.
 
 **Our Solution:** Leeway
 - Recommends booking windows based on historical ride data
@@ -62,18 +62,14 @@ We add **two personal offsets** to the general estimate: one that follows the ri
 
 Under the hood this is a **Bayesian linear regression**: fading old trips = treating them as noisier measurements (heteroscedastic noise!).
 
-
 ### R
 
-Our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. This 
+Google Maps takes traffic data into account. Therefore, our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes.
 
-How can we address this?
+This is great for the *average* case. But we care most about what happens in the worst case, let's say the worst 30%. That's when we might need to reschedule. We therefore again used NYC data to inform our choice of spread.
 
-A shared van takes longer than driving straight there. 
-
-
-
-
+![](graphics/ride-prior-08h.svg)
+*Example trip: Hayward to Highland Hospital, Oakland (~14 mi). Most affected by morning traffic because it runs toward Oakland with the morning commute, and against the evening one.*
 
 ### Calculating the Arrival
 
