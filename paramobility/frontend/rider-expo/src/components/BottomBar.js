@@ -4,35 +4,24 @@ import { useFlow } from '../state/FlowContext'
 import AskBar from './AskBar'
 
 // No Ask Leeway bar on pages that end in their own decision (their buttons
-// sit at the bottom instead, see ActionBar).
-export const NO_BAR = ['discover', 'recommend', 'decision', 'working']
+// sit at the bottom instead, see ActionBar), nor over the chat, which has its
+// own text field (ChatPage).
+export const NO_BAR = ['discover', 'recommend', 'decision', 'working', 'chat']
 export const hasBar = (route) => !NO_BAR.includes(route)
 
 const HIDE_MS = 250
 
 // The Ask Leeway bar, once for the whole app, floating over the navigation
-// stack like a tab bar: it stays put while pages slide underneath, slides away
-// on the pages without it, and rides on top of the keyboard. It's a button that
-// opens chat, or a text field on the chat pages. src/app/_layout.js renders it;
-// pages leave room for it (`footerHeight`, from onHeight).
+// stack like a tab bar: it stays put while pages slide underneath, and slides
+// away on the pages without it. Tapping it opens the chat; holding its mic
+// talks to Leeway. src/app/_layout.js renders it; pages leave room for it
+// (`footerHeight`, from onHeight).
 //
 // `shift` moves it with the keyboard (useKeyboardShift); `bottomGap` is the
 // space under it (home indicator, or the phone frame's).
 export default function BottomBar({ shift, bottomGap, onHeight }) {
   const flow = useFlow()
   const shown = hasBar(flow.route)
-  // A text field only in the chat; everywhere else tapping the bar opens it.
-  // Opened that way, the field takes focus right away and the keyboard comes
-  // up, as if the bar had been the field all along.
-  const hasInput = flow.route === 'chat'
-  const focusOnOpen = useRef(false)
-  const openChat = () => {
-    focusOnOpen.current = true
-    flow.onOpenChat()
-  }
-  useEffect(() => {
-    if (!hasInput) focusOnOpen.current = false
-  }, [hasInput])
 
   const visible = useRef(new Animated.Value(shown ? 1 : 0)).current
   useEffect(() => {
@@ -54,19 +43,7 @@ export default function BottomBar({ shift, bottomGap, onHeight }) {
         { paddingBottom: bottomGap, opacity: visible, transform: [{ translateY: Animated.add(shift, hiddenOffset) }] },
       ]}
     >
-      {hasInput ? (
-        <AskBar
-          mode="input"
-          value={flow.chat.draft}
-          onChangeText={flow.chat.onDraftChange}
-          onSubmit={flow.chat.onSend}
-          onSend={flow.chat.onSend}
-          voice={flow.voice}
-          autoFocus={focusOnOpen.current}
-        />
-      ) : (
-        <AskBar mode="button" onOpenChat={openChat} voice={flow.voice} />
-      )}
+      <AskBar mode="button" onOpenChat={flow.onOpenChat} voice={flow.voice} />
     </Animated.View>
   )
 }
