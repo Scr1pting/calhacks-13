@@ -1367,6 +1367,11 @@ export function useLeewayFlow() {
     simulate: [
       { label: 'Calendar event detected', disabled: false, onClick: () => go('discover') },
       simulate('Van is 40 min late', (t) => api.status(t.id, 'van_eta', toLocalISO(addMinutes(t.booked_pickup, 40)))),
+      // For the judge demo: "running late as of right now", rather than a
+      // fixed offset from the original pickup — works no matter how far out
+      // the demo appointment ended up, so the odds keep eroding in step
+      // with real elapsed time instead of landing on a flat number.
+      simulate('Run ride late (demo)', (t) => api.status(t.id, 'van_eta', toLocalISO(addMinutes(new Date(), 1)))),
       // mid-window, where the plan assumes boarding (backend plan.BOARD_AFTER_START)
       simulate('Picked up on time', (t) => api.status(t.id, 'picked_up', toLocalISO(addMinutes(t.booked_pickup, 15)))),
       simulate('Picked up 45 min late', (t) => api.status(t.id, 'picked_up', toLocalISO(addMinutes(t.booked_pickup, 45)))),
