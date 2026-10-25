@@ -207,7 +207,17 @@ export function useLeewayFlow() {
           // time the app reopened.
           const untried = appts.find((a) => !list.some((t) => t.calendar_event_id === a.id))
           // Stays on the loading screen meanwhile.
-          if (!demoMode.current && untried) await autoBookFirst(untried)
+          if (!demoMode.current) {
+            if (untried) {
+              await autoBookFirst(untried)
+            } else {
+              // Every appointment's already been tried at least once — if
+              // one of those got as far as a ready plan but never actually
+              // got booked, finish that instead of leaving Next ride empty.
+              const stuck = list.find((t) => t.status === 'planned' && t.plan)
+              if (stuck) await bookPlannedTrip(stuck.id, stuck).catch(() => {})
+            }
+          }
           if (!cancelled) go('chatHome')
         }
       } catch (e) {
@@ -361,6 +371,18 @@ export function useLeewayFlow() {
   // "Here's what I'd book" or "Calling East Bay Paratransit" in between,
   // since the rider never asked for this one; it's just how the app opens.
   // Quietly gives up on any error, leaving the rider on the empty chatHome.
+  // Books a trip that already has a ready plan — the second half of
+  // autoBookFirst below, reused to recover a trip stuck at "planned" (e.g.
+  // a dropped connection mid-booking last time) instead of leaving Chat as
+  // home with no Next ride indefinitely.
+  async function bookPlannedTrip(tripId, trip) {
+    await requestPickupWindow(() => {})
+    await api.book(tripId, trip.plan.recommended.pickup_time)
+    const confirmation = await confirmBooking()
+    updateSaved((prev) => ({ ...prev, confirmations: { ...prev.confirmations, [tripId]: confirmation } }))
+    await refreshTrip(tripId)
+  }
+
   async function autoBookFirst(appointment) {
     try {
       const [tripId] = await createTrips([appointment])
@@ -370,11 +392,7 @@ export function useLeewayFlow() {
         trip = await refreshTrip(tripId)
       }
       if (trip.status !== 'planned' || !trip.plan) return
-      await requestPickupWindow(() => {})
-      await api.book(tripId, trip.plan.recommended.pickup_time)
-      const confirmation = await confirmBooking()
-      updateSaved((prev) => ({ ...prev, confirmations: { ...prev.confirmations, [tripId]: confirmation } }))
-      await refreshTrip(tripId)
+      await bookPlannedTrip(tripId, trip)
     } catch {
       // Not fatal — the rider just sees nothing booked yet.
     }
