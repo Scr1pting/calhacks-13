@@ -164,11 +164,11 @@ export function useLeewayFlow() {
         setEvents(Object.fromEntries(list.map((t, i) => [t.id, evs[i]])))
         setMessages({ [riderId]: thread })
         setTrips(Object.fromEntries(list.map((t) => [t.id, t])))
-        // Pick up where the rider left off: plans still waiting to be booked first.
-        const waiting = list.filter((t) => WAITING.includes(t.status)).map((t) => t.id)
-        if (waiting.length) {
-          go('recommend', { queue: waiting, qi: 0 })
-        } else if (list.length === 0 && appts.length) {
+        // Chat as home is always where the app opens — a trip still being
+        // planned or waiting to be booked shows up there (Coming Up already
+        // renders "Planning…"/"Book ride" for exactly that), rather than
+        // dropping the rider straight onto the recommend screen for it.
+        if (list.length === 0 && appts.length) {
           // A brand new rider: book the first appointment automatically, so
           // Chat as home opens already showing it instead of the bare
           // "nothing booked yet" state — stays on the loading screen meanwhile.
