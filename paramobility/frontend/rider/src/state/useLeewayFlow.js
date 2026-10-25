@@ -1282,12 +1282,16 @@ export function useLeewayFlow() {
   const navStep = (n, label, active, onClick) => ({ n, label, active, onClick })
   const groups = [
     {
+      // "Chat as home" is the real home screen — where the app actually
+      // opens to. The other four are screens reached *from* it (tap the
+      // next-ride card, tap "see all"), not competing home screens.
       title: 'HOME',
       steps: [
-        navStep('3b', 'Day of ride', screen === 'home' && home?.today === true, () => go('home', { preview: 'homeToday' })),
-        navStep('3', 'Ride booked, future day', screen === 'home' && home?.today === false, () => go('home', { preview: 'homeFuture' })),
-        navStep('3c', 'Everyday home', screen === 'everyday', () => go('everyday', { preview: 'everyday' })),
-        navStep('3a', 'Nothing to plan', screen === 'empty', () => go('empty', { preview: 'empty' })),
+        navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: 'chatHome' })),
+        navStep('3b', 'Next ride detail — today', screen === 'home' && home?.today === true, () => go('home', { preview: 'homeToday' })),
+        navStep('3', 'Next ride detail — future day', screen === 'home' && home?.today === false, () => go('home', { preview: 'homeFuture' })),
+        navStep('3c', 'See all appointments', screen === 'everyday', () => go('everyday', { preview: 'everyday' })),
+        navStep('3a', 'Home, nothing booked', screen === 'empty', () => go('empty', { preview: 'empty' })),
       ],
     },
     {
@@ -1315,10 +1319,7 @@ export function useLeewayFlow() {
     },
     {
       title: 'ASK LEEWAY',
-      steps: [
-        navStep('7', 'Ask Leeway', screen === 'chat', () => openChat()),
-        navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: 'chatHome' })),
-      ],
+      steps: [navStep('7', 'Ask Leeway', screen === 'chat', () => openChat())],
     },
   ]
 
