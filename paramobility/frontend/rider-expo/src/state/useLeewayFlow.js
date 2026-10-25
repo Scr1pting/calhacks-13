@@ -1319,6 +1319,11 @@ export function useLeewayFlow() {
 
   return {
     screen,
+    // The page the navigation stack should show (src/app/_layout.js pushes
+    // or pops to it), and how the stack reports a page the rider went back
+    // to with the back button or a swipe. `screen` is what that page renders.
+    route: s.screen === 'loading' ? 'chatHome' : viewScreen,
+    onRouteChange: (route) => go(route),
     error: s.error,
     onDismissError: () => setS((prev) => ({ ...prev, error: '' })),
     // No chat bar on screens whose only action is a forced next step.

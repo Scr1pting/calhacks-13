@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "leeway",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.paramobility.rider"
@@ -23,7 +24,8 @@
       "package": "com.paramobility.rider"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single"
     },
     "plugins": [
       "expo-font",
@@ -40,7 +42,8 @@
           "microphonePermission": "Hold the mic to talk to Leeway about your rides."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-router"
     ],
     "extra": {
       "eas": {

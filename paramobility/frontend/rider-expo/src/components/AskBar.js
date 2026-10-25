@@ -1,8 +1,11 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput } from 'react-native'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { colors, fonts, radii, type } from '../theme/tokens'
+import { press } from '../lib/haptics'
+import Glass from './Glass'
 
-// The bottom bar. In `mode="button"` it's a button that opens chat. In
+// The bottom bar, floating over the page in Liquid Glass (a white bar where
+// there's no glass). In `mode="button"` it's a button that opens chat. In
 // `mode="input"` (chat and "chat as home") it becomes a real text field, and
 // the mic becomes a send button once there's a draft.
 //
@@ -28,7 +31,12 @@ export default function AskBar({
   const hasDraft = mode === 'input' && value.trim().length > 0 && !status
 
   return (
-    <View style={[styles.bar, listening && { borderColor: colors.accent }]}>
+    <Glass
+      interactive
+      tintColor={listening ? colors.accentBg : undefined}
+      style={styles.bar}
+      fallbackStyle={[styles.barSolid, listening && { borderColor: colors.accent }]}
+    >
       {mode === 'input' && !status ? (
         <TextInput
           accessibilityLabel="Message Leeway"
@@ -70,7 +78,10 @@ export default function AskBar({
           accessibilityLabel="Hold to talk to Leeway"
           accessibilityState={{ selected: listening, disabled: voice.state === 'thinking' }}
           disabled={voice.state === 'thinking'}
-          onPressIn={() => voice.onHoldStart?.()}
+          onPressIn={() => {
+            press()
+            voice.onHoldStart?.()
+          }}
           onPressOut={() => voice.onHoldEnd?.()}
           style={[
             styles.micButton,
@@ -90,7 +101,7 @@ export default function AskBar({
           </Svg>
         </Pressable>
       )}
-    </View>
+    </Glass>
   )
 }
 
@@ -98,15 +109,19 @@ const styles = StyleSheet.create({
   bar: {
     minHeight: 60,
     borderRadius: radii.bar,
-    backgroundColor: colors.cardBg,
-    borderWidth: 1.5,
-    borderColor: colors.borderBar,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingLeft: 22,
     paddingVertical: 6,
     paddingRight: 6,
+  },
+  // Without glass: the design's white bar, lifted off the page it floats over.
+  barSolid: {
+    backgroundColor: colors.cardBg,
+    borderWidth: 1.5,
+    borderColor: colors.borderBar,
+    boxShadow: '0 10px 30px -14px rgba(20, 22, 24, 0.22)',
   },
   textButton: {
     flex: 1,

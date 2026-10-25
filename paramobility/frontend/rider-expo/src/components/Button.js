@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native'
 import { colors, fonts, hitMin, radii, type } from '../theme/tokens'
+import { tap } from '../lib/haptics'
 
 // One component covering every button variant in the design:
 //   primary          – full-width, 56px, black (e.g. "Confirm")
@@ -18,9 +19,14 @@ export default function Button({
   children,
 }) {
   const v = VARIANTS[variant]
+  // The filled buttons commit to something; they tap back.
+  const solid = variant === 'primary' || variant === 'compact-solid'
   return (
     <Pressable
-      onPress={onPress}
+      onPress={(e) => {
+        if (solid) tap()
+        onPress?.(e)
+      }}
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
