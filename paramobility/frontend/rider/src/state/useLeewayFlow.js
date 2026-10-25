@@ -350,14 +350,25 @@ export function useLeewayFlow() {
     }
   }, [trips, s.pending])
 
+  // If the rider backs out of "working" before the call finishes, the
+  // booking shouldn't still go through behind their back.
+  const bookingAbortedRef = useRef(new Set())
+  useEffect(() => {
+    if (s.screen === 'working' || !s.booking || s.booking.step >= 3) return
+    bookingAbortedRef.current.add(s.booking.tripId)
+  }, [s.screen, s.booking])
+
   async function startBooking(trip) {
+    bookingAbortedRef.current.delete(trip.id)
     go('working', { booking: { tripId: trip.id, step: 0 }, showTranscript: false })
     const step = (n, extra = {}) =>
       setS((prev) => ({ ...prev, booking: { ...prev.booking, step: n, ...extra } }))
     try {
       await requestPickupWindow(step)
-      await api.book(trip.id, trip.plan.recommended.pickup_time)
       const confirmation = await confirmBooking()
+      // The actual commit to EBP — skip it if the rider already left.
+      if (bookingAbortedRef.current.has(trip.id)) return
+      await api.book(trip.id, trip.plan.recommended.pickup_time)
       updateSaved((prev) => ({ ...prev, confirmations: { ...prev.confirmations, [trip.id]: confirmation } }))
       await refreshTrip(trip.id)
       step(3, { confirmation })
