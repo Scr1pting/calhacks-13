@@ -13,6 +13,15 @@
 	file_server
 }
 
+# Just the story, to try it (the dashboard's site, which plays only the story on this name).
+{$STORY_DOMAIN} {
+	encode gzip zstd
+	root * /srv/dashboard
+	header /data/* Cache-Control "public, max-age=600"
+	try_files {path} /index.html
+	file_server
+}
+
 # GitHub webhook listener on the host (deploy/webhook/github_webhook.py).
 {$HOOKS_DOMAIN} {
 	reverse_proxy host.docker.internal:9000

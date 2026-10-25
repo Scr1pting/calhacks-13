@@ -28,6 +28,7 @@ services:
       DOMAIN: ${DOMAIN:-api.cal.fuzz.li}
       HOOKS_DOMAIN: ${HOOKS_DOMAIN:-hooks.cal.fuzz.li}
       DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-dashboard.cal.fuzz.li}
+      STORY_DOMAIN: ${STORY_DOMAIN:-story.cal.fuzz.li}
     extra_hosts:
       # The GitHub webhook listener runs on the host, not in a container.
       - host.docker.internal:host-gateway

@@ -3,7 +3,8 @@ import { filmLength, sceneAt } from './script.js'
 
 // The story's words: one centred caption at a time, the pickup-window
 // timeline once the window matters, and the closing card.
-export default function StoryOverlay({ fleet, maria, scenes, view, onExit, onReplay }) {
+// `only`: the story-only page (story.cal.fuzz.li): no way out to the dashboard.
+export default function StoryOverlay({ fleet, maria, scenes, view, onExit, onReplay, only = false }) {
   const { elapsed } = view.film
   const { scene, p } = sceneAt(scenes, elapsed)
   const title = typeof scene.title === 'function' ? scene.title(view.t, p) : scene.title
@@ -14,12 +15,14 @@ export default function StoryOverlay({ fleet, maria, scenes, view, onExit, onRep
   return (
     <div className="film story">
       {scene.cut && <div key={`cut-${scene.id}`} className="film-cut" />}
-      <button type="button" className="film-exit" onClick={onExit}>
-        Exit · Esc
-      </button>
+      {!only && (
+        <button type="button" className="film-exit" onClick={onExit}>
+          Exit · Esc
+        </button>
+      )}
 
       {scene.end ? (
-        <StoryEnd city={scene.fleet} onReplay={onReplay} onExit={onExit} />
+        <StoryEnd city={scene.fleet} onReplay={onReplay} onExit={only ? null : onExit} />
       ) : (
         <section key={scene.id} className="story-caption" aria-live="polite" style={{ animationDelay: `${delay}s` }}>
           <h2 className="story-title">{title}</h2>
@@ -112,9 +115,11 @@ export function StoryEnd({ city, onReplay, onExit }) {
         <button type="button" className="btn btn-solid" onClick={onReplay}>
           Play again
         </button>
-        <button type="button" className="btn btn-outline" onClick={onExit}>
-          Explore the day
-        </button>
+        {onExit && (
+          <button type="button" className="btn btn-outline" onClick={onExit}>
+            Explore the day
+          </button>
+        )}
       </div>
     </section>
   )

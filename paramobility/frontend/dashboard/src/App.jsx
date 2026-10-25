@@ -91,6 +91,10 @@ const WITH_PHONE = new Set(['live', 'presentation'])
 // The films drawn as a story (their own layers on a quiet map), not the tour.
 const STORIES = new Set(['story', 'live', 'presentation'])
 // A paired real phone plays the presentation's phone: the film uses the whole width.
+// story.cal.fuzz.li (or ?only=story): a page to try the story, and only that.
+const STORY_ONLY =
+  window.location.hostname.startsWith('story.') || new URLSearchParams(window.location.search).get('only') === 'story'
+
 const paddingFor = (kind) =>
   WITH_PHONE.has(kind) && !(kind === 'presentation' && isPaired()) ? LIVE_PADDING : STORY_PADDING
 
@@ -522,7 +526,8 @@ export default function App() {
     // ?film=40 starts 40 seconds in, for rehearsing one shot; &present starts
     // in presenter mode.
     const stepped = params.has('present')
-    if (params.has('film')) controls.playFilm(Number(params.get('film')) || 0, 'film', { stepped })
+    if (STORY_ONLY) controls.playFilm(0, 'story')
+    else if (params.has('film')) controls.playFilm(Number(params.get('film')) || 0, 'film', { stepped })
     else if (params.has('story')) controls.playFilm(Number(params.get('story')) || 0, 'story', { stepped })
     else if (params.has('live')) controls.playFilm(Number(params.get('live')) || 0, 'live', { stepped })
     else if (params.has('presentation')) {
@@ -537,7 +542,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       const s = sim.current
-      if (e.code === 'Escape' && s.film) controls.exitFilm()
+      if (e.code === 'Escape' && s.film && !STORY_ONLY) controls.exitFilm()
       const step = { ArrowRight: 1, PageDown: 1, ArrowLeft: -1, PageUp: -1 }[e.code]
       if (step && s.film) {
         e.preventDefault()
@@ -612,6 +617,8 @@ export default function App() {
       touch()
     },
     exitFilm: () => {
+      // The story-only page has nothing else to go to: it plays again.
+      if (STORY_ONLY) return latest.current.controls.playFilm(0, 'story')
       const s = sim.current
       if (STORIES.has(s.film?.kind)) setBasemap(map.current, 'full', 900)
       liveCall.reset()
@@ -670,7 +677,7 @@ export default function App() {
     <div className={view.film ? 'app filming' : 'app'}>
       <div ref={mapEl} className="map" />
       {error && <div className="error">{error}</div>}
-      {fleet && !view.film && <Hud fleet={fleet} view={view} controls={controls} maria={maria} />}
+      {fleet && !view.film && !STORY_ONLY && <Hud fleet={fleet} view={view} controls={controls} maria={maria} />}
       {view.film?.kind === 'film' && (
         <FilmOverlay
           fleet={fleet}
@@ -707,6 +714,7 @@ export default function App() {
           view={view}
           onExit={controls.exitFilm}
           onReplay={() => controls.playFilm(0, 'story')}
+          only={STORY_ONLY}
         />
       )}
       {!fleet && !error && <div className="loading">Loading the simulated day…</div>}
