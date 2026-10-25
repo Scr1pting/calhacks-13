@@ -60,13 +60,19 @@ const shortDate = (v) =>
 const clock = (v) => new Date(v).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 const clockShort = (v) => clock(v).replace(/\s?[AP]M$/, '')
 const weekday = (v) => new Date(v).toLocaleDateString('en-US', { weekday: 'long' })
+const isToday = (v) => new Date(v).toDateString() === new Date().toDateString()
 
 const WINDOW_MINUTES = 30 // EBP pickup windows are 30 minutes long
 
 // A planned trip in the shape of the sample APPOINTMENTS, so the
 // recommendation and booking screens render it the same way.
 function recOf(trip) {
-  const pick = trip.plan.recommended
+  // The booked pickup once there is one, else the recommendation.
+  const options = [trip.plan.recommended, ...trip.plan.options, ...trip.plan.tradeoff]
+  const at = (v) => new Date(v).getTime()
+  const pick =
+    (trip.booked_pickup && options.find((o) => at(o.pickup_time) === at(trip.booked_pickup))) ||
+    trip.plan.recommended
   const start = new Date(pick.pickup_time)
   return {
     key: trip.id,
@@ -77,7 +83,7 @@ function recOf(trip) {
     pickupTime: pick.pickup_time,
     pickupWindowStart: clockShort(start),
     pickupWindowEnd: clockShort(start.getTime() + WINDOW_MINUTES * 60000),
-    pOnTime: pick.p_on_time,
+    pOnTime: trip.outlook?.p_on_time ?? pick.p_on_time,
     // MOCK: EBP's booking call isn't connected yet, so its confirmation number is made up.
     confirmationNumber: `#${(parseInt(trip.id.slice(-6), 16) % 90000) + 10000}`,
     explanation: trip.plan.explanation,
@@ -381,29 +387,44 @@ export function useLeewayFlow() {
     working = { headlineLead, headlineGray, tasks, done, nextLabel, onNext }
   }
 
-  // home (screens 3 / 3b)
-  const bookedKey = s.booked.neuro ? 'neuro' : s.booked.pt ? 'pt' : 'neuro'
+  // home (screens 3 / 3b): the soonest ride booked on the backend, else the sample
+  const bookedTrip = Object.values(trips)
+    .filter((t) => t.plan && ['booked', 'riding'].includes(t.status))
+    .sort((a, b) => new Date(a.arrive_by) - new Date(b.arrive_by))[0]
+  // The next calendar appointment that has no ride yet.
+  const unplannedEvent = real
+    ? cal.calendar.find((e) => !Object.values(trips).some((t) => t.calendar_event_id === e.id))
+    : null
+  const bookedKey = bookedTrip ? bookedTrip.id : s.booked.neuro ? 'neuro' : s.booked.pt ? 'pt' : 'neuro'
   const homeAppt = A[bookedKey]
-  const secondaryKey = ['neuro', 'pt'].find((k) => k !== bookedKey && !s.booked[k])
+  const homeLocation = homeAppt.location || LOCATION
+  const homeToday = bookedTrip ? isToday(bookedTrip.arrive_by) : s.today
+  const secondaryKey = bookedTrip ? null : ['neuro', 'pt'].find((k) => k !== bookedKey && !s.booked[k])
+  const secondary = bookedTrip
+    ? unplannedEvent && { visitReason: unplannedEvent.title, date: shortDate(unplannedEvent.start) }
+    : secondaryKey && A[secondaryKey]
   const home = {
-    today: s.today,
-    headlineLead: s.today
+    today: homeToday,
+    headlineLead: homeToday
       ? `Be ready downstairs at ${homeAppt.pickupWindowStart}.`
       : `You’re set for ${homeAppt.day}.`,
-    headlineGray: s.today
+    headlineGray: homeToday
       ? `Your ride to ${homeAppt.visitReason.toLowerCase()} picks you up between ${homeAppt.pickupWindowStart} and ${homeAppt.pickupWindowEnd}. Wait from the start of the window.`
       : `Be ready downstairs at ${homeAppt.pickupWindowStart}. EBP confirmed your pickup window.`,
     oddsEyebrow: `Chance of arriving by ${homeAppt.arriveByTime}`,
     oddsValue: `${Math.round(homeAppt.pOnTime * 100)}%`,
     pickupWindow: `${homeAppt.pickupWindowStart} – ${homeAppt.pickupWindowEnd}`,
-    locationName: LOCATION.name,
-    locationAddress: LOCATION.address,
-    monitorText: s.today
-      ? `I’m watching this trip. If it starts to look late, I’ll call ${LOCATION.name.split(' ')[0]} for you.`
+    locationName: homeLocation.name,
+    locationAddress: homeLocation.address,
+    monitorText: homeToday
+      ? `I’m watching this trip. If it starts to look late, I’ll call ${homeLocation.name.split(' ')[0]} for you.`
       : `I’ll remind you the night before and watch the trip on ${homeAppt.day}.`,
-    hasSecondary: !!secondaryKey && !s.today,
-    secondary: secondaryKey ? A[secondaryKey] : null,
-    onPlanSecondary: () => go('recommend', { queue: [secondaryKey], qi: 0 }),
+    hasSecondary: !!secondary && !homeToday,
+    secondary: secondary || null,
+    onPlanSecondary: () =>
+      bookedTrip
+        ? unplannedEvent && arrange([unplannedEvent])
+        : go('recommend', { queue: [secondaryKey], qi: 0 }),
   }
 
   // call
