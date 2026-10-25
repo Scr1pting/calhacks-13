@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
-import { DEMO_CLINIC_PHONE, RIDER, SKIPPED_EVENTS, upcomingAppointments } from '../mocks/calendar.js'
+import { DEMO_CLINIC_PHONE, RIDER, calendarEntries } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
 import { TIME_ZONE, addMinutes, clock, clockShort, isToday, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
@@ -9,6 +9,7 @@ import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 // The rider app's logic, backed by the Paramobility API. Screens stay
 // presentational: this hook turns the rider's trips, activity events and
 // conversation with Leeway into the view objects they render. The calendar
+// entries (Leeway's backend decides with Haiku which need a ride)
 // and the EBP booking call are mocks (src/mocks); everything else is the real
 // backend, including talking to Leeway by voice.
 
@@ -19,24 +20,24 @@ const WAITING = ['planning', 'planned', 'failed']
 
 const newRiderId = () => `rider_${Math.random().toString(36).slice(2, 12)}`
 
-// The rider profile the backend keeps: who they are, where pickups start,
-// and their (mock) calendar, so Leeway can talk about all of it.
-function riderProfile(calendar) {
+// The rider profile the backend keeps: who they are and where pickups start.
+// Their calendar is synced separately (api.syncCalendar).
+function riderProfile() {
   return {
     name: RIDER.name,
     home: RIDER.home,
     time_zone: TIME_ZONE,
-    calendar: calendar.map((a) => ({
-      id: a.id,
-      title: a.title,
-      start: toLocalISO(a.start),
-      place_name: a.location.name,
-      place_address: a.location.address,
-      place_phone: a.location.phone,
-    })),
     permissions: { may_call_appointment: !!DEMO_CLINIC_PHONE, share_rider_name: true, max_calls: 3 },
   }
 }
+
+// A calendar event the backend kept as needing a ride, in the shape the screens use.
+const appointmentOf = (e) => ({
+  id: e.id,
+  title: e.title,
+  start: new Date(e.start),
+  location: { name: e.place_name, address: e.place_address, phone: e.place_phone },
+})
 
 function loadSaved() {
   try {
@@ -85,7 +86,9 @@ const INIT = {
 
 export function useLeewayFlow() {
   const [s, setS] = useState(INIT)
-  const [calendar] = useState(upcomingAppointments)
+  // The calendar appointments that need a ride, and how many entries didn't.
+  const [calendar, setCalendar] = useState([])
+  const [skipped, setSkipped] = useState(0)
   const [saved, setSaved] = useState(() => {
     const data = { confirmations: {}, ...loadSaved() }
     if (!data.riderId) {
@@ -130,12 +133,19 @@ export function useLeewayFlow() {
     let cancelled = false
     ;(async () => {
       try {
-        // Sync the profile and calendar, then load everything Leeway knows.
-        await api.putRider(riderId, riderProfile(calendar))
+        // Sync the profile, then the calendar (the backend keeps the entries
+        // that need a ride) and everything else Leeway knows.
+        await api.putRider(riderId, riderProfile())
         if (!cancelled) setSyncedRider(riderId)
-        const [list, thread] = await Promise.all([api.riderTrips(riderId), api.riderMessages(riderId)])
+        const [checked, list, thread] = await Promise.all([
+          api.syncCalendar(riderId, calendarEntries()),
+          api.riderTrips(riderId),
+          api.riderMessages(riderId),
+        ])
         const evs = await Promise.all(list.map((t) => api.events(t.id)))
         if (cancelled) return
+        setCalendar(checked.calendar.map(appointmentOf))
+        setSkipped(checked.skipped)
         setEvents(Object.fromEntries(list.map((t, i) => [t.id, evs[i]])))
         setMessages({ [riderId]: thread })
         setTrips(Object.fromEntries(list.map((t) => [t.id, t])))
@@ -150,7 +160,7 @@ export function useLeewayFlow() {
     return () => {
       cancelled = true
     }
-  }, [riderId, calendar]) // later changes arrive through the streams below
+  }, [riderId]) // later changes arrive through the streams below
 
   // What a new activity event means for the screen the rider is on.
   const onTripEvent = useCallback(
@@ -400,7 +410,7 @@ export function useLeewayFlow() {
       onToggle: () =>
         setS((prev) => ({ ...prev, sel: { ...prev.sel, [a.id]: !(prev.sel[a.id] ?? true) } })),
     })),
-    skipped: SKIPPED_EVENTS,
+    skipped,
     arrangeLabel: s.pending
       ? 'Arranging…'
       : selectedApps.length

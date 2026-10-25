@@ -10,12 +10,17 @@ import {
   CHAT_SUGGESTIONS,
   matchChat,
 } from '../data/leewayDemoData.js'
+import { checkDeviceCalendar } from '../calendar/deviceCalendar.js'
 
 // Ported from the `Component` class in design-reference/Leeway Denise
 // Prototype.dc.html — same state shape, same transitions, same derived
 // view-model (there called renderVals()). This hook is "the logic"; every
 // screen component is presentational and just renders the view object it's
 // given.
+//
+// The discover screen lists the appointments in the rider's phone calendar
+// that need a ride (the backend decides with Haiku). The screens after
+// "Arrange" still run on the sample data.
 
 const INIT = {
   screen: 'discover',
@@ -46,6 +51,11 @@ const CHAT_SAMPLE = {
   ],
 }
 
+// "Tue, Nov 3" and "10:30 AM" in the phone's time zone, as the design writes them.
+const shortDate = (v) =>
+  new Date(v).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+const clock = (v) => new Date(v).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
 function pendingTask(label, done, doneLabel, active) {
   return {
     label: done ? doneLabel : label,
@@ -56,11 +66,17 @@ function pendingTask(label, done, doneLabel, active) {
 export function useLeewayFlow() {
   const [s, setS] = useState(INIT)
   const replyTimer = useRef(null)
+  // {calendar, skipped} from the phone's calendar; null until read, or if it can't be.
+  const [cal, setCal] = useState(null)
 
   const go = (screen, extra = {}) =>
     setS((prev) => ({ ...prev, ...extra, screen, phase: 0 }))
-  const restart = () =>
-    setS({ ...INIT, sel: { ...INIT.sel }, booked: { ...INIT.booked } })
+  const restart = () => {
+    const sel = cal?.calendar.length
+      ? Object.fromEntries(cal.calendar.map((e) => [e.id, true]))
+      : { ...INIT.sel }
+    setS({ ...INIT, sel, booked: { ...INIT.booked } })
+  }
 
   // One ticking interval for the flow's whole lifetime (mirrors the
   // prototype's single setInterval in componentDidMount) — it drives the
@@ -88,6 +104,25 @@ export function useLeewayFlow() {
   }, [])
 
   useEffect(() => () => clearTimeout(replyTimer.current), [])
+
+  useEffect(() => {
+    let cancelled = false
+    checkDeviceCalendar()
+      .then((checked) => {
+        if (cancelled || !checked) return
+        setCal(checked)
+        setS((prev) => ({
+          ...prev,
+          sel: Object.fromEntries(checked.calendar.map((e) => [e.id, true])),
+          // Nothing in the calendar needs a ride: say so instead of listing nothing.
+          screen: prev.screen === 'discover' && !checked.calendar.length ? 'empty' : prev.screen,
+        }))
+      })
+      .catch((e) => console.warn('calendar check failed, showing sample appointments', e))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function send(text, replyKey) {
     if (!text.trim()) return
@@ -123,23 +158,36 @@ export function useLeewayFlow() {
   const activeKey = s.queue[s.qi] || 'neuro'
   const rec = A[activeKey]
 
-  // discover
-  const selectedKeys = ['neuro', 'pt'].filter((k) => s.sel[k])
+  // discover: the phone's calendar once it's been checked, else the sample appointments
+  const found = cal?.calendar.length
+    ? cal.calendar.map((e) => ({
+        key: e.id,
+        title: e.title,
+        when: `${shortDate(e.start)} · ${clock(e.start)}`,
+        location: e.place_name || e.place_address,
+      }))
+    : ['neuro', 'pt'].map((k) => ({
+        key: k,
+        title: A[k].visitReason,
+        when: `${A[k].date} · ${A[k].arriveByTime}`,
+        location: LOCATION.name,
+      }))
+  const selectedKeys = found.map((a) => a.key).filter((k) => s.sel[k])
+  // The recommendation screens only have sample plans, for "neuro" and "pt".
+  const demoQueue = ['neuro', 'pt'].slice(0, Math.min(selectedKeys.length, 2))
   const discover = {
-    items: ['neuro', 'pt'].map((k) => ({
-      key: k,
-      title: A[k].visitReason,
-      when: `${A[k].date} · ${A[k].arriveByTime}`,
-      location: LOCATION.name,
-      selected: s.sel[k],
-      onToggle: () => setS((prev) => ({ ...prev, sel: { ...prev.sel, [k]: !prev.sel[k] } })),
+    items: found.map((a) => ({
+      ...a,
+      selected: !!s.sel[a.key],
+      onToggle: () => setS((prev) => ({ ...prev, sel: { ...prev.sel, [a.key]: !prev.sel[a.key] } })),
     })),
+    skipped: cal ? cal.skipped : 4,
     arrangeLabel: selectedKeys.length
       ? `Arrange rides (${selectedKeys.length})`
       : 'Select an appointment',
     arrangeDisabled: selectedKeys.length === 0,
     onArrange: () => {
-      if (selectedKeys.length) go('recommend', { queue: selectedKeys, qi: 0 })
+      if (selectedKeys.length) go('recommend', { queue: demoQueue, qi: 0 })
     },
   }
 
@@ -366,7 +414,7 @@ export function useLeewayFlow() {
   // --- demo navigation (mirrors the prototype's side "simulate" panel) ---
   const jumpTargets = {
     discover: () => restart(),
-    recommend: () => go('recommend', { queue: selectedKeys.length ? selectedKeys : ['neuro'], qi: 0 }),
+    recommend: () => go('recommend', { queue: demoQueue.length ? demoQueue : ['neuro'], qi: 0 }),
     booking: () => go('working', { work: 'book', queue: s.queue.length ? s.queue : ['neuro'] }),
     homeB: () => go('home', { today: false, booked: { neuro: true, pt: false } }),
     homeC: toTuesday,
