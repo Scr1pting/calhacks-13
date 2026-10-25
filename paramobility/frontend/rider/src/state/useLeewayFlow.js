@@ -16,6 +16,9 @@ import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 const WINDOW_MINUTES = 30 // EBP pickup windows are 30 minutes long
 const STORAGE_KEY = 'leeway.v2'
 const ACTIVE = ['booked', 'riding']
+// An appointment whose trip reached any of these doesn't need another ride
+// offered for it — completed ones most of all (that's the whole point).
+const DONE = ['booked', 'riding', 'completed']
 const WAITING = ['planning', 'planned', 'failed']
 
 const newRiderId = () => `rider_${Math.random().toString(36).slice(2, 12)}`
@@ -824,7 +827,7 @@ export function useLeewayFlow() {
   const inNextWeek = calendar.filter((a) => {
     if (a.start <= Date.now() || a.start > Date.now() + WEEK_MS) return false
     const trip = linked.find((t) => t.calendar_event_id === a.id)
-    return !trip || !ACTIVE.includes(trip.status)
+    return !trip || !DONE.includes(trip.status)
   })
 
   const everyday =
@@ -1166,7 +1169,11 @@ export function useLeewayFlow() {
   // just the unplanned ones, so "coming up" always reflects the calendar.
   // Whichever one is already shown in the "next ride" card isn't repeated here.
   const nextOnCalendar = calendar
-    .filter((a) => a.start > Date.now() && a.id !== booked[0]?.calendar_event_id)
+    .filter((a) => {
+      if (a.start <= Date.now()) return false
+      const trip = linked.find((t) => t.calendar_event_id === a.id)
+      return !trip || !DONE.includes(trip.status)
+    })
     .sort((a, b) => a.start - b.start)
     .slice(0, 2)
 
@@ -1217,7 +1224,7 @@ export function useLeewayFlow() {
                   if (!trip) {
                     return { key: a.id, title: a.title, date, status: null, actionLabel: 'Book ride', onAction: () => arrange([a]) }
                   }
-                  if (ACTIVE.includes(trip.status)) {
+                  if (DONE.includes(trip.status)) {
                     return { key: a.id, title: a.title, date, status: 'Booked', actionLabel: null, onAction: null }
                   }
                   return {
