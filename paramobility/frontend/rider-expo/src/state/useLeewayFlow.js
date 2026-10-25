@@ -525,6 +525,10 @@ export function useLeewayFlow() {
     return start ? { start, end: addMinutes(start, WINDOW_MINUTES) } : null
   }
   const windowText = (w) => `${clock(w.start)} – ${clock(w.end)}`
+  // Recommended booking shows the window as a BigNumber — AM/PM wraps it to
+  // a second line there, so that one spot drops it (dayLine right below
+  // still says "Be ready at 9:15 AM").
+  const shortWindowText = (w) => windowText(w).replace(/\s?[AP]M/g, '')
   const odds = (t) => t.outlook?.p_on_time ?? t.plan?.recommended.p_on_time
 
   // ---- discover ------------------------------------------------------------
@@ -577,7 +581,7 @@ export function useLeewayFlow() {
       headlineGray: 'For neurology on Tue, Nov 3 at 10:30 AM, this gives you the best chance of arriving on time.',
       locationName: 'Kaiser Oakland',
       locationAddress: '3600 Broadway, Oakland',
-      windowValue: '9:15 AM – 9:45 AM',
+      windowValue: '9:15 – 9:45',
       dayLine: 'Tuesday. Be ready at 9:15 AM.',
       oddsLabel: 'Chance of arriving by 10:30 AM',
       oddsValue: '86%',
@@ -596,7 +600,7 @@ export function useLeewayFlow() {
         headlineGray: `For ${titleOf(recTrip).toLowerCase()} on ${shortDate(recTrip.arrive_by).replace(',', '')} at ${arrive}, this gives you the best chance of arriving on time.`,
         locationName: recTrip.appointment.name,
         locationAddress: recTrip.dest,
-        windowValue: windowText(w),
+        windowValue: shortWindowText(w),
         dayLine: `${isToday(w.start) ? 'Today' : weekday(w.start)}. Be ready at ${clock(w.start)}.`,
         oddsLabel: `Chance of arriving by ${arrive}`,
         oddsValue: percent(recTrip.plan.recommended.p_on_time),
