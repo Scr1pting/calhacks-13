@@ -111,7 +111,9 @@ export default function Page({ name }) {
             </Stack.Toolbar>
           )}
           <Stack.Toolbar placement="right">
-            <Stack.Toolbar.Button icon="line.3.horizontal" accessibilityLabel="Menu" onPress={openMenu} />
+            <Stack.Toolbar.View>
+              <MenuButton onPress={openMenu} />
+            </Stack.Toolbar.View>
           </Stack.Toolbar>
         </>
       )}
@@ -198,6 +200,25 @@ function useKeyboardLift() {
   return lift
 }
 
+// The design's menu icon (three 14px lines), in the native header's right
+// slot; iOS 26 puts its glass around it. The system's line.3.horizontal
+// symbol is drawn at a fixed size, larger than the design's.
+function MenuButton({ onPress }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Menu"
+      onPress={onPress}
+      hitSlop={6}
+      style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.6 }]}
+    >
+      <View style={styles.menuLine} />
+      <View style={styles.menuLine} />
+      <View style={styles.menuLine} />
+    </Pressable>
+  )
+}
+
 // The Leeway wave, in the native header's left slot on the root page.
 function Logo() {
   return (
@@ -225,6 +246,18 @@ const styles = StyleSheet.create({
   },
   fill: {
     flexGrow: 1,
+  },
+  menuButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  menuLine: {
+    width: 14,
+    height: 1.8,
+    backgroundColor: colors.ink,
   },
   footer: {
     position: 'absolute',
