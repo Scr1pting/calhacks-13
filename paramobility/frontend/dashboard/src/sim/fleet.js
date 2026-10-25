@@ -121,6 +121,14 @@ export function headingAhead(van, t, minutes = 0.35) {
   return metersApart > 12 ? bearing(a, b) : null
 }
 
+// When a van that is standing at time t (at a stop) drives off again.
+export function departure(van, t) {
+  const { path, times } = van
+  let i = Math.max(0, floorIndex(times, t))
+  while (i + 1 < times.length && path[i + 1][0] === path[i][0] && path[i + 1][1] === path[i][1]) i += 1
+  return times[i]
+}
+
 // Where a van is at time t: position, heading (degrees from north), moving?
 export function vanState(van, t) {
   if (t < van.start || t > van.end) return null

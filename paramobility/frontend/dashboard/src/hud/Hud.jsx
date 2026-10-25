@@ -63,6 +63,12 @@ export default function Hud({ fleet, view, controls, maria }) {
               Follow Maria’s ride
             </button>
           )}
+          <button type="button" className="btn btn-outline" onClick={() => controls.playFilm()}>
+            Play the film
+          </button>
+          <button type="button" className="btn btn-outline" onClick={() => controls.playFilm(0, 'story')}>
+            Play the story
+          </button>
           <button
             type="button"
             className={`btn btn-outline ${showLate ? 'pressed' : ''}`}

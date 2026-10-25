@@ -32,7 +32,9 @@ const asData = (item) => {
 }
 
 // Each frame, new layers with the same ids: deck.gl only updates what changed.
-export function buildLayers({ fleet, t, states, selectedId, mariaWaiting, onPick }) {
+// `pulse` is real time in seconds, so Maria's marker breathes at the same calm
+// pace whatever speed the day plays at.
+export function buildLayers({ fleet, t, states, selectedId, mariaWaiting, lateMarks = NONE, pulse = 0, onPick }) {
   const mariaData = asData(mariaWaiting)
   const selectedVan = selectedId != null ? fleet.vansById[selectedId] : null
   const ahead = selectedVan ? routeAhead(selectedVan, t, 50) : []
@@ -90,17 +92,30 @@ export function buildLayers({ fleet, t, states, selectedId, mariaWaiting, onPick
       lineWidthMinPixels: 2,
       updateTriggers: { getRadius: t, getLineColor: t },
     }),
+    // Every late pickup so far, as it happened (the film's whole-day shot).
+    new ScatterplotLayer({
+      id: 'late-marks',
+      data: lateMarks,
+      getPosition: (d) => d.pos,
+      getRadius: 70,
+      radiusMinPixels: 3,
+      radiusMaxPixels: 8,
+      getFillColor: [217, 130, 43, 215],
+      getLineColor: WHITE,
+      stroked: true,
+      lineWidthMinPixels: 1,
+    }),
     new ScatterplotLayer({
       id: 'maria',
       data: mariaData,
       getPosition: (d) => d.pos,
-      getRadius: 26 + 8 * Math.sin(t * 6),
+      getRadius: 24 + 5 * Math.sin((pulse * 2 * Math.PI) / 2.6),
       radiusMinPixels: 7,
       getFillColor: [...ACCENT, 60],
       getLineColor: ACCENT,
       stroked: true,
       lineWidthMinPixels: 2.5,
-      updateTriggers: { getRadius: t },
+      updateTriggers: { getRadius: pulse },
     }),
     new TextLayer({
       id: 'maria-label',
