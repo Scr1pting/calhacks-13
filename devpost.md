@@ -38,7 +38,7 @@ We assume that the delay is roughly distributed like a **shifted log-normal** an
 
 This estimate is still very crude because the time of day makes a big difference: a van caught in rush hour traffic driving arrives late with higher probability.
 
-We don't have access to more fine grained information for the East Bay. The transit authority in NYC publishes extensive reports on their paratransit system, including delays at different times of day. Our hypothesis is that at times **when the system in NYC is late more often, the system in East Bay is too**. 
+We don't have access to more fine grained information for the East Bay. However, the transit authority in NYC publishes extensive reports on their paratransit system, including delays at different times of day. Our hypothesis is that at times **when the system in NYC is late more often, the system in East Bay is too**. 
 
 In other words, if the the mean lateness in NY at time $t$ is $g(t)$ higher than regular, then the mean lateness in East Bay at time $t$ is also $g(t)$ higher than regular ($\,\mu(t) = \mu_{\text{base}} + g(t)\,$)
 
@@ -118,8 +118,7 @@ We created wireframes in Claude Design, incorporating visual references and desi
 
 - Design goal: Aim for WCAG 2.2 AAA conformance where feasible.
 - Future improvements: Add customizable accessibility settings, including text size, voice input and control, and color-vision preferences, alongside stronger screen-reader support and descriptive alt text.
-- Ongoing validation: Test with riders and caregivers and use their feedback to guide improvements. With appropriate consent and privacy safeguards, real-world trip outcomes could also help improve predictions over time.
-- Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
+- Ongoing validation: Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
 
 
 ## Simulation
