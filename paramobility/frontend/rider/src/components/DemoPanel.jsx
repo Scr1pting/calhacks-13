@@ -51,6 +51,31 @@ export default function DemoPanel({ demo }) {
         </div>
       ))}
 
+      {demo.graveyard?.length > 0 && (
+        <div className="lw-demo-panel-section">
+          <button type="button" className="lw-demo-panel-heading lw-demo-graveyard-toggle" onClick={demo.onToggleGraveyard}>
+            {demo.graveyardOpen ? 'GRAVEYARD ▲' : 'GRAVEYARD (older/internal screens) ▼'}
+          </button>
+          {demo.graveyardOpen &&
+            demo.graveyard.map((g) => (
+              <div className="lw-demo-panel-section" key={g.title}>
+                <div className="lw-demo-panel-heading">{g.title}</div>
+                {g.steps.map((st) => (
+                  <button
+                    key={st.label}
+                    type="button"
+                    className={`lw-demo-nav-button${st.active ? ' lw-demo-nav-button-active' : ''}`}
+                    onClick={st.onClick}
+                  >
+                    <span className="lw-demo-nav-n">{st.n}</span>
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            ))}
+        </div>
+      )}
+
       {demo.trip && (
         <div className="lw-demo-panel-section">
           <div className="lw-demo-panel-heading">CURRENT TRIP</div>

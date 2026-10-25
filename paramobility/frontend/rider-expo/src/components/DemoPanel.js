@@ -64,6 +64,33 @@ export default function DemoPanel({ demo, onAction }) {
         </View>
       ))}
 
+      {demo.graveyard?.length > 0 && (
+        <View style={styles.section}>
+          <Pressable accessibilityRole="button" onPress={demo.onToggleGraveyard}>
+            <Text style={styles.heading}>
+              {demo.graveyardOpen ? 'GRAVEYARD ▲' : 'GRAVEYARD (older/internal screens) ▼'}
+            </Text>
+          </Pressable>
+          {demo.graveyardOpen &&
+            demo.graveyard.map((g) => (
+              <View key={g.title} style={styles.section}>
+                <Text style={styles.heading}>{g.title}</Text>
+                {g.steps.map((st) => (
+                  <Pressable
+                    key={st.label}
+                    accessibilityRole="button"
+                    style={[styles.navButton, st.active && styles.navButtonActive]}
+                    onPress={act(st.onClick)}
+                  >
+                    <Text style={[styles.navN, st.active && styles.activeText]}>{st.n}</Text>
+                    <Text style={[styles.navLabel, st.active && styles.activeText]}>{st.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ))}
+        </View>
+      )}
+
       {demo.trip && (
         <View style={styles.section}>
           <Text style={styles.heading}>CURRENT TRIP</Text>

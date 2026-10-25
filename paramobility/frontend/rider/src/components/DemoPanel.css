@@ -40,6 +40,14 @@
   padding-bottom: 4px;
 }
 
+.lw-demo-graveyard-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
 .lw-demo-sim-button {
   min-height: 44px;
   padding: 0 16px;

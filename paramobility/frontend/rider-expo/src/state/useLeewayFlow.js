@@ -372,6 +372,10 @@ export function useLeewayFlow() {
   const creatingRef = useRef(new Set())
   const [creating, setCreating] = useState([])
 
+  // The demo menu's graveyard (every screen besides the real home) stays
+  // collapsed until someone explicitly asks for it.
+  const [graveyardOpen, setGraveyardOpen] = useState(false)
+
   async function arrange(appointments) {
     const fresh = appointments.filter((a) => !creatingRef.current.has(a.id))
     if (!fresh.length) return
@@ -1343,14 +1347,21 @@ export function useLeewayFlow() {
   // independent of the rider's real trips — for reviewing the whole app.
   // `active` highlights whichever one is currently on screen.
   const navStep = (n, label, active, onClick) => ({ n, label, active, onClick })
+  // Only the screen the app actually opens on is a normal menu item. Every
+  // other screen — older home variants, and the states a trip walks through
+  // on its own (planning, on the way, at risk, chat) — still exists and still
+  // works, but isn't something a rider (or a demo) should be jumping to
+  // directly, so it's parked in the graveyard below instead of the menu.
   const groups = [
     {
-      // "Chat as home" is the real home screen — where the app actually
-      // opens to. The other four are screens reached *from* it (tap the
-      // next-ride card, tap "see all"), not competing home screens.
       title: 'HOME',
+      steps: [navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: 'chatHome' }))],
+    },
+  ]
+  const graveyard = [
+    {
+      title: 'HOME — OTHER VARIANTS',
       steps: [
-        navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: 'chatHome' })),
         navStep('3b', 'Next ride detail — today', screen === 'home' && home?.today === true, () => go('home', { preview: 'homeToday' })),
         navStep('3', 'Next ride detail — future day', screen === 'home' && home?.today === false, () => go('home', { preview: 'homeFuture' })),
         navStep('3c', 'See all appointments', screen === 'everyday', () => go('everyday', { preview: 'everyday' })),
@@ -1422,6 +1433,9 @@ export function useLeewayFlow() {
       { label: 'Start over', disabled: false, onClick: restart },
     ],
     groups,
+    graveyard,
+    graveyardOpen,
+    onToggleGraveyard: () => setGraveyardOpen((v) => !v),
     trip: current && {
       title: `${titleOf(current)} · ${shortDate(current.arrive_by)} ${clock(current.arrive_by)}`,
       rows: [
