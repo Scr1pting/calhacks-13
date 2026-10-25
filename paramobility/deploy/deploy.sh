@@ -34,8 +34,13 @@ export PARAMOBILITY_ENV_FILE=$ROOT/.env
 docker compose build api
 
 # The fleet dashboard is a static site: build it in a throwaway Node container.
-docker run --rm -v "$REPO/paramobility/frontend/dashboard:/app" -w /app node:22-slim \
-    sh -c 'npm ci --legacy-peer-deps --no-audit --no-fund && npm run build'
+# It gets the whole frontend folder: the films import the rider app. The rider
+# app itself goes in its /rider/, for phones paired with the presentation (it
+# has no key built in; pairing hands the phone one).
+docker run --rm -v "$REPO/paramobility/frontend:/frontend" -w /frontend/dashboard node:22-slim \
+    sh -c 'npm ci --legacy-peer-deps --no-audit --no-fund && npm run build \
+        && cd ../rider && npm ci --no-audit --no-fund \
+        && npx vite build --base /rider/ --outDir ../dashboard/dist/rider --emptyOutDir'
 
 docker compose up -d --remove-orphans
 docker image prune -f >/dev/null

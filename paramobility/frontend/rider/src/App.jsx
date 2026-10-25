@@ -50,9 +50,9 @@ function renderScreen(flow) {
   }
 }
 
-export default function App() {
-  const flow = useLeewayFlow()
-
+// The phone itself: the screen the flow is on, with its top and bottom bars.
+// The dashboard's presentation film shows this too, driven by the same flow.
+export function LeewayPhone({ flow }) {
   const bottomBar = flow.showBar
     ? flow.screen === 'chat' || flow.screen === 'chatHome'
       ? (
@@ -69,22 +69,25 @@ export default function App() {
     : null
 
   return (
+    <PhoneShell topBar={flow.topBar} onBack={flow.onCloseChat} bottomBar={bottomBar}>
+      {flow.error && (
+        <div className="lw-error" role="alert">
+          <span>Something went wrong: {flow.error}</span>
+          <button type="button" onClick={flow.onDismissError} aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
+      {renderScreen(flow)}
+    </PhoneShell>
+  )
+}
+
+export default function App() {
+  const flow = useLeewayFlow()
+  return (
     <div className="lw-desk">
-      <PhoneShell
-        topBar={flow.topBar}
-        onBack={flow.onCloseChat}
-        bottomBar={bottomBar}
-      >
-        {flow.error && (
-          <div className="lw-error" role="alert">
-            <span>Something went wrong: {flow.error}</span>
-            <button type="button" onClick={flow.onDismissError} aria-label="Dismiss">
-              ×
-            </button>
-          </div>
-        )}
-        {renderScreen(flow)}
-      </PhoneShell>
+      <LeewayPhone flow={flow} />
       <DemoPanel demo={flow.demo} />
     </div>
   )

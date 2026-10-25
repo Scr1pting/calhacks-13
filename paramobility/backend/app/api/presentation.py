@@ -23,17 +23,14 @@ class ClockIn(BaseModel):
 @router.get("")
 def get_ride() -> dict:
     """Which simulated trip the ride replays (the dashboard follows its van), and its trip."""
-    r = presentation.ride()
-    return {
-        "sim_trip": r.sim_trip,
-        "window_start": r.window_start,
-        "appointment": r.appointment,
-        "pickup_t": r.pickup_t,
-        "dropoff_t": r.dropoff_t,
-        "start": r.track[0][0],
-        "end": r.track[-1][0],
-        "trip_id": presentation.current_trip_id(),
-    }
+    return {**presentation.info(), "trip_id": presentation.current_trip_id()}
+
+
+@router.get("/timeline")
+def get_timeline() -> list[dict]:
+    """The rider app's view at every point of the ride (t, chance, ETA and its range, when
+    Leeway asks), worked out ahead so the dashboard can time its shots."""
+    return presentation.timeline()
 
 
 @router.post("/start")

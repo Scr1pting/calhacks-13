@@ -99,7 +99,7 @@ function clockMinutes(s) {
 
 // Centred on the blank page, or, over the city, on a gradient that leaves the
 // right of the screen to the moving fleet.
-function StoryEnd({ city, onReplay, onExit }) {
+export function StoryEnd({ city, onReplay, onExit }) {
   return (
     <section className={city ? 'story-end city' : 'story-end'} aria-live="polite">
       <h1 className="story-brand">Leeway</h1>

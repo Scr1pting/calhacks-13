@@ -142,3 +142,10 @@ def test_replay_of_synthetic_track_with_detour(monkeypatch):
     assert any(o["stopped"] for o in out)
     rec = out[-1]["record"]
     assert rec["drive_at_pickup"] == pytest.approx(24.0, abs=0.1) and rec["ride_min"] > 24
+
+
+def test_the_chance_shown_is_never_certain():
+    # The model gets very sure late in a ride; what the rider sees never says 0% or 100%.
+    assert onboard.round_p(0.979) == 0.95 and onboard.round_p(1.0) == 0.95
+    assert onboard.round_p(0.00004) == 0.05 and onboard.round_p(0.0) == 0.05
+    assert onboard.round_p(0.62) == 0.6

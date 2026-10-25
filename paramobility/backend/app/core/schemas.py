@@ -84,6 +84,11 @@ class LiveStatus(BaseModel):
     picked_up_at: datetime | None = None
     arrived_at: datetime | None = None
     progress: float | None = None  # share of the ride done, when the van is tracked by GPS
+    # (lat, lng) while the rider's phone tracks the ride: where it is, where it started and
+    # where it's going, for the app's map. Only the presentation ride sets them for now.
+    position: tuple[float, float] | None = None
+    origin: tuple[float, float] | None = None
+    destination: tuple[float, float] | None = None
 
 
 class Outlook(BaseModel):

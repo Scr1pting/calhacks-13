@@ -23,7 +23,7 @@ import json
 import logging
 import math
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.core import bus
@@ -52,7 +52,12 @@ SIM_WEEKDAY = 1  # the simulated day is a Tuesday: plan the drive for one
 
 @dataclass(frozen=True)
 class Ride:
-    """A rider's trip from the simulated day, with the van's track: [[t, lat, lng], ...]."""
+    """A rider's trip, with the van's track: [[t, lat, lng], ...].
+
+    From the simulated day (scripts/demo_ride.py), or made up to tell the story
+    (scripts/example_ride.py), which also gives the van's street path with times for the
+    dashboard's film ([[t, lat, lng], ...]) and the other riders' stops on the way.
+    """
 
     sim_trip: str
     rider: str
@@ -67,12 +72,14 @@ class Ride:
     pickup_t: float
     dropoff_t: float
     track: list[list[float]]
+    path: list[list[float]] = field(default_factory=list)
+    stops_on_way: list[dict] = field(default_factory=list)
 
     @classmethod
     def load(cls, path: Path = RIDE_PATH) -> "Ride":
         d = json.loads(path.read_text())
         d["origin_pos"], d["dest_pos"] = tuple(d["origin_pos"]), tuple(d["dest_pos"])
-        return cls(**{k: d[k] for k in cls.__dataclass_fields__})
+        return cls(**{k: d[k] for k in cls.__dataclass_fields__ if k in d})
 
 
 def planned_drive(ride: Ride) -> float:
@@ -134,6 +141,31 @@ def ride() -> Ride:
     if _ride is None:
         _ride = Ride.load()
     return _ride
+
+
+def info() -> dict:
+    """What the dashboard's film needs about the ride (GET /presentation and its snapshot)."""
+    r = ride()
+    return {
+        "sim_trip": r.sim_trip,
+        "rider": r.rider,
+        "title": r.title,
+        "appointment_name": r.appointment_name,
+        "origin": r.origin,
+        "dest": r.dest,
+        "origin_pos": r.origin_pos,
+        "dest_pos": r.dest_pos,
+        "window_start": r.window_start,
+        "appointment": r.appointment,
+        "pickup_t": r.pickup_t,
+        "dropoff_t": r.dropoff_t,
+        "start": r.track[0][0],
+        "end": r.track[-1][0],
+        # A made-up ride (scripts/example_ride.py) brings its own street path and stops;
+        # for one from the simulated day, the film finds them in its fleet.json.
+        "path": r.path,
+        "stops_on_way": r.stops_on_way,
+    }
 
 
 def at(run: Run, minutes: float) -> datetime.datetime:
@@ -261,6 +293,11 @@ def _sync(run: Run, status: dict) -> None:
         if trip_live.arrived_t is not None:
             t.live.arrived_at = at(run, trip_live.arrived_t)
         t.live.progress = status.get("progress") if phase in ("onboard", "arrived") else None
+        # Her phone knows where it is once she's aboard; before that, nobody knows where the van is.
+        r = ride()
+        t.live.origin, t.live.destination = r.origin_pos, r.dest_pos
+        aboard = phase in ("onboard", "arrived") and run.next > 0
+        t.live.position = tuple(r.track[run.next - 1][1:]) if aboard else None
         t.outlook = Outlook(
             checked_at=now(),
             p_on_time=status["p_on_time"],
@@ -284,6 +321,50 @@ def _sync(run: Run, status: dict) -> None:
 def publish(trip: Trip) -> None:
     """Send the changed trip to the rider app (on the rider's stream, like a new trip)."""
     bus.publish(trip.rider_id, "trips", trip.model_dump_json())
+
+
+# ---- the whole ride, ahead of time ---------------------------------------------------------
+
+_timeline: tuple[float, list[dict]] | None = None  # (planned drive it was made with, points)
+
+
+def timeline() -> list[dict]:
+    """What the rider app will show at every point of the ride, worked out in memory.
+
+    The dashboard's film times its shots from this (when the van comes, when Leeway asks) and
+    draws the chance of arriving on time as it goes. It replays exactly what posting the clock
+    does, on a separate live trip, so it never touches the presentation trip.
+    """
+    global _timeline
+    r = ride()
+    with routing.replaying():
+        drive_min = planned_drive(r)
+        if _timeline is not None and _timeline[0] == drive_min:
+            return _timeline[1]
+        register(r, "presentation-timeline", drive_min)
+        points, asked = [], False
+        for point in r.track:
+            out = step(r, "presentation-timeline", point)
+            alert = out.get("alert")
+            low, high = out.get("eta_range") or [out["eta"]] * 2
+            points.append({
+                "t": point[0],
+                "phase": out["phase"],
+                "p_on_time": out["p_on_time"],
+                "eta": live.parse_clock(out["eta"]),
+                "eta_low": live.parse_clock(low),
+                "eta_high": live.parse_clock(high),
+                "minutes_late": out["minutes_late_expected"],
+                "progress": out.get("progress"),
+                "detour": bool(out.get("detour")),
+                "stopped": bool(out.get("stopped")),
+                # Leeway asks once, the first time the alert fires (as _sync does).
+                "ask": alert["message"] if alert and not asked else None,
+                "ask_minutes": alert["minutes"] if alert and not asked else None,
+            })
+            asked = asked or bool(alert)
+    _timeline = (drive_min, points)
+    return points
 
 
 # ---- checking a ride ---------------------------------------------------------------------

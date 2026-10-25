@@ -53,7 +53,7 @@ STALL_MIN = 4.0
 MIN_MEAN = 0.05  # minutes: floor for the remaining ride's mean (at the door, drive_now ~ 0)
 ALPHA = 0.5  # EMA weight of the newest model ETA
 ETA_STEP = 2.0  # only move the displayed ETA by at least this many minutes
-P_STEP = 0.05  # displayed probabilities are rounded to this
+P_STEP = 0.05  # displayed probabilities are rounded to this, and kept off 0 and 1
 ALERT_BELOW, REARM_ABOVE = 0.7, 0.8  # P(on time) hysteresis for the running-late alert
 ALERT_LATE_MIN = 5.0  # ... or the smoothed ETA passes appointment + this
 
@@ -218,7 +218,14 @@ def payload(state: OnboardState) -> dict:
 
 
 def round_p(p: float) -> float:
-    return round(round(min(max(float(np.nan_to_num(p)), 0.0), 1.0) / P_STEP) * P_STEP, 2)
+    """The chance as the rider sees it: in P_STEP steps, from P_STEP to 1 - P_STEP.
+
+    A ride that hasn't happened yet is never certain either way: the model's tails get very thin
+    late in a ride (its spread shrinks with the share left), but routing and GPS can still be
+    wrong. Only an arrival is certain (live.status says 1 or 0 then).
+    """
+    p = round(min(max(float(np.nan_to_num(p)), 0.0), 1.0) / P_STEP) * P_STEP
+    return round(min(max(p, P_STEP), 1 - P_STEP), 2)
 
 
 def hhmm(minutes: float) -> str:

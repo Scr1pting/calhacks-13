@@ -81,7 +81,10 @@ def test_start_books_a_demo_trip_the_monitor_leaves_alone(client, store):
     assert trip["rider"]["name"] == "Denise Carter"
     assert "T10:45:00" in trip["arrive_by"] and "T10:00:00" in trip["booked_pickup"]
     assert trip["outlook"]["p_on_time"] > 0.5
-    assert client.get("/presentation").json()["trip_id"] == trip["id"]
+    info = client.get("/presentation").json()
+    assert info["trip_id"] == trip["id"]
+    # What the dashboard's film says about the ride.
+    assert {"rider", "title", "appointment_name", "dest"} <= info.keys()
     assert asyncio.run(monitor.check_trip(trip["id"])) is None
 
 
@@ -107,6 +110,17 @@ def test_the_ride_follows_the_clock_and_asks_once(client, store):
     trip = store.get_trip(trip_id)
     assert trip.status == TripStatus.completed and trip.live.progress == 1.0
     assert [e.kind for e in store.events(trip_id)].count("late_ask") == 1
+
+
+def test_the_trip_shows_where_the_ride_is_only_once_she_is_aboard(client, store):
+    trip_id = start(client)["id"]
+    clock(client, PICKUP - 5)
+    waiting = store.get_trip(trip_id).live
+    assert waiting.position is None  # nobody knows where the van is
+    assert waiting.origin == ORIGIN and waiting.destination == DEST
+    clock(client, 650)
+    riding = store.get_trip(trip_id).live
+    assert riding.position is not None and ORIGIN[0] < riding.position[0] < DEST[0]
 
 
 def test_going_back_replays_from_the_start(client, store):
@@ -152,3 +166,19 @@ def test_a_new_start_retires_the_last_trip(client, store):
 
 def test_clock_needs_a_started_ride(client):
     assert client.post("/presentation/clock", json={"t": 600}).status_code == 409
+
+
+def test_the_timeline_matches_the_ride_the_clock_plays(client, store, monkeypatch):
+    monkeypatch.setattr(presentation, "_timeline", None)
+    points = client.get("/presentation/timeline").json()
+    asks = [p for p in points if p["ask"]]
+    assert len(asks) == 1 and asks[0]["ask_minutes"] >= 5  # asked once, as the trip is
+
+    trip_id = start(client)["id"]
+    before = [p for p in points if p["t"] < asks[0]["t"]][-1]
+    out = clock(client, before["t"])
+    assert out["status"]["p_on_time"] == before["p_on_time"]
+    assert store.get_trip(trip_id).late_ask is None
+    clock(client, asks[0]["t"])
+    assert store.get_trip(trip_id).late_ask is not None
+    assert points[-1]["phase"] == "arrived" and points[-1]["eta_low"] <= points[-1]["eta_high"]

@@ -47,6 +47,7 @@ ROUND_MIN = 15
 
 GOOGLE_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 ORS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
+OSRM_URL = "https://router.project-osrm.org/route/v1/driving"
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 ORS_GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
 
@@ -65,8 +66,11 @@ class RoutingError(RuntimeError):
 
 
 def provider() -> str:
-    """'google' or 'ors', whichever key is set; raises if neither is."""
+    """'google' or 'ors', whichever key is set ('osrm' when ROUTING_PROVIDER says so); raises
+    if none is."""
     settings = get_settings()
+    if settings.routing_provider == "osrm":
+        return "osrm"
     if settings.google_maps_key:
         return "google"
     if settings.ors_api_key:
@@ -97,7 +101,11 @@ def drive_minutes(
     return _cached(
         key,
         max_age_days,
-        lambda: _google(origin, destination, t) if name == "google" else _ors(origin, destination),
+        lambda: (
+            _google(origin, destination, t)
+            if name == "google"
+            else _drive(name, origin, destination)
+        ),
     )
 
 
@@ -118,7 +126,10 @@ def drive_now(origin: LatLng, destination: LatLng) -> float:
     name = provider()
     key = "|".join(["now", *(f"{v:.5f}" for v in (*origin, *destination)), name])
     return _demo_cached(
-        key, lambda: _google(origin, destination) if name == "google" else _ors(origin, destination)
+        key,
+        lambda: (
+            _google(origin, destination) if name == "google" else _drive(name, origin, destination)
+        ),
     )
 
 
@@ -232,6 +243,20 @@ def _google_geocode(address: str) -> LatLng:
         raise RoutingError(f"google: can't find {address!r}: {detail}")
     loc = res["results"][0]["geometry"]["location"]
     return loc["lat"], loc["lng"]
+
+
+def _drive(name: str, origin: LatLng, destination: LatLng) -> float:
+    """Untimed drive minutes from the keyless providers."""
+    return _osrm(origin, destination) if name == "osrm" else _ors(origin, destination)
+
+
+def _osrm(origin: LatLng, destination: LatLng) -> float:
+    url = f"{OSRM_URL}/{origin[1]},{origin[0]};{destination[1]},{destination[0]}"
+    res = _get(url, {"overview": "false"})
+    try:
+        return float(res["routes"][0]["duration"]) / 60
+    except (KeyError, IndexError, ValueError) as e:
+        raise RoutingError(f"osrm: no route in response {res!r}") from e
 
 
 def _ors_geocode(address: str) -> LatLng:

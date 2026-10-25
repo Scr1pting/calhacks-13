@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Drive times for app.prediction.routing: Google (traffic-aware) first, else OpenRouteService.
     google_maps_key: str = ""
     ors_api_key: str = ""
+    # "osrm": the public OSRM server instead (no key, no traffic). For dev snapshots when the
+    # other quotas are spent; never for the presentation itself (its fair-use policy).
+    routing_provider: str = ""
     drive_cache_path: str = "./drive_cache.json"  # temporary cache (Google's terms), git-ignored
     demo_cache: bool = False  # record live/route answers once and replay them (demos)
     demo_cache_path: str = "./demo_cache.json"

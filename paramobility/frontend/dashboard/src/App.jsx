@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import maplibregl, { AttributionControl, LngLat, LngLatBounds } from 'maplibre-gl'
+import maplibregl, { AttributionControl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import { mapStyle, setBasemap } from './map/style.js'
@@ -11,14 +11,28 @@ import StoryOverlay from './film/StoryOverlay.jsx'
 import { easeStop, filmLength, filmScenes, revealCount, sceneAt } from './film/script.js'
 import { storyScenes } from './film/story.js'
 import { buildStoryLayers } from './film/storyLayers.js'
+import LiveOverlay from './film/LiveOverlay.jsx'
+import { liveScenes } from './film/live.js'
+import { buildLiveLayers } from './film/liveLayers.js'
+import { liveCall } from './film/liveCall.js'
+import PresentationOverlay from './film/PresentationOverlay.jsx'
+import { presentationScenes } from './film/presentation.js'
+import { buildPresentationLayers } from './film/presentationLayers.js'
+import { isPaired, loadPresentation, presentationSync } from './film/presentationSync.js'
+import { warmLayers } from './film/warm.js'
+import { filmRider } from './film/riderApi.js'
 import { fontsReady, prefetchShots } from './film/prefetch.js'
 
 // Downtown Oakland, low and tilted, so the 3D city fills the frame.
 const HOME = { center: [-122.2715, 37.8045], zoom: 14.6, pitch: 64, bearing: -28 }
 const FOLLOW = { zoom: 17.2, pitch: 66 }
 const GLIDE_MS = 1800
+// How often the presentation posts its clock to the server, in ms.
+const CLOCK_MS = 250
 // The story frames its shots in the top of the screen, above the words.
 const STORY_PADDING = { top: 90, bottom: 330, left: 140, right: 140 }
+// The live story and the presentation keep the right of the screen for the phone.
+const LIVE_PADDING = { top: 70, bottom: 330, left: 70, right: 540 }
 
 const parseClock = (s) => {
   const [h, m] = s.split(':').map(Number)
@@ -38,19 +52,62 @@ const mixCamera = (a, b, k) => ({
 })
 
 // The flat, rotated camera that fits a story shot's points above the words.
-function frameCamera(m, scene) {
-  const bounds = new LngLatBounds(scene.frame[0], scene.frame[0])
-  for (const pt of scene.frame) bounds.extend(pt)
-  const cam = m.cameraForBounds(bounds, { padding: STORY_PADDING, bearing: 90, maxZoom: scene.maxZoom })
-  const c = LngLat.convert(cam.center)
-  return { center: [c.lng, c.lat], zoom: cam.zoom, pitch: 0, bearing: 90 }
+// It fits the points themselves, turned to the shot's bearing, rather than
+// their north-up bounding box: turned, that box is far bigger than a diagonal
+// route, which would come out small.
+function frameCamera(m, scene, padding = STORY_PADDING) {
+  const bearing = scene.bearing ?? 90
+  const rad = (bearing * Math.PI) / 180
+  const [cos, sin] = [Math.cos(rad), Math.sin(rad)]
+  // Web Mercator (0-1, y down), then turned so the screen's x and y line up.
+  const merc = ([lng, lat]) => {
+    const s = Math.sin((lat * Math.PI) / 180)
+    return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
+  }
+  const turn = ([x, y]) => [x * cos + y * sin, -x * sin + y * cos]
+  const pts = scene.frame.map((p) => turn(merc(p)))
+  const xs = pts.map((p) => p[0])
+  const ys = pts.map((p) => p[1])
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+  const { clientWidth: W, clientHeight: H } = m.getContainer()
+  const room = Math.min((W - padding.left - padding.right) / (x1 - x0 || 1e-9), (H - padding.top - padding.bottom) / (y1 - y0 || 1e-9))
+  const zoom = Math.min(scene.maxZoom ?? 22, Math.log2(room / 512))
+  const scale = 512 * 2 ** zoom
+  // The map's centre sits off the box's centre by half the padding difference.
+  const sx = (x0 + x1) / 2 - (padding.left - padding.right) / 2 / scale
+  const sy = (y0 + y1) / 2 - (padding.top - padding.bottom) / 2 / scale
+  const [x, y] = [sx * cos - sy * sin, sx * sin + sy * cos]
+  const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI
+  return { center: [x * 360 - 180, lat], zoom, pitch: 0, bearing }
+}
+const WITH_PHONE = new Set(['live', 'presentation'])
+// The films drawn as a story (their own layers on a quiet map), not the tour.
+const STORIES = new Set(['story', 'live', 'presentation'])
+// A paired real phone plays the presentation's phone: the film uses the whole width.
+const paddingFor = (kind) =>
+  WITH_PHONE.has(kind) && !(kind === 'presentation' && isPaired()) ? LIVE_PADDING : STORY_PADDING
+
+// The bird's-eye camera at sim time t: straight above the van and the
+// anchors (her door, the hospital) together, as close as `zoom` allows, so it
+// pulls back as the van wanders off. A margin keeps them off the edges.
+const ABOVE_MARGIN = 110
+function birdsEyeCamera(m, { van, zoom, bearing, anchors = [] }, t, padding) {
+  const st = vanState(van, t)
+  if (!st) return null
+  const room = Object.fromEntries(Object.entries(padding).map(([k, v]) => [k, v + ABOVE_MARGIN]))
+  return frameCamera(m, { frame: [...anchors, st.pos], bearing, maxZoom: zoom }, room)
 }
 
 // Where each of a film's shots points the camera, in order: for prefetching.
-function shotCameras(m, fleet, scenes) {
+function shotCameras(m, fleet, scenes, padding) {
   return scenes.flatMap((sc) => {
-    if (sc.frame) return [frameCamera(m, sc)]
+    if (sc.frame) return [frameCamera(m, sc, padding)]
     if (sc.pan) return [sc.pan.from, mixCamera(sc.pan.from, sc.pan.to, 0.5), sc.pan.to]
+    if (sc.birdsEye) {
+      return [0, 0.25, 0.5, 0.75, 1]
+        .map((k) => birdsEyeCamera(m, sc.birdsEye, lerp(sc.t[0], sc.t[1], k), padding))
+        .filter(Boolean)
+    }
     if (sc.follow != null) {
       const van = fleet.vansById[sc.follow]
       return [0, 0.5, 1]
@@ -92,12 +149,33 @@ export default function App() {
     refresh()
   }, [refresh])
   const maria = useMemo(() => fleet && mariaTrip(fleet), [fleet])
+  // The presentation ride and its timeline, from the server or the bundled snapshot.
+  const [pres, setPres] = useState(null)
+  useEffect(() => {
+    const load = () =>
+      loadPresentation()
+        .then(setPres)
+        .catch(() => {}) // no presentation, the other films still play
+    load()
+    // Set up anew (a key, a paired phone): the server's ride, or the snapshot.
+    window.addEventListener('leeway-setup', load)
+    return () => window.removeEventListener('leeway-setup', load)
+  }, [])
+  const presentation = useMemo(() => fleet && pres && presentationScenes(fleet, pres), [fleet, pres])
   const films = useMemo(
-    () => fleet && maria && { film: filmScenes(fleet, maria), story: storyScenes(fleet, maria) },
-    [fleet, maria],
+    () =>
+      fleet &&
+      maria && {
+        film: filmScenes(fleet, maria),
+        story: storyScenes(fleet, maria),
+        live: liveScenes(fleet),
+        ...(presentation && { presentation }),
+      },
+    [fleet, maria, presentation],
   )
   // The key handler is bound once, so it reads the latest of these.
   const latest = useRef({})
+  const getT = useCallback(() => sim.current.t, [])
 
   useEffect(() => {
     loadFleet()
@@ -209,26 +287,39 @@ export default function App() {
       if (at?.scene.reveal) return firstLate(revealCount(at.p, lateStops.length))
       return at?.scene.showLate ? firstLate(lateStops.length) : undefined
     }
+    let posted = 0
     const frame = (now) => {
       const s = sim.current
       const dt = Math.min(0.1, (now - prev) / 1000)
       prev = now
       const at = s.film && films ? direct(s, dt, films[s.film.kind]) : null
+      // The presentation drives the server's ride (and the real phone) with its clock.
+      if (at && s.film.kind === 'presentation' && now - posted >= CLOCK_MS) {
+        posted = now
+        presentationSync.post(s.t)
+      }
       if (s.playing && !s.film) {
         s.t += (dt * s.speed) / 60
         if (s.t > fleet.meta.end) s.t = fleet.meta.start
       }
-      if (at?.story) {
-        let layers = buildStoryLayers({
-          fleet,
-          maria,
-          scenes: films.story,
-          scene: at.scene,
-          since: s.film.elapsed - at.start,
-          elapsed: s.film.elapsed,
-          t: s.t,
-          pulse: now / 1000,
-        })
+      if (at?.drawn) {
+        const since = s.film.elapsed - at.start
+        const shot = { scene: at.scene, since, elapsed: s.film.elapsed, t: s.t, pulse: now / 1000, zoom: map.current.getZoom() }
+        let layers =
+          s.film.kind === 'presentation'
+            ? buildPresentationLayers({ pres: films.presentation.pres, ...shot })
+            : s.film.kind === 'live'
+            ? buildLiveLayers({ live: films.live.live, ...shot })
+            : buildStoryLayers({
+                fleet,
+                maria,
+                scenes: films.story,
+                scene: at.scene,
+                since,
+                elapsed: s.film.elapsed,
+                t: s.t,
+                pulse: now / 1000,
+              })
         if (at.scene.fleet) {
           // The whole fleet fades in as Maria's drawing fades out.
           const k = Math.min(1, (s.film.elapsed - at.start) / 1.8)
@@ -246,18 +337,19 @@ export default function App() {
           if (st) states.push(st)
         }
         const mariaWaiting = maria && s.t >= maria.windowStart - 30 && s.t < maria.pickup.t ? mariaSpot : null
-        overlay.current.setProps({
-          layers: buildLayers({
-            fleet,
-            t: s.t,
-            states,
-            selectedId: s.selected,
-            mariaWaiting,
-            lateMarks: marksFor(at),
-            pulse: now / 1000,
-            onPick: select,
-          }),
+        const city = buildLayers({
+          fleet,
+          t: s.t,
+          states,
+          selectedId: s.selected,
+          mariaWaiting,
+          lateMarks: marksFor(at),
+          pulse: now / 1000,
+          onPick: select,
         })
+        // Before a film: hidden copies of its kinds of layer, so the GPU
+        // compiles their shaders now rather than part way into a shot.
+        overlay.current.setProps({ layers: s.film ? city : [...city, ...warmLayers(HOME.center)] })
         s.turning = false
         if (at) shoot(s, at, states, dt)
         else {
@@ -274,23 +366,39 @@ export default function App() {
       const f = s.film
       if (f.done) return null
       if (!f.paused) f.elapsed = f.stepped ? Math.min(f.elapsed + dt, f.holdEnd ?? Infinity) : f.elapsed + dt
+      // A shot waiting on the real phone call holds until the call is over,
+      // unless the presenter steps on.
+      const current = scenes[f.index]
+      if (current?.waitForCall && !f.jumped && !liveCall.isOver()) {
+        f.elapsed = Math.min(f.elapsed, f.holdEnd ?? Infinity)
+      }
+      f.jumped = false
       const at = sceneAt(scenes, f.elapsed)
-      at.story = f.kind === 'story'
+      at.drawn = STORIES.has(f.kind)
       const newShot = at.index !== f.index
       if (newShot) {
         // A new shot starts from wherever the last one left the camera.
         const m = map.current
         const c = m.getCenter()
         f.snap = { center: [c.lng, c.lat], zoom: m.getZoom(), pitch: m.getPitch(), bearing: m.getBearing() }
+        // Following from above straight on from the shot before: no blend in,
+        // or the camera would lag the van while it caught up.
+        f.wasAbove = Boolean(scenes[f.index]?.birdsEye) && at.index === f.index + 1
         f.index = at.index
         s.selected = at.scene.follow ?? null
         s.camBearing = f.snap.bearing
         // The map shows what the latest scene to set it asked for, even when
         // the story starts part way through.
         const basemap = scenes.slice(0, at.index + 1).findLast((sc) => sc.basemap)?.basemap
-        if (basemap && basemap !== f.basemap) setBasemap(m, basemap, f.kind === 'story' ? 900 : undefined)
+        if (basemap && basemap !== f.basemap) setBasemap(m, basemap, f.kind === 'film' ? undefined : 900)
         f.basemap = basemap
-        if (at.scene.frame) f.to = frameCamera(m, at.scene)
+        if (at.scene.frame) f.to = frameCamera(m, at.scene, paddingFor(f.kind))
+        // The first shot of a film (or of a seek into one) starts on its frame.
+        f.cutIn = f.firstShot
+        f.firstShot = false
+        if (at.scene.startCall) liveCall.start(at.scene.startCall)
+        // The rider says yes on the phone (the film taps it); moving past that shot says it too.
+        if (at.scene.answerAsk) filmRider.answer()
         // In presenter mode the shot holds just before the next one begins.
         f.holdEnd = at.start + at.scene.dur - 0.001
         refresh() // the new caption, now rather than at the next HUD tick
@@ -310,14 +418,28 @@ export default function App() {
       const f = s.film
       const k = easeInOut(p)
       if (scene.frame) {
-        map.current.jumpTo(mixCamera(scene.jump ? f.to : f.snap, f.to, k))
+        map.current.jumpTo(mixCamera(scene.jump || f.cutIn ? f.to : f.snap, f.to, k))
+        return
+      }
+      if (scene.birdsEye) {
+        // Straight above the van, coming down onto it from the shot before.
+        const above = birdsEyeCamera(map.current, scene.birdsEye, s.t, paddingFor(f.kind))
+        if (!above) return
+        const b = f.wasAbove || f.cutIn ? 1 : easeInOut(Math.min(1, (f.elapsed - start) / scene.birdsEye.blend))
+        map.current.jumpTo(mixCamera(f.snap, above, b))
         return
       }
       if (scene.pan) {
         // A steady pan, which the camera eases onto from wherever it was.
         const pan = mixCamera(scene.pan.from, scene.pan.to, p)
         const onto = easeInOut(Math.min(1, (f.elapsed - start) / scene.pan.rise))
-        map.current.jumpTo(mixCamera(f.snap, pan, onto))
+        const camera = mixCamera(f.snap, pan, onto)
+        // Turn toward where the pan starts by the shorter way, then keep turning
+        // with it. (The shorter way to the moving pan can flip sides half way,
+        // which would swing the camera round.)
+        const turn = shortestTurn(f.snap.bearing, scene.pan.from.bearing) + (pan.bearing - scene.pan.from.bearing)
+        camera.bearing = f.snap.bearing + turn * onto
+        map.current.jumpTo(camera)
         return
       }
       if (scene.follow == null) {
@@ -382,15 +504,23 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fleet])
 
-  // ?film starts with the film, ?story with the story.
+  // ?film starts with the film, ?story with the story, and so on. Once: the
+  // films are made again when the presentation's data arrives.
+  const autoplayed = useRef(false)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (!films) return
+    if (!films || autoplayed.current) return
+    if (params.has('presentation') && !films.presentation) return
+    autoplayed.current = true
     // ?film=40 starts 40 seconds in, for rehearsing one shot; &present starts
     // in presenter mode.
     const stepped = params.has('present')
     if (params.has('film')) controls.playFilm(Number(params.get('film')) || 0, 'film', { stepped })
     else if (params.has('story')) controls.playFilm(Number(params.get('story')) || 0, 'story', { stepped })
+    else if (params.has('live')) controls.playFilm(Number(params.get('live')) || 0, 'live', { stepped })
+    else if (params.has('presentation')) {
+      controls.playFilm(Number(params.get('presentation')) || 0, 'presentation', { stepped })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [films])
 
@@ -423,16 +553,34 @@ export default function App() {
       const s = sim.current
       const m = map.current
       // Download every shot's tiles in order while the fonts load.
-      prefetchShots(shotCameras(m, fleet, films[kind]), {
+      prefetchShots(shotCameras(m, fleet, films[kind], paddingFor(kind)), {
         width: m.getContainer().clientWidth,
         height: m.getContainer().clientHeight,
         terrain: true,
       })
       await fontsReady()
       // The story starts on a blank page; the film on the full map.
-      if (kind === 'story') setBasemap(m, 'blank', 0)
-      else if (s.film?.kind === 'story') setBasemap(m, 'full', 0)
-      s.film = { kind, elapsed: from, index: -1, snap: null, to: null, paused: false, done: false, stepped, holdEnd: null }
+      if (STORIES.has(kind)) setBasemap(m, 'blank', 0)
+      else if (STORIES.has(s.film?.kind)) setBasemap(m, 'full', 0)
+      liveCall.reset()
+      // A fresh presentation trip on the server; the clock posts start once it's there.
+      // The film's side of the ride starts fresh too (its yes, if the phone doesn't say it).
+      if (kind === 'presentation') {
+        presentationSync.start(pres)
+        filmRider.reset(films.presentation.pres, from ? s.t : films.presentation.pres.windowStart)
+      }
+      s.film = {
+        kind,
+        elapsed: from,
+        index: -1,
+        snap: null,
+        to: null,
+        paused: false,
+        done: false,
+        stepped,
+        holdEnd: null,
+        firstShot: true,
+      }
       s.follow = false
       s.glide = null
       touch()
@@ -450,6 +598,7 @@ export default function App() {
       target = Math.max(0, Math.min(scenes.length - 1, target))
       f.elapsed = starts[target] + 0.001
       f.holdEnd = null // the new shot sets its own
+      f.jumped = true // and the presenter may step past a call still running
       f.stepped = true
       f.paused = false
       f.done = false
@@ -457,7 +606,8 @@ export default function App() {
     },
     exitFilm: () => {
       const s = sim.current
-      if (s.film?.kind === 'story') setBasemap(map.current, 'full', 900)
+      if (STORIES.has(s.film?.kind)) setBasemap(map.current, 'full', 900)
+      liveCall.reset()
       s.film = null
       s.selected = null
       s.playing = false
@@ -477,6 +627,7 @@ export default function App() {
       touch()
     },
     select: (id) => select(id),
+    hasPresentation: Boolean(films?.presentation),
     follow: () => {
       startFollow()
       touch()
@@ -521,6 +672,24 @@ export default function App() {
           view={view}
           onExit={controls.exitFilm}
           onReplay={() => controls.playFilm()}
+        />
+      )}
+      {view.film?.kind === 'live' && (
+        <LiveOverlay
+          scenes={films.live}
+          view={view}
+          getT={getT}
+          onExit={controls.exitFilm}
+          onReplay={() => controls.playFilm(0, 'live')}
+        />
+      )}
+      {view.film?.kind === 'presentation' && (
+        <PresentationOverlay
+          scenes={films.presentation}
+          view={view}
+          getT={getT}
+          onExit={controls.exitFilm}
+          onReplay={() => controls.playFilm(0, 'presentation')}
         />
       )}
       {view.film?.kind === 'story' && (

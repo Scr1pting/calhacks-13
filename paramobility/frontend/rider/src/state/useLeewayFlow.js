@@ -3,7 +3,7 @@ import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
 import { DEMO_CLINIC_PHONE, RIDER, calendarEntries } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
-import { TIME_ZONE, addMinutes, clock, clockShort, isToday, oddsColor, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
+import { TIME_ZONE, addMinutes, chance, clock, clockShort, isToday, oddsColor, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
 import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 
 // The rider app's logic, backed by the Paramobility API. Screens stay
@@ -115,6 +115,9 @@ export function useLeewayFlow() {
   const [now, setNow] = useState(Date.now())
   const tripsRef = useRef(trips)
   tripsRef.current = trips
+  // Set when the first load lands on its home screen, so a presentation ride
+  // that streamed in meanwhile takes over again (see below).
+  const landedRef = useRef(false)
 
   // `preview` defaults to cleared on every navigation, so a demo-panel
   // preview can't leak into a real call/outcome/decision screen reached
@@ -165,13 +168,14 @@ export function useLeewayFlow() {
         const waiting = list.filter((t) => WAITING.includes(t.status)).map((t) => t.id)
         if (waiting.length) {
           go('recommend', { queue: waiting, qi: 0 })
-        } else if (list.length === 0 && appts.length) {
+        } else if (list.length === 0 && appts.length && !saved.paired) {
           // A brand new rider: book the first appointment automatically, so
           // Chat as home opens already showing it instead of the bare
           // "nothing booked yet" state — stays on the loading screen meanwhile.
           await autoBookFirst(appts[0])
           if (!cancelled) go('chatHome')
         } else {
+          landedRef.current = true
           go('chatHome')
         }
       } catch (e) {
@@ -183,6 +187,21 @@ export function useLeewayFlow() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riderId]) // later changes arrive through the streams below
+
+  // Whether this backend has approved the saved number: approvals live on the
+  // server, so a number approved elsewhere (say, a local dev backend) isn't.
+  const [callApproval, setCallApproval] = useState(null) // null: checking
+  useEffect(() => {
+    if (!callPhone) return setCallApproval(null)
+    let live = true
+    api
+      .checkCallNumber(callPhone)
+      .then((st) => live && setCallApproval(st))
+      .catch(() => live && setCallApproval(null))
+    return () => {
+      live = false
+    }
+  }, [callPhone])
 
   // A new number to call: save the profile and calendar again; it applies to
   // rides planned from now on.
@@ -249,8 +268,9 @@ export function useLeewayFlow() {
   }, [])
 
   // Trips appear here when the app creates them, or when Leeway schedules one in chat.
+  // The presentation ride's trip (Trip.demo) comes again each time it changes.
   const onTrip = useCallback((trip) => {
-    setTrips((prev) => (prev[trip.id] ? prev : { ...prev, [trip.id]: trip }))
+    setTrips((prev) => (prev[trip.id] && !trip.demo ? prev : { ...prev, [trip.id]: trip }))
     setEvents((prev) => (prev[trip.id] ? prev : { ...prev, [trip.id]: [] }))
   }, [])
 
@@ -366,6 +386,17 @@ export function useLeewayFlow() {
     }
   }
 
+  // Yes (call) or no to Leeway's question; a yes places the late-notice call, whose
+  // call_started event then brings up the call screen.
+  async function answerLateAsk(trip, call) {
+    try {
+      await api.answerLateAsk(trip.id, call)
+      await refreshTrip(trip.id)
+    } catch (e) {
+      fail(e)
+    }
+  }
+
   async function send(text) {
     if (!text.trim() || s.sending) return
     setS((prev) => ({ ...prev, draft: '', sending: true }))
@@ -448,8 +479,28 @@ export function useLeewayFlow() {
   const unplanned = calendar.filter(
     (a) => a.start > Date.now() && !linked.some((t) => t.calendar_event_id === a.id),
   )
-  const current = booked[0] || linked.filter((t) => t.status !== 'completed').sort(byTime)[0]
+  const current = booked.find((t) => t.demo) || booked[0] || linked.filter((t) => t.status !== 'completed').sort(byTime)[0]
   const tripEvents = (t) => (t ? events[t.id] || [] : [])
+
+  // The presentation ride (Trip.demo, moved along by the dashboard) follows itself on
+  // screen: the day's ride while she waits, the live trip once she's aboard and when she
+  // arrives, Leeway's question when it asks. A call or its outcome stays until it's done.
+  const presentationTrip = linked.filter((t) => t.demo).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+  const asking = !!presentationTrip?.late_ask && !presentationTrip.late_ask.answer
+  const demoKey = presentationTrip ? `${presentationTrip.id}|${presentationTrip.status}|${asking}` : ''
+  const demoKeyRef = useRef('')
+  useEffect(() => {
+    if (!demoKey || (demoKey === demoKeyRef.current && !landedRef.current)) return
+    demoKeyRef.current = demoKey
+    landedRef.current = false
+    const t = presentationTrip
+    setS((prev) => {
+      if (asking) return { ...prev, preview: null, screen: 'decision', decision: { tripId: t.id, choice: 'call', ask: true } }
+      if (prev.screen === 'call' || prev.screen === 'outcome') return prev
+      return { ...prev, preview: null, screen: t.status === 'booked' ? 'home' : 'ride' }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoKey, s.screen])
 
   const pickupWindow = (t) => {
     const start = t.booked_pickup || t.plan?.recommended.pickup_time
@@ -530,7 +581,7 @@ export function useLeewayFlow() {
         windowValue: windowText(w),
         dayLine: `${isToday(w.start) ? 'Today' : weekday(w.start)}. Be ready at ${clockShort(w.start)}.`,
         oddsLabel: `Chance of arriving by ${arrive}`,
-        oddsValue: percent(recTrip.plan.recommended.p_on_time),
+        oddsValue: chance(recTrip.plan.recommended.p_on_time),
         oddsColor: oddsColor(recTrip.plan.recommended.p_on_time),
         explanation: recTrip.plan.explanation,
         onConfirm: () => {
@@ -742,7 +793,7 @@ export function useLeewayFlow() {
           ? `Your ride to ${titleOf(current).toLowerCase()} picks you up between ${clockShort(w.start)} and ${clockShort(w.end)}.`
           : `Be ready downstairs at ${clockShort(w.start)}. EBP confirmed your pickup window.`,
       oddsEyebrow: `Chance of arriving by ${clock(current.arrive_by)}`,
-      oddsValue: odds(current) != null ? percent(odds(current)) : '–',
+      oddsValue: odds(current) != null ? chance(odds(current)) : '–',
       oddsColor: oddsColor(odds(current)),
       pickupWindow: windowText(w),
       locationName: appt,
@@ -778,44 +829,70 @@ export function useLeewayFlow() {
       rowLabel: 'Distance to Kaiser Oakland',
       rowValue: `${milesBetween(routeAt(0.4), DESTINATION).toFixed(1)} mi`,
     }
-  } else if (current?.status === 'riding') {
-    const pickedUpAt = current.live.picked_up_at ? new Date(current.live.picked_up_at).getTime() : null
-    const expectedArrival = current.outlook?.expected_arrival
-      ? new Date(current.outlook.expected_arrival).getTime()
+  } else if (current?.status === 'riding' || (s.screen === 'ride' && presentationTrip?.status === 'completed')) {
+    // The trip on its way, or the presentation ride just arrived.
+    const trip = current?.status === 'riding' ? current : presentationTrip
+    const arrived = trip.status === 'completed'
+    const pickedUpAt = trip.live.picked_up_at ? new Date(trip.live.picked_up_at).getTime() : null
+    const expectedArrival = trip.outlook?.expected_arrival
+      ? new Date(trip.outlook.expected_arrival).getTime()
       : null
+    // The ride's real progress when the phone tracks it; otherwise time since pickup.
     const progress =
-      pickedUpAt && expectedArrival && expectedArrival > pickedUpAt
+      trip.live.progress ??
+      (pickedUpAt && expectedArrival && expectedArrival > pickedUpAt
         ? Math.max(0, Math.min(1, (now - pickedUpAt) / (expectedArrival - pickedUpAt)))
-        : 0
-    const pOnTime = current.outlook?.p_on_time
-    const minutesLate = current.outlook?.minutes_late ?? 0
-    const prevOdds = prevOddsRef.current[current.id]
+        : 0)
+    const pOnTime = trip.outlook?.p_on_time
+    const minutesLate = trip.outlook?.minutes_late ?? 0
+    const prevOdds = prevOddsRef.current[trip.id]
     const delta =
       prevOdds == null || pOnTime == null || prevOdds === pOnTime
         ? 'Live'
         : pOnTime > prevOdds
-          ? `Up from ${percent(prevOdds)}`
-          : `Down from ${percent(prevOdds)}`
-    const appt = current.appointment.name
-    const riderPos = routeAt(progress)
+          ? `Up from ${chance(prevOdds)}`
+          : `Down from ${chance(prevOdds)}`
+    const appt = trip.appointment.name
+    // Where the ride really is, when the phone tracks it; otherwise the sample route.
+    const tracked = trip.live.origin && trip.live.destination
+    const destination = tracked ? trip.live.destination : DESTINATION
+    const riderPos = tracked ? trip.live.position || trip.live.origin : routeAt(progress)
+    // Only when the call reached someone (a call can be skipped, blocked or go to nobody).
+    const notice = lastOf(tripEvents(trip), 'call_ended', 'late_notice')?.data.result
+    const told =
+      trip.late_notice && notice?.reached_someone
+        ? ` ${firstWord(appt)} knew you’d be about ${trip.late_notice.minutes_late} minutes late.`
+        : ''
+    // Once she's there it's no longer a chance: say how it went.
+    const lateBy = arrived && trip.live.arrived_at
+      ? Math.max(0, Math.round((new Date(trip.live.arrived_at) - new Date(trip.arrive_by)) / 60000))
+      : 0
     ride = {
-      headlineLead: 'You’re on your way.',
-      headlineGray: current.live.picked_up_at
-        ? `Picked up at ${clock(current.live.picked_up_at)}. I’m watching this trip and will update your chance of arriving on time.`
-        : 'I’m watching this trip and will update your chance of arriving on time.',
+      headlineLead: arrived ? 'You’ve arrived.' : 'You’re on your way.',
+      headlineGray: arrived
+        ? `You got to ${appt} at ${clock(trip.live.arrived_at || trip.outlook?.expected_arrival)}.${told}`
+        : trip.live.picked_up_at
+          ? `Picked up at ${clock(trip.live.picked_up_at)}. I’m watching this trip and will update your chance of arriving on time.`
+          : 'I’m watching this trip and will update your chance of arriving on time.',
       mapLabel: `Map of your ride to ${appt}`,
       progress,
-      heavyTraffic: minutesLate >= 10,
-      label: `Chance of arriving by ${clock(current.arrive_by)}`,
-      big: pOnTime != null ? percent(pOnTime) : '–',
-      color: oddsColor(pOnTime),
-      delta,
-      reason:
-        minutesLate > 0
+      route: tracked ? [trip.live.origin, trip.live.destination] : undefined,
+      destination: tracked ? destination : undefined,
+      position: tracked ? riderPos : undefined,
+      heavyTraffic: !arrived && minutesLate >= 10,
+      label: arrived ? `Appointment at ${clock(trip.arrive_by)}` : `Chance of arriving by ${clock(trip.arrive_by)}`,
+      big: arrived ? (lateBy ? `${lateBy} min late` : 'On time') : pOnTime != null ? chance(pOnTime) : '–',
+      color: arrived ? oddsColor(lateBy ? 0 : 1) : oddsColor(pOnTime),
+      delta: arrived ? '' : delta,
+      reason: arrived
+        ? `Arrived at ${clock(trip.live.arrived_at || trip.outlook?.expected_arrival)}.`
+        : minutesLate > 0
           ? `Running about ${minutesLate} minute${minutesLate === 1 ? '' : 's'} behind right now.`
-          : 'On track to arrive on time.',
+          : pOnTime != null && pOnTime < 0.5
+            ? 'More likely late than on time right now.'
+            : 'On track to arrive on time.',
       rowLabel: `Distance to ${appt}`,
-      rowValue: `${milesBetween(riderPos, DESTINATION).toFixed(1)} mi`,
+      rowValue: `${(arrived ? 0 : milesBetween(riderPos, destination)).toFixed(1)} mi`,
     }
   }
 
@@ -855,7 +932,7 @@ export function useLeewayFlow() {
                   day: weekday(booked[0].arrive_by),
                   location: booked[0].appointment.name,
                   date: shortDate(booked[0].arrive_by).toUpperCase(),
-                  oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+                  oddsValue: odds(booked[0]) != null ? chance(odds(booked[0])) : '–',
                   oddsColor: oddsColor(odds(booked[0])),
                   arriveByTime: clock(booked[0].arrive_by),
                   pickupWindow: windowText(pickupWindow(booked[0])),
@@ -864,7 +941,7 @@ export function useLeewayFlow() {
             alsoBooked: booked.slice(1).map((t) => ({
               title: titleOf(t),
               date: `${shortDate(t.arrive_by)} · ${clock(t.arrive_by)}`,
-              oddsText: odds(t) != null ? percent(odds(t)) : '–',
+              oddsText: odds(t) != null ? chance(odds(t)) : '–',
               oddsColor: oddsColor(odds(t)),
             })),
             upcoming: inNextWeek.map((a) => {
@@ -992,7 +1069,7 @@ export function useLeewayFlow() {
       showTranscript: s.showTranscript,
       onToggleTranscript: () => setS((prev) => ({ ...prev, showTranscript: !prev.showTranscript })),
       oddsLabel: `Chance of arriving by ${clock(outTrip.arrive_by)}`,
-      oddsValue: odds(outTrip) != null ? percent(odds(outTrip)) : '–',
+      oddsValue: odds(outTrip) != null ? chance(odds(outTrip)) : '–',
       oddsColor: oddsColor(odds(outTrip)),
       showLocation: true,
       locationName: appt,
@@ -1074,6 +1151,40 @@ export function useLeewayFlow() {
       })),
       approveLabel: chosen.label,
       onApprove: () => go('home', { preview: null }),
+    }
+  } else if (s.screen === 'decision' && decTrip && s.decision.ask) {
+    // Leeway asks before it calls anyone (Trip.late_ask): tell the appointment she's late?
+    const appt = decTrip.appointment.name
+    const minutes = decTrip.late_ask?.minutes_late ?? decTrip.outlook?.minutes_late ?? 5
+    const options = [
+      {
+        key: 'call',
+        title: `Tell ${firstWord(appt)} you’re running late`,
+        tag: 'Recommended',
+        sub: `I’ll call and say you’ll be about ${minutes} minutes late, so they can plan for you.`,
+        label: `Call ${firstWord(appt)}`,
+        approve: () => answerLateAsk(decTrip, true),
+      },
+      {
+        key: 'no',
+        title: 'Not now',
+        tag: '',
+        sub: 'I’ll keep watching the ride.',
+        label: 'Not now',
+        approve: () => answerLateAsk(decTrip, false),
+      },
+    ]
+    const chosen = options.find((o) => o.key === s.decision.choice) || options[0]
+    decision = {
+      headlineLead: `You may be about ${minutes} minutes late.`,
+      headlineGray: `The ride is taking longer than planned. Should I call ${appt} and let them know?`,
+      options: options.map((o) => ({
+        ...o,
+        selected: o.key === chosen.key,
+        onSelect: () => setS((prev) => ({ ...prev, decision: { ...prev.decision, choice: o.key } })),
+      })),
+      approveLabel: chosen.label,
+      onApprove: chosen.approve,
     }
   } else if (s.screen === 'decision' && decTrip) {
     const lastCall = lastOf(tripEvents(decTrip), 'call_ended', 'late_notice')
@@ -1205,7 +1316,7 @@ export function useLeewayFlow() {
                 window: windowText(pickupWindow(booked[0])),
                 title: `${titleOf(booked[0])}, ${booked[0].appointment.name}`,
                 time: clock(booked[0].arrive_by),
-                oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+                oddsValue: odds(booked[0]) != null ? chance(odds(booked[0])) : '–',
                 oddsColor: oddsColor(odds(booked[0])),
                 onClick: () => go('home'),
               }
@@ -1324,11 +1435,14 @@ export function useLeewayFlow() {
     // line, approved by PIN, not called too often) before any call is placed.
     calls: {
       phone: callPhone,
+      approved: callApproval?.approved ?? null,
+      reason: callApproval?.reason ?? '',
       async set(phone, pin) {
         let status = await api.checkCallNumber(phone)
         if (!status.approved && status.phone.startsWith('+')) status = await api.addCallNumber(phone, pin)
         if (!status.approved) throw new Error(status.reason)
         updateSaved((prev) => ({ ...prev, callPhone: status.phone }))
+        setCallApproval(status)
         return status.phone
       },
       clear: () => updateSaved((prev) => ({ ...prev, callPhone: '' })),

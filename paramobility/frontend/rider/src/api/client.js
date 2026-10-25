@@ -2,10 +2,13 @@
 //
 // Configure with Vite env vars (see .env.example):
 //   VITE_API_BASE  backend URL, defaults to the deployed server
-//   VITE_API_KEY   shared key the backend expects as X-API-Key
+//   VITE_API_KEY   shared key the backend expects as X-API-Key; a phone paired with
+//                  the dashboard's presentation was given it instead (lib/pairing.js)
+
+import { pairedKey } from '../lib/pairing.js'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE || 'https://api.cal.fuzz.li').replace(/\/$/, '')
-const API_KEY = import.meta.env.VITE_API_KEY || ''
+const API_KEY = (import.meta.env.VITE_API_KEY || '').trim() || pairedKey()
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -46,6 +49,8 @@ export const api = {
   replan: (id, certainty) => request('POST', `/trips/${id}/plan`, certainty ? { certainty } : {}),
   book: (id, pickupTime) => request('POST', `/trips/${id}/book`, { pickup_time: pickupTime }),
   status: (id, kind, at) => request('POST', `/trips/${id}/status`, at ? { kind, at } : { kind }),
+  // Leeway asked whether to tell the appointment the rider is running late (Trip.late_ask).
+  answerLateAsk: (id, call) => request('POST', `/trips/${id}/late-ask`, { call }),
 
   // The rider: profile and calendar, all their trips, and their conversation with Leeway.
   putRider: (id, profile) => request('PUT', `/riders/${id}`, profile),
