@@ -753,7 +753,8 @@ export function useLeewayFlow() {
     callsEnabled: !!DEMO_CLINIC_PHONE,
     simulate: [
       simulate('Van is 40 min late', (t) => api.status(t.id, 'van_eta', toLocalISO(addMinutes(t.booked_pickup, 40)))),
-      simulate('Picked up on time', (t) => api.status(t.id, 'picked_up', toLocalISO(t.booked_pickup))),
+      // mid-window, where the plan assumes boarding (backend plan.BOARD_AFTER_START)
+      simulate('Picked up on time', (t) => api.status(t.id, 'picked_up', toLocalISO(addMinutes(t.booked_pickup, 15)))),
       simulate('Picked up 45 min late', (t) => api.status(t.id, 'picked_up', toLocalISO(addMinutes(t.booked_pickup, 45)))),
       simulate('Arrived', (t) => api.status(t.id, 'arrived')),
       { label: 'Start over', disabled: false, onClick: restart },

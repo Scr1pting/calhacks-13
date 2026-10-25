@@ -31,4 +31,5 @@ export function toLocalISO(v) {
   )
 }
 
-export const percent = (p) => `${Math.round(p * 100)}%`
+// Odds from the model, kept within 1-99%: a forecast is never certain.
+export const percent = (p) => `${Math.min(Math.max(Math.round(p * 100), 1), 99)}%`
