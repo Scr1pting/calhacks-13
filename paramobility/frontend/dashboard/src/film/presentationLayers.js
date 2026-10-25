@@ -97,15 +97,25 @@ export function buildPresentationLayers({ pres, scene, since, elapsed, t, pulse 
   // The van, once it comes into the picture: ink on its way to her, purple with her aboard.
   const vanShown = vanNow && stage >= S.wait ? inPlay(S.wait) : 0
 
-  // The van's other stops: each pops in when the van gets there (its burst
-  // fires), says what it is for a moment, then stays as a faint mark.
+  // The van's other stops: once the van heads off (the detour), where it's going
+  // shows with its label, so the detour has a reason; a ring when the van gets
+  // there, the label a moment more, then a faint mark.
+  const heading = stage >= S.detour && stage <= S.arrive
   const stopFired = p.stops.map((_, i) => [...fired].find(([b]) => b.stop === i)?.[1])
-  const stopScale = p.stops.map((s, i) => (stopFired[i] == null ? 1 : Math.max(0.01, pop(pulse - stopFired[i]))))
-  const stopShown = p.stops.map((s, i) => (aboard && t >= s.t && stage <= S.arrive ? (stopFired[i] == null ? 0.45 : 1) : 0))
+  const stopScale = p.stops.map((s, i) =>
+    stopFired[i] != null ? Math.max(0.01, pop(pulse - stopFired[i])) : stage === S.detour ? Math.max(0.01, pop(since - 0.4)) : 1,
+  )
+  const stopShown = p.stops.map((s, i) => {
+    if (!aboard || !heading) return 0
+    if (t < s.t) return stage === S.detour ? clamp01(pop(since - 0.4) * 3) : 1
+    return stopFired[i] == null ? 0.45 : 1
+  })
   const stopLabel = p.stops.map((s, i) => {
-    if (!stopShown[i] || stopFired[i] == null) return 0
+    if (!stopShown[i]) return 0
+    if (t < s.t) return stopShown[i] // on the way there
+    if (stopFired[i] == null) return 0
     const age = pulse - stopFired[i]
-    return clamp01(pop(age - 0.15) * 3) * (1 - clamp01((age - STOP_LABEL_S[0]) / (STOP_LABEL_S[1] - STOP_LABEL_S[0])))
+    return 1 - clamp01((age - STOP_LABEL_S[0]) / (STOP_LABEL_S[1] - STOP_LABEL_S[0]))
   })
 
   const labels = [

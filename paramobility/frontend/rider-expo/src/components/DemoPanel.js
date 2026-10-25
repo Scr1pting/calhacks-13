@@ -30,6 +30,8 @@ export default function DemoPanel({ demo, onAction }) {
         <Text style={styles.desc}>It’s {demo.riderClock}.</Text>
       </View>
 
+      <Pairing pairing={demo.pairing} />
+
       <CallNumber calls={demo.calls} />
 
       <View style={styles.section}>
@@ -91,6 +93,61 @@ export default function DemoPanel({ demo, onAction }) {
             ))}
           </View>
         </View>
+      )}
+    </View>
+  )
+}
+
+// Pairing with the dashboard's presentation: the six-digit code from its
+// Presentation setup panel makes this phone the presentation's rider.
+function Pairing({ pairing }) {
+  const [code, setCode] = useState('')
+  const [state, setState] = useState({ busy: false, error: '' })
+  const ready = code.replace(/\D/g, '').length === 6
+
+  async function submit() {
+    setState({ busy: true, error: '' })
+    try {
+      await pairing.onPair(code)
+      setCode('')
+      setState({ busy: false, error: '' })
+    } catch (err) {
+      setState({ busy: false, error: err.message })
+    }
+  }
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.heading}>PRESENTATION</Text>
+      <Text style={styles.desc}>
+        {pairing.paired
+          ? 'This phone plays Denise’s phone in the dashboard’s presentation.'
+          : 'Enter the code from the dashboard’s Presentation setup, and this phone plays Denise’s phone in the presentation.'}
+      </Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="number-pad"
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        accessibilityLabel="Pairing code"
+        placeholder="123 456"
+        placeholderTextColor={colors.textSecondary}
+        maxLength={7}
+        value={code}
+        onChangeText={setCode}
+      />
+      <Pressable
+        accessibilityRole="button"
+        style={[styles.simButton, (state.busy || !ready) && styles.disabled]}
+        disabled={state.busy || !ready}
+        onPress={submit}
+      >
+        <Text style={styles.simLabel}>{state.busy ? 'Pairing…' : pairing.paired ? 'Pair again' : 'Pair'}</Text>
+      </Pressable>
+      {!!state.error && (
+        <Text style={[styles.desc, styles.warn]} accessibilityRole="alert">
+          {state.error}
+        </Text>
       )}
     </View>
   )

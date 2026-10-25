@@ -30,6 +30,8 @@ export default function PresentationPhone({ pres, scene, since, t, ready }) {
   if (ready && (run.current.t === null || Math.abs(t - run.current.t) > SEEK_MIN)) {
     filmRider.reset(pres, t)
     run.current.key += 1
+    // Starting past the question (a presenter skipping ahead): she has said yes, and the call is on.
+    if (pres.ask && t > pres.ask.t + 0.1) filmRider.answer()
   }
   if (ready) run.current.t = t
   useEffect(() => {

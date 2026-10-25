@@ -27,10 +27,10 @@ def get_ride() -> dict:
 
 
 @router.get("/timeline")
-def get_timeline() -> list[dict]:
+def get_timeline(moved: float = 0) -> list[dict]:
     """The rider app's view at every point of the ride (t, chance, ETA and its range, when
     Leeway asks), worked out ahead so the dashboard can time its shots."""
-    return presentation.timeline()
+    return presentation.timeline(moved)
 
 
 @router.post("/start")

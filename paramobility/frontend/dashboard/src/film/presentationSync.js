@@ -12,7 +12,15 @@ import { config, liveCall } from './liveCall.js'
 
 const API = import.meta.env.VITE_API_BASE || 'https://api.cal.fuzz.li'
 
-const run = { online: false, tripId: null, pending: null, error: '' }
+// `trip`: the server's trip, followed once the rider said yes (a call can move the appointment).
+const run = { online: false, tripId: null, pending: null, error: '', following: false, trip: null }
+
+// Minutes after midnight in the rider's zone, for an ISO time.
+const ZONE = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', hour: 'numeric', minute: 'numeric' })
+const minutesOf = (iso) => {
+  const p = Object.fromEntries(ZONE.formatToParts(new Date(iso)).map((x) => [x.type, Number(x.value)]))
+  return p.hour * 60 + p.minute
+}
 let flight = null // the clock post on its way, if any
 
 async function api(method, path, body) {
@@ -63,14 +71,16 @@ export async function loadPresentation() {
   if (config().key) {
     try {
       const [info, timeline] = await Promise.all([api('GET', '/presentation'), api('GET', '/presentation/timeline')])
-      return { info, timeline, online: true }
+      // The chance once the clinic has moved the appointment (the story's reschedule).
+      const moved = info.reschedule_min ? await api('GET', `/presentation/timeline?moved=${info.reschedule_min}`) : null
+      return { info, timeline, timeline_moved: moved, online: true }
     } catch (e) {
       run.error = e.message
     }
   }
   const res = await fetch('/data/presentation.json')
-  const { info, timeline } = await res.json()
-  return { info, timeline, online: false }
+  const { info, timeline, timeline_moved: moved } = await res.json()
+  return { info, timeline, timeline_moved: moved, online: false }
 }
 
 // One clock post at a time; the next one carries the latest time.
@@ -82,6 +92,7 @@ function pump() {
   const t = run.pending
   run.pending = null
   flight = api('POST', '/presentation/clock', { t })
+    .then(() => (run.following ? api('GET', `/trips/${run.tripId}`).then((trip) => (run.trip = trip)) : null))
     .catch((e) => {
       run.error = e.message
     })
@@ -90,6 +101,14 @@ function pump() {
 
 export const presentationSync = {
   get: () => ({ ...run }),
+  // The new appointment, in minutes after midnight, once a call moved it; else null.
+  // From the server's trip, or, without one, from the call's result (the scripted call too).
+  movedTo(appointment) {
+    let m = run.trip ? minutesOf(run.trip.arrive_by) : null
+    const said = /^(\d{1,2}):(\d{2})$/.exec(liveCall.get().result?.new_time || '')
+    if (m == null && said) m = Number(said[1]) * 60 + Number(said[2])
+    return m != null && Math.abs(m - appointment) >= 1 ? m : null
+  },
 
   // The trip the film drives: a fresh one (a whole call budget each run) for
   // the configured rider, or the one the phone started. Offline, none.
@@ -97,14 +116,18 @@ export const presentationSync = {
     run.online = online
     run.tripId = null
     run.pending = null
+    run.following = false
+    run.trip = null
     if (!online) return
     const { rider, phone } = config()
-    if (!rider && info.trip_id) {
-      run.tripId = info.trip_id
-      return
+    // Always a fresh trip that carries the clinic's number (a trip started without one may
+    // not call), for the paired phone's rider, else the rider of the trip the phone started.
+    let riderId = rider
+    if (!riderId && info.trip_id) {
+      riderId = await api('GET', `/trips/${info.trip_id}`).then((t) => t.rider_id, () => '')
     }
     try {
-      const trip = await api('POST', '/presentation/start', { rider_id: rider || 'rider_presentation', appointment_phone: phone })
+      const trip = await api('POST', '/presentation/start', { rider_id: riderId || 'rider_presentation', appointment_phone: phone })
       run.tripId = trip.id
     } catch (e) {
       run.error = e.message
@@ -127,6 +150,7 @@ export const presentationSync = {
       return
     }
     while (flight) await flight
+    run.following = true
     try {
       await api('POST', `/trips/${run.tripId}/late-ask`, { call: true })
     } catch (e) {

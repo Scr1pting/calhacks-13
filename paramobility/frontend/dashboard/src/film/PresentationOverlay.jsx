@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { clock } from '../sim/fleet.js'
 import { filmLength, sceneAt } from './script.js'
-import { sampleAt } from './presentation.js'
-import { isPaired } from './presentationSync.js'
+import { sampleAt, sampleMoved } from './presentation.js'
+import { isPaired, presentationSync } from './presentationSync.js'
 import { StoryEnd } from './StoryOverlay.jsx'
 import PresentationPhone from './PresentationPhone.jsx'
 
@@ -19,6 +19,15 @@ export default function PresentationOverlay({ scenes, view, getT, onExit, onRepl
   const progress = Math.min(1, elapsed / filmLength(scenes))
   // A paired real phone plays her phone: no phone on screen, the words use the width.
   const paired = isPaired()
+  // The clinic moved the appointment on the call: the words and the chart follow.
+  const movedTo = presentationSync.movedTo(pres.appointment)
+  const words = (text) => text.replace('{time}', hm(movedTo))
+  const late = movedTo != null && pres.arrival > movedTo
+  const title = movedTo != null && scene.ifMoved?.title ? words(scene.ifMoved.title) : scene.title
+  const line =
+    movedTo != null && scene.ifMoved
+      ? words((late && scene.ifMoved.lineIfLate) || scene.ifMoved.line || scene.line)
+      : scene.line
 
   return (
     <div className={`film story live ${paired ? 'no-phone' : ''}`}>
@@ -35,8 +44,8 @@ export default function PresentationOverlay({ scenes, view, getT, onExit, onRepl
           aria-live="polite"
         >
           {scene.eyebrow && <div className="film-eyebrow">{scene.eyebrow}</div>}
-          <h2 className="story-title">{scene.title}</h2>
-          {scene.line && <p className="story-line">{scene.line}</p>}
+          <h2 className="story-title">{title}</h2>
+          {line && <p className="story-line">{line}</p>}
           {scene.points && (
             <ol className="live-points">
               {scene.points.map((p, i) => (
@@ -68,10 +77,13 @@ export default function PresentationOverlay({ scenes, view, getT, onExit, onRepl
 const W = 560
 const H = 120
 const PAD = 16
-const TOP = 12
+const TOP = 26 // the strip above holds the labels, clear of the line
+const LABEL_Y = 16
 const BASE = H - 22
 
 function ChanceChart({ pres, getT }) {
+  // After the clinic moves the appointment: when, and the server's chance since, against the new time.
+  const after = useRef({ at: null, samples: [] })
   const line = useRef(null)
   const area = useRef(null)
   const dot = useRef(null)
@@ -89,8 +101,33 @@ function ChanceChart({ pres, getT }) {
     const points = pres.timeline.filter((q) => q.t >= from && q.t <= to)
     const draw = () => {
       const t = Math.min(to, Math.max(from, getT()))
-      const s = sampleAt(pres.timeline, t)
-      const pts = points.filter((q) => q.t < t).map((q) => `${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      const s = { ...sampleAt(pres.timeline, t) }
+      const movedTo = presentationSync.movedTo(pres.appointment)
+      const a = after.current
+      if (movedTo == null || (a.at != null && t < a.at)) {
+        a.at = null
+        a.samples = []
+      }
+      // After the move, the chance for the new time: from the timeline for the
+      // story's reschedule, else the server's trip, sampled as it comes.
+      const m = movedTo != null ? sampleMoved(pres, t, movedTo) : null
+      if (movedTo != null) {
+        const p = m ? m.p_on_time : presentationSync.get().trip?.outlook?.p_on_time
+        if (a.at == null) a.at = t
+        if (p != null) {
+          s.p_on_time = p
+          const last = a.samples[a.samples.length - 1]
+          if (!m && (!last || t - last[0] >= 0.25)) a.samples.push([t, p])
+        }
+        if (m) Object.assign(s, { eta_low: m.eta_low, eta_high: m.eta_high })
+        s.minutes_late = Math.max(0, Math.round(pres.arrival - movedTo))
+      }
+      const until = a.at ?? t
+      const pts = points.filter((q) => q.t < until).map((q) => `${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      if (m) {
+        for (const q of pres.timelineMoved) if (q.t >= until && q.t < t) pts.push(`${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      }
+      for (const [st, sp] of a.samples) pts.push(`${x(st).toFixed(1)},${y(sp).toFixed(1)}`)
       pts.push(`${x(t).toFixed(1)},${y(s.p_on_time).toFixed(1)}`)
       line.current?.setAttribute('points', pts.join(' '))
       area.current?.setAttribute('points', `${x(from)},${BASE} ${pts.join(' ')} ${x(t).toFixed(1)},${BASE}`)
@@ -128,34 +165,35 @@ function ChanceChart({ pres, getT }) {
       <div className="live-odds">
         <span ref={odds} className="live-odds-value" />
         <span className="live-odds-label">
-          on time for {pres.appointmentLabel}
-          <br />
           <span ref={eta} />
         </span>
       </div>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
         <rect x={x(pres.windowStart)} y={TOP} width={x(pres.windowEnd) - x(pres.windowStart)} height={BASE - TOP} className="pres-chart-window" />
-        <text x={x(pres.windowStart) + 5} y={BASE - 6} className="live-chart-tick">
+        <text x={x(pres.windowStart) + 4} y={LABEL_Y} className="live-chart-tick">
           pickup window
         </text>
         <polygon ref={area} className="pres-chart-area" />
-        <line x1={PAD} x2={W - PAD} y1={y(0.5)} y2={y(0.5)} className="pres-chart-half" />
-        <text x={PAD + 4} y={y(0.5) - 5} className="live-chart-tick">
+        {!pres.info.ask_late_min && <line x1={PAD} x2={W - PAD} y1={y(0.5)} y2={y(0.5)} className="pres-chart-half" />}
+        {!pres.info.ask_late_min && (
+          <text x={PAD + 4} y={y(0.5) - 5} className="live-chart-tick">
           50% · Leeway asks
         </text>
+        )}
         <polyline ref={line} className="live-chart-line" />
         <line x1={PAD} x2={W - PAD} y1={BASE} y2={BASE} className="live-chart-axis" />
         <g ref={pickup} opacity="0">
-          <line x1={x(pres.ride.pickup.t)} x2={x(pres.ride.pickup.t)} y1={TOP} y2={BASE} className="pres-chart-mark" />
-          <text x={x(pres.ride.pickup.t) + 5} y={TOP + 9} className="live-chart-tick">
+          <line x1={x(pres.ride.pickup.t)} x2={x(pres.ride.pickup.t)} y1={LABEL_Y + 4} y2={BASE} className="pres-chart-mark" />
+          <text x={x(pres.ride.pickup.t) + 4} y={LABEL_Y} className="live-chart-tick">
             picked up
           </text>
         </g>
         {pres.ask && (
           <g ref={asked} opacity="0">
             <circle cx={x(pres.ask.t)} cy={y(askP)} r="5" className="pres-chart-ask" />
-            <text x={x(pres.ask.t) + 8} y={y(askP) + 16} className="live-chart-appt-label">
-              asks {hm(pres.ask.t)}
+            <line x1={x(pres.ask.t)} x2={x(pres.ask.t)} y1={LABEL_Y + 4} y2={y(askP) - 6} className="pres-chart-mark" />
+            <text x={x(pres.ask.t) + 4} y={LABEL_Y} className="live-chart-appt-label">
+              asks {hm(pres.ask.t)}{pres.ask.ask_minutes ? ` · ~${pres.ask.ask_minutes} min late` : ''}
             </text>
           </g>
         )}

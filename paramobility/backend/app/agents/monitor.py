@@ -12,7 +12,8 @@ call_confirmed places the call once they say yes.
 import asyncio
 import json
 import logging
-from datetime import timedelta
+import re
+from datetime import datetime, timedelta
 
 from anthropic import beta_async_tool
 
@@ -164,9 +165,31 @@ async def call_confirmed(trip_id: str) -> None:
         log.exception("late-notice call failed for %s", trip_id)
         notify_rider(trip_id, f"Something went wrong calling {name}.")
         return
+    moved = moved_to(trip, outcome)
+    if moved:
+        from app.tools import trip_ops  # it imports this module
+
+        trip_ops.change_appointment_time(trip_id, moved)
     notice = LateNotice(sent_at=now(), minutes_late=a.minutes_late)
     store.update_trip(trip_id, lambda t: setattr(t, "late_notice", notice))
+    if moved and trip.demo == "presentation":
+        from app.demo import presentation  # the presentation ride's chance, against the new time
+
+        await asyncio.to_thread(presentation.resync, trip_id)
     notify_rider(trip_id, call_summary(trip_id, name, a.minutes_late, outcome))
+
+
+def moved_to(trip, outcome: dict | None) -> datetime | None:
+    """The new appointment time a late-notice call agreed, on the same day, if it's later."""
+    raw = ((outcome or {}).get("new_time") or "").strip()
+    match = re.fullmatch(r"(\d{1,2}):(\d{2})", raw)
+    if not match:
+        return None
+    hour, minute = int(match[1]), int(match[2])
+    if hour > 23 or minute > 59:
+        return None
+    new = trip.arrive_by.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return new if new > trip.arrive_by else None
 
 
 def call_summary(trip_id: str, name: str, minutes: int, outcome: dict | None) -> str:
@@ -179,6 +202,11 @@ def call_summary(trip_id: str, name: str, minutes: int, outcome: dict | None) ->
     if not outcome.get("reached_someone"):
         return f"I called {name} but couldn't reach anyone."
     told = f"I told {name} you'll be about {minutes} minutes late."
+    moved = re.fullmatch(r"(\d{1,2}):(\d{2})", (outcome.get("new_time") or "").strip())
+    if moved:
+        hour, minute = int(moved[1]), int(moved[2])
+        when = f"{hour % 12 or 12}:{minute:02d} {'AM' if hour < 12 else 'PM'}"
+        return f"{told} They moved your appointment to {when}."
     if outcome.get("appointment_held") is True:
         return f"{told} They'll hold your appointment."
     if outcome.get("appointment_held") is False:

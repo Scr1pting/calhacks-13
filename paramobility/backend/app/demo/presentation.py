@@ -39,7 +39,7 @@ from app.core.schemas import (
     now,
 )
 from app.core.store import get_store
-from app.prediction import live, routing
+from app.prediction import live, onboard, routing
 from app.prediction.plan import BOARD_AFTER_START
 
 log = logging.getLogger(__name__)
@@ -74,6 +74,11 @@ class Ride:
     track: list[list[float]]
     path: list[list[float]] = field(default_factory=list)
     stops_on_way: list[dict] = field(default_factory=list)
+    # Leeway asks once it expects the rider this many minutes late (instead of below
+    # ALERT_BELOW), so the question says how late; None: as for any trip.
+    ask_late_min: float | None = None
+    # The story's reschedule: the clinic moves the appointment this many minutes later.
+    reschedule_min: float | None = None
 
     @classmethod
     def load(cls, path: Path = RIDE_PATH) -> "Ride":
@@ -90,17 +95,19 @@ def planned_drive(ride: Ride) -> float:
     return routing.drive_minutes(ride.origin_pos, ride.dest_pos, depart)
 
 
-def register(ride: Ride, live_id: str, drive_min: float) -> live.LiveTrip:
+def register(ride: Ride, live_id: str, drive_min: float, appointment: float | None = None):
     """A fresh live trip for the ride (replacing any under live_id)."""
+    asks_late = ride.ask_late_min is not None
     return live.register(
         live.LiveTrip(
             live_id,
-            ride.appointment,
+            ride.appointment if appointment is None else appointment,
             ride.window_start,
             ride.dest_pos,
             drive_min,
             ride.origin_pos,
-            alert_below=ALERT_BELOW,
+            alert_below=0.0 if asks_late else ALERT_BELOW,
+            alert_late_min=ride.ask_late_min if asks_late else live.onboard.ALERT_LATE_MIN,
         )
     )
 
@@ -165,6 +172,8 @@ def info() -> dict:
         # for one from the simulated day, the film finds them in its fleet.json.
         "path": r.path,
         "stops_on_way": r.stops_on_way,
+        "ask_late_min": r.ask_late_min,
+        "reschedule_min": r.reschedule_min,
     }
 
 
@@ -226,6 +235,18 @@ def advance(t: float) -> dict:
         return _advance(run, t)
 
 
+def resync(trip_id: str) -> None:
+    """The trip changed outside the clock (a call moved the appointment): its chance and the
+    rider app follow now, not at the film's next post."""
+    with _lock:
+        try:
+            run = _current()
+        except LookupError:
+            return
+        if run.trip_id == trip_id and run.next > 0:
+            _advance(run, run.t)
+
+
 def current_trip_id() -> str | None:
     doc = get_store().get_json(CURRENT)
     return doc["trip_id"] if doc else None
@@ -254,13 +275,32 @@ def _reset(run: Run) -> None:
         t.live = LiveStatus()
         t.outlook = t.late_ask = t.late_notice = None
         t.calls_used = 0
+        t.arrive_by = at(run, ride().appointment)  # a call may have moved it
 
     get_store().update_trip(run.trip_id, change)
+
+
+def _follow_appointment(run: Run, now: float) -> None:
+    """The Trip's appointment moved (the clinic offered a new time on the call): the live model
+    measures against the new time from here on, and its chance is worked out again now."""
+    trip = get_store().get_trip(run.trip_id)
+    midnight = datetime.datetime.combine(run.date, datetime.time(), routing.TZ)
+    appointment = (trip.arrive_by.astimezone(routing.TZ) - midnight).total_seconds() / 60
+    trip_live = live.get(run.trip_id)
+    if abs(appointment - trip_live.appointment) < 0.01:
+        return
+    trip_live.appointment = appointment
+    state = trip_live.state
+    if state is not None:
+        state.appointment = appointment
+        if state.last_drive is not None:
+            onboard.update_display(state, onboard.onboard_status(state, now, state.last_drive))
 
 
 def _advance(run: Run, t: float) -> dict:
     r = ride()
     status = None
+    _follow_appointment(run, max(run.t, r.track[0][0]))
     with routing.replaying():
         while run.next < len(r.track) and r.track[run.next][0] <= t:
             status = step(r, run.trip_id, r.track[run.next])
@@ -325,23 +365,25 @@ def publish(trip: Trip) -> None:
 
 # ---- the whole ride, ahead of time ---------------------------------------------------------
 
-_timeline: tuple[float, list[dict]] | None = None  # (planned drive it was made with, points)
+# per minutes moved: (planned drive it was made with, points)
+_timelines: dict[float, tuple[float, list[dict]]] = {}
 
 
-def timeline() -> list[dict]:
+def timeline(moved: float = 0) -> list[dict]:
     """What the rider app will show at every point of the ride, worked out in memory.
 
     The dashboard's film times its shots from this (when the van comes, when Leeway asks) and
     draws the chance of arriving on time as it goes. It replays exactly what posting the clock
-    does, on a separate live trip, so it never touches the presentation trip.
+    does, on a separate live trip, so it never touches the presentation trip. With `moved`, for
+    the appointment that many minutes later (the chance once the clinic has moved it).
     """
-    global _timeline
     r = ride()
     with routing.replaying():
         drive_min = planned_drive(r)
-        if _timeline is not None and _timeline[0] == drive_min:
-            return _timeline[1]
-        register(r, "presentation-timeline", drive_min)
+        cached = _timelines.get(moved)
+        if cached is not None and cached[0] == drive_min:
+            return cached[1]
+        register(r, "presentation-timeline", drive_min, r.appointment + moved)
         points, asked = [], False
         for point in r.track:
             out = step(r, "presentation-timeline", point)
@@ -363,7 +405,7 @@ def timeline() -> list[dict]:
                 "ask_minutes": alert["minutes"] if alert and not asked else None,
             })
             asked = asked or bool(alert)
-    _timeline = (drive_min, points)
+    _timelines[moved] = (drive_min, points)
     return points
 
 

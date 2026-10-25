@@ -12,7 +12,7 @@
 import { vanState } from '../sim/fleet.js'
 import { riderTime, toLocalISO } from '../../../rider/src/lib/time.js'
 import { liveCall } from './liveCall.js'
-import { sampleAt } from './presentation.js'
+import { sampleAt, sampleMoved } from './presentation.js'
 import { presentationSync } from './presentationSync.js'
 
 export const API_BASE = 'presentation film'
@@ -26,6 +26,20 @@ const eventListeners = new Set()
 // Sim minutes as an ISO time today, in the rider's time zone.
 const iso = (minutes) => toLocalISO(new Date(riderTime(0, 0, 0).getTime() + minutes * 60000))
 const latLng = ([lng, lat]) => [lat, lng]
+
+// Once a call moved the appointment: the new time and the chance for it (from
+// the timeline for the story's reschedule, else the server's trip), else null.
+function moved() {
+  const pres = film.pres
+  const to = pres && presentationSync.movedTo(pres.appointment)
+  if (to == null) return null
+  const s = sampleMoved(pres, film.t, to)
+  const server = presentationSync.get().trip
+  const outlook = s
+    ? { checked_at: iso(film.t), p_on_time: s.p_on_time, expected_arrival: iso(s.eta), minutes_late: s.minutes_late }
+    : (server?.outlook ?? null)
+  return { arrive_by: iso(to), outlook }
+}
 
 // The trip as the server would have it at the film's clock.
 function trip() {
@@ -69,12 +83,20 @@ function trip() {
       ? { asked_at: iso(pres.ask.t), minutes_late: pres.ask.ask_minutes, message: pres.ask.ask, answer: film.answered ? 'call' : null }
       : null,
     late_notice: film.call.ended ? { sent_at: iso(t), minutes_late: pres.ask?.ask_minutes ?? 5 } : null,
+    // After a move the server's appointment and chance (the timeline was for the old time).
+    ...moved(),
   }
 }
 
 function emitTrip() {
   // Nobody listening yet (the app is loading): it catches up when it subscribes.
   if (!film.pres || !tripListeners.size) return
+  // A call moved the appointment: say so, as the server does.
+  const server = moved()
+  if (server && !film.movedSent) {
+    film.movedSent = true
+    emitEvent('appointment_moved', `Appointment moved to ${server.arrive_by}.`)
+  }
   const now = trip()
   const key = JSON.stringify({ ...now, outlook: { ...now.outlook, checked_at: 0 } })
   if (key === film.sent) return
@@ -110,9 +132,7 @@ liveCall.subscribe((c) => {
 export const filmRider = {
   // A fresh ride at the film's clock t (the film starts, or goes back in time).
   reset(pres, t) {
-    // Starting past the question (a presenter skipping ahead): she has said yes already.
-    const answered = !!pres.ask && t > pres.ask.t + 0.5
-    Object.assign(film, { pres, t, answered, events: [], sent: '', call: { started: false, lines: 0, ended: false } })
+    Object.assign(film, { pres, t, answered: false, events: [], sent: '', movedSent: false, call: { started: false, lines: 0, ended: false } })
   },
   // The film's clock moved: the server's trip moves with it.
   tick(t) {

@@ -2,10 +2,17 @@
 //
 // Configure with Expo public env vars (see .env.example):
 //   EXPO_PUBLIC_API_BASE  backend URL, defaults to the deployed server
-//   EXPO_PUBLIC_API_KEY   shared key the backend expects as X-API-Key
+//   EXPO_PUBLIC_API_KEY   shared key the backend expects as X-API-Key; a phone
+//                         paired with the dashboard's presentation was given
+//                         it instead (setApiKey, from the saved state)
 
 export const API_BASE = (process.env.EXPO_PUBLIC_API_BASE || 'https://api.cal.fuzz.li').replace(/\/$/, '')
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY || ''
+let pairedKey = ''
+// The key this phone was given when it was paired (useLeewayFlow loads it).
+export const setApiKey = (key) => {
+  pairedKey = key || ''
+}
+const apiKey = () => (process.env.EXPO_PUBLIC_API_KEY || '').trim() || pairedKey
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -28,7 +35,7 @@ async function send(method, path, { json, form, timeout = TIMEOUT_MS } = {}) {
     res = await fetch(API_BASE + path, {
       method,
       headers: {
-        'X-API-Key': API_KEY,
+        'X-API-Key': apiKey(),
         ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       body: json !== undefined ? JSON.stringify(json) : form,
@@ -50,6 +57,12 @@ async function send(method, path, { json, form, timeout = TIMEOUT_MS } = {}) {
     } catch {
       // not JSON
     }
+    // No key, or the wrong one: say how to get the right one.
+    if (res.status === 401) {
+      detail = apiKey()
+        ? 'This phone has an old key. Pair it again: open the menu and enter the code from the dashboard.'
+        : 'This phone isn’t paired yet. Open the menu and enter the code from the dashboard’s Presentation setup.'
+    }
     throw new ApiError(res.status, typeof detail === 'string' ? detail : JSON.stringify(detail))
   }
   return res
@@ -57,7 +70,23 @@ async function send(method, path, { json, form, timeout = TIMEOUT_MS } = {}) {
 
 const request = async (method, path, json, timeout) => (await send(method, path, { json, timeout })).json()
 
+// Trade a pairing code from the dashboard for the presentation's rider and the
+// key: {rider_id, api_key}. Needs no key itself.
+export async function claimPairing(code) {
+  let res
+  try {
+    res = await fetch(`${API_BASE}/pairing/${encodeURIComponent(code.replace(/\D/g, ''))}`, { method: 'POST' })
+  } catch {
+    throw new Error(`can't reach the server at ${API_BASE}`)
+  }
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.detail || 'That didn’t work. Try again.')
+  return body
+}
+
 export const api = {
+  // Leeway asked whether to tell the appointment the rider is running late (Trip.late_ask).
+  answerLateAsk: (id, call) => request('POST', `/trips/${id}/late-ask`, { call }),
   createTrip: (tripRequest) => request('POST', '/trips', tripRequest),
   getTrip: (id) => request('GET', `/trips/${id}`),
   events: (id) => request('GET', `/trips/${id}/events`),
@@ -132,7 +161,7 @@ function stream(path, handlers, onOpen) {
     controller = new AbortController()
     try {
       const res = await fetch(API_BASE + path, {
-        headers: { 'X-API-Key': API_KEY, Accept: 'text/event-stream' },
+        headers: { 'X-API-Key': apiKey(), Accept: 'text/event-stream' },
         signal: controller.signal,
       })
       if (!res.ok || !res.body) throw new Error(`stream ${path}: ${res.status}`)

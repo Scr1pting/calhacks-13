@@ -1,5 +1,7 @@
 # Leeway
 
+Leeway was inspired by a team member’s former boss, who lives with primary progressive multiple sclerosis (PPMS) and is quadriplegic. Because he uses a specialized wheelchair, paratransit is essential for getting to appointments. The service’s unpredictability means he must spend significant time planning around rides and scheduling extra time to account for potential delays, placing an additional burden on both him and his caretaker.
+
 **The law:** The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit.
 
 **The problem:** The service exists, but it's burdensome. For East Bay Paratransit:
@@ -87,8 +89,6 @@ The rider is on time if `pickup_delay + travel_time` fits between `booking_start
 East Bay Paratransit doesn't publish delays by time of day, so we borrow them from New York. But every Leeway trip records when the van came and how long the ride took (without saving the exact GPS path). Pooled across riders, anonymized and with their consent, that becomes real, live East Bay data: if vans in Hayward are running late right now, riders waiting there can reschedule before their own van is late.
 
 ## Solution Development & Research
-
-We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
 
 We conducted online research, reviewed public discussions and forums, and gathered feedback through street interviews. These conversations helped us refine the solution around two priorities:
 - Reduce coordination and uncertainty. Leeway proactively manages ride planning and responds to potential delays, reducing the burden on riders and caregivers.

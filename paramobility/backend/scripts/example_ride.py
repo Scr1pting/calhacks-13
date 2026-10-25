@@ -162,11 +162,16 @@ def main() -> None:
     ap.add_argument("--other-board", type=float, default=2.5, help="minutes the other rider takes")
     ap.add_argument("--lead", type=float, default=10, help="minutes before the window opens")
     ap.add_argument("--traffic", type=float, default=TRAFFIC, help="times the free-flow drive")
+    ap.add_argument("--other", help="lat,lng of the other rider (default: E 14th St, San Leandro)")
+    ap.add_argument("--other-place", default="Home (San Leandro)", help="the other rider's stop")
+    ap.add_argument("--ask-late", type=float, help="Leeway asks once it expects this many min late")
+    ap.add_argument("--reschedule", type=float, help="the clinic moves the appointment this much")
     args = ap.parse_args()
 
     # The van coming up International to her door, timed to get there at the pickup.
     approach, approach_secs, _ = directions([APPROACH, HOME], [SNAP_PLACE_M, SNAP_M])
-    coords, secs, marks = directions([HOME, OTHER, HOSPITAL], [SNAP_M, SNAP_PLACE_M, SNAP_PLACE_M])
+    other = tuple(float(v) for v in args.other.split(",")) if args.other else OTHER
+    coords, secs, marks = directions([HOME, other, HOSPITAL], [SNAP_M, SNAP_PLACE_M, SNAP_PLACE_M])
     other_at = marks[1]
     window_start, pickup_t = clock(args.window), clock(args.pickup)
 
@@ -221,12 +226,14 @@ def main() -> None:
             {
                 "t": round(other_t, 2),
                 "kind": "P",
-                "place": "Home (San Leandro)",
+                "place": args.other_place,
                 "pos": [coords[other_at][1], coords[other_at][0]],
             }
         ],
         "track": track,
         "path": path,
+        "ask_late_min": args.ask_late,
+        "reschedule_min": args.reschedule,
     }
     presentation.RIDE_PATH.write_text(json.dumps(ride, separators=(",", ":")) + "\n")
     hhmm = presentation.hhmm
