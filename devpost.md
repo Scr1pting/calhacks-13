@@ -100,6 +100,10 @@ We conducted online research, reviewed public discussions and forums, and gather
 - Reduce coordination and uncertainty. Leeway proactively manages ride planning and responds to potential delays, reducing the burden on riders and caregivers.
 - Balance autonomy with user control. Since people expressed concerns about AI making changes independently and accessing personal data, Leeway asks for confirmation along the way. Future iterations could allow users to customize the agent’s autonomy and accessibility preferences.
 
+**Prototyping with Claude**
+
+We iterated on wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. We then handed off the design files to Claude Code to develop the front-end prototype.
+
 **Design Considerations:** Reducing cognitive load, proactively taking action, and preserving user agency.
 
 **Key design choices**
@@ -117,9 +121,6 @@ We conducted online research, reviewed public discussions and forums, and gather
 - Support screen readers with descriptive alt text, strong contrast, and large touch targets.
 - Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
 
-**Prototyping with Claude**
-
-We iterated on wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. We then handed off the design files to Claude Code to develop the front-end prototype.
 
 ## Simulation
 
