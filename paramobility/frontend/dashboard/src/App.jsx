@@ -717,7 +717,9 @@ export default function App() {
           only={STORY_ONLY}
         />
       )}
-      {!fleet && !error && <div className="loading">Loading the simulated day…</div>}
+      {!fleet && !error && !STORY_ONLY && <div className="loading">Loading the simulated day…</div>}
+      {/* The story-only page: nothing but a quiet page until the story starts. */}
+      {STORY_ONLY && !view.film && !error && <div className="story-only-wait">Loading the story…</div>}
     </div>
   )
 }
