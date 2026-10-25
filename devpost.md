@@ -134,11 +134,11 @@ We create a pool of 7,000 synthetic riders. Each one gets:
 - **a usual destination**, usually one close by: real hospitals, plus placeholder dialysis centers, senior centers and stores
 - **a mobility type** (ambulatory, walker or wheelchair), which sets how long boarding takes
 
-The purpose sets the rhythm. Dialysis riders go three times a week (Mon/Wed/Fri or Tue/Thu/Sat) at fixed chair times, senior programs start around 9:30am, and medical appointments are spread over the day on the quarter hour. Riders with an appointment ask to be picked up early enough to arrive 30 minutes ahead, and every trip out comes with a trip back once the appointment is over. We draw riders until we reach about **2,400 one-way trips per weekday** and a bit under a third of that on weekends, which is about what EBP reports.
+The appointment schedule depends on its type. Dialysis riders go three times a week (Mon/Wed/Fri or Tue/Thu/Sat) at fixed chair times, senior programs start around 9:30am, and medical appointments are spread over the day on the quarter hour. Riders with an appointment ask to be picked up early enough to arrive 30 minutes ahead, and every trip out comes with a trip back once the appointment is over. We draw riders until we reach about **2,400 one-way trips per weekday** and a bit under a third of that on weekends, which is about what EBP reports.
 
 #### Scheduling the vans
 
-A greedy scheduler, standing in for the agency's software, puts each request into whichever van route it adds the least extra time to. It promises every rider a 30-minute window, respects ride-time limits, appointment times and driver shifts, and may move a pickup by up to an hour, just like the agency. Driving times come from real road distances (OSRM) and hourly speeds.
+Van requests get matched greedily into whichever van route it adds the least extra time to. It promises every rider a 30-minute window, respects ride-time limits, appointment times and driver shifts, and may move a pickup by up to an hour, just like the agency. Driving times come from real road distances (OSRM) and hourly speeds.
 
 #### Making vans late
 
@@ -161,5 +161,3 @@ We left everything else alone and used it as a sanity check:
 | Rider no-shows | 2.2% | 2.6% |
 | Van minutes per passenger | 46.6 | 42.0 |
 | Miles per passenger | 6.6 | 9.8 |
-
-Miles per passenger is too low: our trips are a bit too local, or shared too efficiently.
