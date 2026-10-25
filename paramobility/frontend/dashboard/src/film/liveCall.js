@@ -157,7 +157,7 @@ function rehearse(call, why) {
     ['callee', 'Hi, yes, go ahead.'],
     ['agent', call.message],
     ['callee', call.reply ?? `Sure, we can move ${call.rider_name} to ${call.new_time}.`],
-    ['agent', `Thank you, I'll let ${call.rider_name} know. Goodbye!`],
+    ['agent', call.close ?? `Thank you, I'll let ${call.rider_name} know. Goodbye!`],
   ]
   let at = 1800
   timers.push(setTimeout(() => set({ status: 'ringing' }), 300))

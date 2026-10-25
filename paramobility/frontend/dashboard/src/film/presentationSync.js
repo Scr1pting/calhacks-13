@@ -71,14 +71,16 @@ export async function loadPresentation() {
   if (config().key) {
     try {
       const [info, timeline] = await Promise.all([api('GET', '/presentation'), api('GET', '/presentation/timeline')])
-      return { info, timeline, online: true }
+      // The chance once the clinic has moved the appointment (the story's reschedule).
+      const moved = info.reschedule_min ? await api('GET', `/presentation/timeline?moved=${info.reschedule_min}`) : null
+      return { info, timeline, timeline_moved: moved, online: true }
     } catch (e) {
       run.error = e.message
     }
   }
   const res = await fetch('/data/presentation.json')
-  const { info, timeline } = await res.json()
-  return { info, timeline, online: false }
+  const { info, timeline, timeline_moved: moved } = await res.json()
+  return { info, timeline, timeline_moved: moved, online: false }
 }
 
 // One clock post at a time; the next one carries the latest time.
@@ -100,10 +102,12 @@ function pump() {
 export const presentationSync = {
   get: () => ({ ...run }),
   // The new appointment, in minutes after midnight, once a call moved it; else null.
+  // From the server's trip, or, without one, from the call's result (the scripted call too).
   movedTo(appointment) {
-    if (!run.trip) return null
-    const m = minutesOf(run.trip.arrive_by)
-    return Math.abs(m - appointment) >= 1 ? m : null
+    let m = run.trip ? minutesOf(run.trip.arrive_by) : null
+    const said = /^(\d{1,2}):(\d{2})$/.exec(liveCall.get().result?.new_time || '')
+    if (m == null && said) m = Number(said[1]) * 60 + Number(said[2])
+    return m != null && Math.abs(m - appointment) >= 1 ? m : null
   },
 
   // The trip the film drives: a fresh one (a whole call budget each run) for

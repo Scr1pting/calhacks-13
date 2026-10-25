@@ -27,6 +27,8 @@ import { secondsTo } from './script.js'
 import { makeRide } from './forecast.js'
 
 const short = (t) => clock(t).replace(/ [AP]M$/, '')
+// "11:37" as the server takes a new time (HH:MM, 24-hour).
+const hhmm = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`
 const azimuth = ([lng1, lat1], [lng2, lat2]) =>
   (Math.atan2((lng2 - lng1) * Math.cos((lat1 * Math.PI) / 180), lat2 - lat1) * 180) / Math.PI
 const km = (a, b) => Math.hypot((a[0] - b[0]) * 88, (a[1] - b[1]) * 111)
@@ -85,8 +87,16 @@ function rideFromPath(info) {
   }
 }
 
+// What the rider app shows at time t once the clinic moved the appointment to
+// `movedTo`: the server's timeline for that time when it's the story's
+// reschedule, else null (then only the server's trip knows).
+export function sampleMoved(pres, t, movedTo) {
+  if (movedTo == null || !pres.timelineMoved || Math.abs(movedTo - (pres.appointment + pres.reschedule)) >= 1) return null
+  return sampleAt(pres.timelineMoved, t)
+}
+
 // Everything the presentation needs about the ride, worked out once.
-export function presentationRide(fleet, { info, timeline, online }) {
+export function presentationRide(fleet, { info, timeline, timeline_moved: timelineMoved, online }) {
   const own = info.path?.length ? rideFromPath(info) : null
   const ride = own ? own.ride : makeRide(fleet, info.sim_trip)
   const clinicPos = ride.dropoff.pos
@@ -116,6 +126,9 @@ export function presentationRide(fleet, { info, timeline, online }) {
     windowEnd: info.window_start + 30,
     stops,
     ask,
+    // The story's reschedule (minutes later), and the chance after it.
+    reschedule: info.reschedule_min || 0,
+    timelineMoved: timelineMoved || null,
     // When the van gets her there (the live model's arrival), and the fix that saw it.
     arrival: arrivedAt?.eta ?? ride.dropoff.t,
     arrivedT: arrivedAt?.t ?? ride.dropoff.t,
@@ -156,8 +169,17 @@ export function presentationScenes(fleet, data) {
     message:
       `${name}'s paratransit van is running behind, so ${name} will be about ${minutes} minutes late ` +
       `for the ${clock(appointment)} ${pres.info.title.toLowerCase()} appointment.`,
-    reply: `Thanks for letting us know. We'll hold ${name}'s appointment.`,
-    result: { reached_someone: true, acknowledged: true, appointment_held: true },
+    ...(pres.reschedule
+      ? {
+          // The front desk can't see her that late, and offers the story's later time.
+          reply: `Thanks for letting us know. We can't see ${name} that late, but we can move her to ${clock(appointment + pres.reschedule)}.`,
+          close: `${clock(appointment + pres.reschedule)} works. Thank you, I'll let ${name} know. Goodbye!`,
+          result: { reached_someone: true, acknowledged: true, appointment_held: false, new_time: hhmm(appointment + pres.reschedule) },
+        }
+      : {
+          reply: `Thanks for letting us know. We'll hold ${name}'s appointment.`,
+          result: { reached_someone: true, acknowledged: true, appointment_held: true },
+        }),
   }
 
   const scenes = [
@@ -258,7 +280,8 @@ export function presentationScenes(fleet, data) {
     {
       id: 'detour',
       // Longer when the detour is.
-      dur: Math.min(10, Math.max(6, 3 + (askT - ride.depart) * 0.3)),
+      // Long enough to watch the chance fall as the van goes: about two ride minutes a second.
+      dur: Math.min(14, Math.max(6, 3 + (askT - ride.depart) * 0.45)),
       t: [ride.depart, askT],
       ...above,
       phone: 'ride',
@@ -273,10 +296,13 @@ export function presentationScenes(fleet, data) {
       ...above,
       phone: 'ask',
       chart: true,
-      title: `${pct(ask ? ask.p_on_time : 0.5)}. Leeway asks ${name}.`,
+      // How late Leeway expects her: what it asks about.
+      title: ask ? `About ${ask.ask_minutes} minutes late.` : `Leeway asks ${name}.`,
       // She taps yes in the app.
       tap: { at: 4.6, button: 'primary' },
-      line: ask ? `“${ask.ask}”` : `It never calls anyone without ${name}’s OK.`,
+      line: ask
+        ? `Leeway expects her around ${short(ask.eta)}, so it asks ${name}: “${ask.ask}”`
+        : `It never calls anyone without ${name}’s OK.`,
     },
     {
       id: 'call',

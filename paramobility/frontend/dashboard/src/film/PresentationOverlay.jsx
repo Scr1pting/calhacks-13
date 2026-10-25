@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { clock } from '../sim/fleet.js'
 import { filmLength, sceneAt } from './script.js'
-import { sampleAt } from './presentation.js'
+import { sampleAt, sampleMoved } from './presentation.js'
 import { isPaired, presentationSync } from './presentationSync.js'
 import { StoryEnd } from './StoryOverlay.jsx'
 import PresentationPhone from './PresentationPhone.jsx'
@@ -108,18 +108,25 @@ function ChanceChart({ pres, getT }) {
         a.at = null
         a.samples = []
       }
+      // After the move, the chance for the new time: from the timeline for the
+      // story's reschedule, else the server's trip, sampled as it comes.
+      const m = movedTo != null ? sampleMoved(pres, t, movedTo) : null
       if (movedTo != null) {
-        const p = presentationSync.get().trip?.outlook?.p_on_time
+        const p = m ? m.p_on_time : presentationSync.get().trip?.outlook?.p_on_time
         if (a.at == null) a.at = t
         if (p != null) {
           s.p_on_time = p
           const last = a.samples[a.samples.length - 1]
-          if (!last || t - last[0] >= 0.25) a.samples.push([t, p])
+          if (!m && (!last || t - last[0] >= 0.25)) a.samples.push([t, p])
         }
+        if (m) Object.assign(s, { eta_low: m.eta_low, eta_high: m.eta_high })
         s.minutes_late = Math.max(0, Math.round(pres.arrival - movedTo))
       }
       const until = a.at ?? t
       const pts = points.filter((q) => q.t < until).map((q) => `${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      if (m) {
+        for (const q of pres.timelineMoved) if (q.t >= until && q.t < t) pts.push(`${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      }
       for (const [st, sp] of a.samples) pts.push(`${x(st).toFixed(1)},${y(sp).toFixed(1)}`)
       pts.push(`${x(t).toFixed(1)},${y(s.p_on_time).toFixed(1)}`)
       if (label.current) label.current.textContent = `on time for ${hm(movedTo ?? pres.appointment)}`
@@ -170,10 +177,12 @@ function ChanceChart({ pres, getT }) {
           pickup window
         </text>
         <polygon ref={area} className="pres-chart-area" />
-        <line x1={PAD} x2={W - PAD} y1={y(0.5)} y2={y(0.5)} className="pres-chart-half" />
-        <text x={PAD + 4} y={y(0.5) - 5} className="live-chart-tick">
+        {!pres.info.ask_late_min && <line x1={PAD} x2={W - PAD} y1={y(0.5)} y2={y(0.5)} className="pres-chart-half" />}
+        {!pres.info.ask_late_min && (
+          <text x={PAD + 4} y={y(0.5) - 5} className="live-chart-tick">
           50% · Leeway asks
         </text>
+        )}
         <polyline ref={line} className="live-chart-line" />
         <line x1={PAD} x2={W - PAD} y1={BASE} y2={BASE} className="live-chart-axis" />
         <g ref={pickup} opacity="0">
@@ -186,7 +195,7 @@ function ChanceChart({ pres, getT }) {
           <g ref={asked} opacity="0">
             <circle cx={x(pres.ask.t)} cy={y(askP)} r="5" className="pres-chart-ask" />
             <text x={x(pres.ask.t) + 8} y={y(askP) + 16} className="live-chart-appt-label">
-              asks {hm(pres.ask.t)}
+              asks {hm(pres.ask.t)}{pres.ask.ask_minutes ? ` · ~${pres.ask.ask_minutes} min late` : ''}
             </text>
           </g>
         )}

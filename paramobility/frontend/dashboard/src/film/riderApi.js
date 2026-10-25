@@ -12,7 +12,7 @@
 import { vanState } from '../sim/fleet.js'
 import { riderTime, toLocalISO } from '../../../rider/src/lib/time.js'
 import { liveCall } from './liveCall.js'
-import { sampleAt } from './presentation.js'
+import { sampleAt, sampleMoved } from './presentation.js'
 import { presentationSync } from './presentationSync.js'
 
 export const API_BASE = 'presentation film'
@@ -27,11 +27,18 @@ const eventListeners = new Set()
 const iso = (minutes) => toLocalISO(new Date(riderTime(0, 0, 0).getTime() + minutes * 60000))
 const latLng = ([lng, lat]) => [lat, lng]
 
-// The server's trip once a call moved its appointment (online only), else null.
+// Once a call moved the appointment: the new time and the chance for it (from
+// the timeline for the story's reschedule, else the server's trip), else null.
 function moved() {
   const pres = film.pres
-  if (!pres || presentationSync.movedTo(pres.appointment) == null) return null
-  return presentationSync.get().trip
+  const to = pres && presentationSync.movedTo(pres.appointment)
+  if (to == null) return null
+  const s = sampleMoved(pres, film.t, to)
+  const server = presentationSync.get().trip
+  const outlook = s
+    ? { checked_at: iso(film.t), p_on_time: s.p_on_time, expected_arrival: iso(s.eta), minutes_late: s.minutes_late }
+    : (server?.outlook ?? null)
+  return { arrive_by: iso(to), outlook }
 }
 
 // The trip as the server would have it at the film's clock.
@@ -77,7 +84,7 @@ function trip() {
       : null,
     late_notice: film.call.ended ? { sent_at: iso(t), minutes_late: pres.ask?.ask_minutes ?? 5 } : null,
     // After a move the server's appointment and chance (the timeline was for the old time).
-    ...(moved() && { arrive_by: moved().arrive_by, outlook: moved().outlook ?? null }),
+    ...moved(),
   }
 }
 
@@ -125,9 +132,7 @@ liveCall.subscribe((c) => {
 export const filmRider = {
   // A fresh ride at the film's clock t (the film starts, or goes back in time).
   reset(pres, t) {
-    // Starting past the question (a presenter skipping ahead): she has said yes already.
-    const answered = !!pres.ask && t > pres.ask.t + 0.5
-    Object.assign(film, { pres, t, answered, events: [], sent: '', movedSent: false, call: { started: false, lines: 0, ended: false } })
+    Object.assign(film, { pres, t, answered: false, events: [], sent: '', movedSent: false, call: { started: false, lines: 0, ended: false } })
   },
   // The film's clock moved: the server's trip moves with it.
   tick(t) {

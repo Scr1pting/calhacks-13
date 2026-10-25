@@ -83,6 +83,7 @@ class OnboardState:
     alert: dict | None = None
     fallback: dict = field(default_factory=dict)  # estimate before the first poll (see handle_gps)
     alert_below: float = ALERT_BELOW  # P(on time) that fires the alert, for this trip
+    alert_late_min: float = ALERT_LATE_MIN  # ... or minutes late that do
 
 
 def should_poll(state: OnboardState, now: float, pos: LatLng, refresh: bool = False) -> bool:
@@ -181,7 +182,9 @@ def update_display(state: OnboardState, model: dict) -> None:
         state.eta_displayed = state.eta_smoothed
 
     late = state.eta_smoothed - state.appointment
-    if state.alert_armed and (model["p_on_time"] < state.alert_below or late > ALERT_LATE_MIN):
+    if state.alert_armed and (
+        model["p_on_time"] < state.alert_below or late > state.alert_late_min
+    ):
         state.alert_armed = False
         minutes = max(5, round(late / 5) * 5)
         state.alert = {

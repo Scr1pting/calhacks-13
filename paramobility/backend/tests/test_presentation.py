@@ -205,7 +205,7 @@ def test_clock_needs_a_started_ride(client):
 
 
 def test_the_timeline_matches_the_ride_the_clock_plays(client, store, monkeypatch):
-    monkeypatch.setattr(presentation, "_timeline", None)
+    monkeypatch.setattr(presentation, "_timelines", {})
     points = client.get("/presentation/timeline").json()
     asks = [p for p in points if p["ask"]]
     assert len(asks) == 1 and asks[0]["ask_minutes"] >= 5  # asked once, as the trip is

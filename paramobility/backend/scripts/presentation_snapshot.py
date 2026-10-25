@@ -19,9 +19,11 @@ OUT = FRONTEND / "dashboard" / "public" / "data" / "presentation.json"
 
 def main() -> None:
     points = presentation.timeline()
-    OUT.write_text(
-        json.dumps({"info": presentation.info(), "timeline": points}, separators=(",", ":"))
-    )
+    moved = presentation.ride().reschedule_min
+    snapshot = {"info": presentation.info(), "timeline": points}
+    if moved:  # the chance once the clinic has moved the appointment
+        snapshot["timeline_moved"] = presentation.timeline(moved)
+    OUT.write_text(json.dumps(snapshot, separators=(",", ":")))
     ask = next((p for p in points if p["ask"]), None)
     print(f"{len(points)} points -> {OUT}")
     asked = f"asks at {ask['t']}: {ask['ask']}" if ask else "never asks"

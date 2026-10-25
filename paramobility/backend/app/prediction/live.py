@@ -82,6 +82,7 @@ class LiveTrip:
     subscribers: list = field(default_factory=list, repr=False)  # (event loop, asyncio.Queue)
     last_pushed: tuple | None = None
     alert_below: float = onboard.ALERT_BELOW  # see onboard.OnboardState.alert_below
+    alert_late_min: float = onboard.ALERT_LATE_MIN  # and .alert_late_min
 
 
 TRIPS: dict[str, LiveTrip] = {}
@@ -220,7 +221,11 @@ def _picked_up(trip: LiveTrip, now: float, pos: LatLng | None) -> None:
     trip.phase, trip.pickup_t, trip.ask_picked_up = "onboard", now, False
     trip.last_fix = trip.moving_since = None
     trip.state = onboard.OnboardState(
-        trip.trip_id, trip.appointment, trip.destination, alert_below=trip.alert_below
+        trip.trip_id,
+        trip.appointment,
+        trip.destination,
+        alert_below=trip.alert_below,
+        alert_late_min=trip.alert_late_min,
     )
     R = ride_time(trip.drive_min)  # until the first live poll: the full planned ride from now
     trip.state.fallback = {
