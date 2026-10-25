@@ -90,9 +90,7 @@ East Bay Paratransit doesn't publish delays by time of day, so today we borrow t
 
 Pooled across riders (anonymized, and only with their consent), those trips would replace our NYC stand-in with real East Bay data: how delays change through the day, how much rides vary, and whether a late van also means a longer ride. And like Waze, it works live: if vans in Hayward are running late right now, riders still waiting there can find out before their own van is late, and reschedule while there's still time.
 
-## Mobile App
-
-**Solution Development & Research**
+## Solution Development & Research
 
 We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
 
@@ -104,11 +102,13 @@ We conducted online research, reviewed public discussions and forums, and gather
 
 We created wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. The design evolved through several iterations informed by key research findings and feedback from street interviews. We then handed off the design files to Claude Code to develop the front-end prototype.
 
-**Design Considerations:** Reducing cognitive load, proactively taking action, and preserving user agency.
+## Mobile App
+
+**Design objective:** Reducing cognitive load, proactively taking action, and preserving user agency.
 
 **Key design choices**
 
-- Minimal graphics and clear visual hierarchy centered on arrival probability and trip status.
+- Minimal graphics and clear visual hierarchy centered on the likelihood of arriving on time and the options available if a delay occurs.
 - Proactive assistance that anticipates problems and takes action on the user's behalf, seeking consent for consequential decisions.
 - Continuous, transparent updates so users know what Leeway did, the outcome, and what happens next.
 - Visible AI actions, call transcripts, and a conversational assistant with chat history.
@@ -116,9 +116,9 @@ We created wireframes in Claude Design, incorporating visual references and desi
 
 **Accessibility**
 
-- Target WCAG 2.2 AAA standards where feasible.
-- During setup, users can customize accessibility preferences, including text size, voice input and control, and color-vision needs.
-- Support screen readers with descriptive alt text, strong contrast, and large touch targets.
+- Design goal: Aim for WCAG 2.2 AAA conformance where feasible.
+- Future improvements: Add customizable accessibility settings, including text size, voice input and control, and color-vision preferences, alongside stronger screen-reader support and descriptive alt text.
+- Ongoing validation: Test with riders and caregivers and use their feedback to guide improvements. With appropriate consent and privacy safeguards, real-world trip outcomes could also help improve predictions over time.
 - Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
 
 
