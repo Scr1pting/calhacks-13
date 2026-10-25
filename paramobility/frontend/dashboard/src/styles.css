@@ -1264,3 +1264,15 @@ button {
     animation: none;
   }
 }
+
+/* story.cal.fuzz.li, before the story starts: a blank page, not the map */
+.story-only-wait {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: #f5f5f3;
+  color: var(--gray);
+  font-size: 15px;
+}
