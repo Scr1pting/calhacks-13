@@ -9,7 +9,9 @@ from fastapi.responses import StreamingResponse
 from app.core import bus
 
 
-def sse(request: Request, key: str, backlog: Callable[[], list[str]] | None = None) -> StreamingResponse:
+def sse(
+    request: Request, key: str, backlog: Callable[[], list[str]] | None = None
+) -> StreamingResponse:
     """Stream everything published under key (a trip or rider id) until the client leaves.
 
     `backlog`, if given, is called right after subscribing and its JSON strings are
