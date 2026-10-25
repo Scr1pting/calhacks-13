@@ -132,9 +132,11 @@ Real data is coarse: EBP publishes on-time rates per month, not individual rides
 
 | Metric | Simulation (14 days) | EBP (published) |
 |---|---|---|
-| On-time pickups | 88.0% | 87.9% |
-| More than 60 min late | 0.27% | 0.20% |
+| On-time pickups | 94.2% | 94.7% |
+| More than 60 min late | 0.06% | 0.06% |
 | Rider no-shows | 2.2% | 2.6% |
+| Van minutes per passenger | 49.8 | 42.0 |
+| Miles per passenger | 7.8 | 9.8 |
 
 ## Cartesia Integration
 
