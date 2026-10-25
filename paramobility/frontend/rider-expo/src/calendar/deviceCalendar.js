@@ -12,12 +12,12 @@ import { api } from '../api/client.js'
 
 const HORIZON_DAYS = 14 // the backend plans rides up to two weeks ahead
 
-const RIDER = {
+export const RIDER = {
   name: 'Denise Carter',
   home: '1520 Grand Ave, Oakland',
 }
 
-const riderId = `rider_${Math.random().toString(36).slice(2, 12)}`
+export const riderId = `rider_${Math.random().toString(36).slice(2, 12)}`
 
 const iso = (d) => new Date(d).toISOString()
 

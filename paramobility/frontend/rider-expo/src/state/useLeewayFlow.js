@@ -10,7 +10,8 @@ import {
   CHAT_SUGGESTIONS,
   matchChat,
 } from '../data/leewayDemoData.js'
-import { checkDeviceCalendar } from '../calendar/deviceCalendar.js'
+import { RIDER, checkDeviceCalendar, riderId } from '../calendar/deviceCalendar.js'
+import { api } from '../api/client.js'
 
 // Ported from the `Component` class in design-reference/Leeway Denise
 // Prototype.dc.html — same state shape, same transitions, same derived
@@ -19,8 +20,10 @@ import { checkDeviceCalendar } from '../calendar/deviceCalendar.js'
 // given.
 //
 // The discover screen lists the appointments in the rider's phone calendar
-// that need a ride (the backend decides with Haiku). The screens after
-// "Arrange" still run on the sample data.
+// that need a ride (the backend decides with Haiku). Arranging them plans real
+// trips on the backend, and the recommendation and booking screens show those
+// plans; the EBP booking call and the screens after it still run on the
+// sample data.
 
 const INIT = {
   screen: 'discover',
@@ -55,6 +58,32 @@ const CHAT_SAMPLE = {
 const shortDate = (v) =>
   new Date(v).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 const clock = (v) => new Date(v).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+const clockShort = (v) => clock(v).replace(/\s?[AP]M$/, '')
+const weekday = (v) => new Date(v).toLocaleDateString('en-US', { weekday: 'long' })
+
+const WINDOW_MINUTES = 30 // EBP pickup windows are 30 minutes long
+
+// A planned trip in the shape of the sample APPOINTMENTS, so the
+// recommendation and booking screens render it the same way.
+function recOf(trip) {
+  const pick = trip.plan.recommended
+  const start = new Date(pick.pickup_time)
+  return {
+    key: trip.id,
+    visitReason: trip.title || 'Appointment',
+    day: weekday(trip.arrive_by),
+    date: shortDate(trip.arrive_by),
+    arriveByTime: clock(trip.arrive_by),
+    pickupTime: pick.pickup_time,
+    pickupWindowStart: clockShort(start),
+    pickupWindowEnd: clockShort(start.getTime() + WINDOW_MINUTES * 60000),
+    pOnTime: pick.p_on_time,
+    // MOCK: EBP's booking call isn't connected yet, so its confirmation number is made up.
+    confirmationNumber: `#${(parseInt(trip.id.slice(-6), 16) % 90000) + 10000}`,
+    explanation: trip.plan.explanation,
+    location: { name: trip.appointment.name, address: trip.dest },
+  }
+}
 
 function pendingTask(label, done, doneLabel, active) {
   return {
@@ -68,6 +97,11 @@ export function useLeewayFlow() {
   const replyTimer = useRef(null)
   // {calendar, skipped} from the phone's calendar; null until read, or if it can't be.
   const [cal, setCal] = useState(null)
+  // Trips planned on the backend for calendar appointments, by id.
+  const [trips, setTrips] = useState({})
+  // Trip ids being planned after "Arrange"; the recommendations show once they're ready.
+  const [arranging, setArranging] = useState(null)
+  const [arrangeError, setArrangeError] = useState('')
 
   const go = (screen, extra = {}) =>
     setS((prev) => ({ ...prev, ...extra, screen, phase: 0 }))
@@ -124,6 +158,69 @@ export function useLeewayFlow() {
     }
   }, [])
 
+  // Plan a ride for each selected calendar appointment.
+  async function arrange(events) {
+    setArrangeError('')
+    setArranging([])
+    try {
+      const created = await Promise.all(
+        events.map((e) =>
+          api.createTrip({
+            rider: { name: RIDER.name },
+            appointment: { name: e.place_name || e.place_address, phone: e.place_phone },
+            title: e.title,
+            rider_id: riderId,
+            calendar_event_id: e.id,
+            origin: RIDER.home,
+            dest: e.place_address,
+            arrive_by: e.start,
+            certainty: 0.9,
+            permissions: { may_call_appointment: !!e.place_phone, share_rider_name: true, max_calls: 3 },
+          }),
+        ),
+      )
+      setTrips((prev) => ({ ...prev, ...Object.fromEntries(created.map((t) => [t.id, t])) }))
+      setArranging(created.map((t) => t.id))
+    } catch (e) {
+      console.warn('arranging rides failed', e)
+      setArranging(null)
+      setArrangeError(String(e.message || e))
+    }
+  }
+
+  // Check on trips still being planned every two seconds (React Native has no
+  // EventSource for the backend's streams).
+  const planningIds = Object.values(trips)
+    .filter((t) => t.status === 'planning')
+    .map((t) => t.id)
+    .join(',')
+  useEffect(() => {
+    if (!planningIds) return
+    const iv = setInterval(async () => {
+      try {
+        const fresh = await Promise.all(planningIds.split(',').map((id) => api.getTrip(id)))
+        setTrips((prev) => ({ ...prev, ...Object.fromEntries(fresh.map((t) => [t.id, t])) }))
+      } catch (e) {
+        console.warn('checking on plans failed', e)
+      }
+    }, 2000)
+    return () => clearInterval(iv)
+  }, [planningIds])
+
+  // Once the first arranged trip is planned, show its recommendation.
+  useEffect(() => {
+    if (!arranging?.length) return
+    const first = trips[arranging[0]]
+    if (!first || first.status === 'planning') return
+    if (first.status === 'failed') {
+      setArrangeError(first.error || 'planning failed')
+      setArranging(null)
+      return
+    }
+    setArranging(null)
+    go('recommend', { queue: arranging, qi: 0 })
+  }, [arranging, trips])
+
   function send(text, replyKey) {
     if (!text.trim()) return
     setS((prev) => ({
@@ -153,10 +250,17 @@ export function useLeewayFlow() {
     })
 
   // --- derived view model -------------------------------------------------
-  const A = APPOINTMENTS
+  const planned = Object.fromEntries(
+    Object.values(trips)
+      .filter((t) => t.plan)
+      .map((t) => [t.id, recOf(t)]),
+  )
+  const A = { ...APPOINTMENTS, ...planned }
   const n = s.phase
   const activeKey = s.queue[s.qi] || 'neuro'
-  const rec = A[activeKey]
+  // A trip still being planned (later in the queue) shows the sample until it's ready.
+  const rec = A[activeKey] || APPOINTMENTS.neuro
+  const recLocation = rec.location || LOCATION
 
   // discover: the phone's calendar once it's been checked, else the sample appointments
   const found = cal?.calendar.length
@@ -173,8 +277,9 @@ export function useLeewayFlow() {
         location: LOCATION.name,
       }))
   const selectedKeys = found.map((a) => a.key).filter((k) => s.sel[k])
-  // The recommendation screens only have sample plans, for "neuro" and "pt".
-  const demoQueue = ['neuro', 'pt'].slice(0, Math.min(selectedKeys.length, 2))
+  const real = !!cal?.calendar.length
+  // Without the phone's calendar, the sample plans for "neuro" and "pt".
+  const demoQueue = real ? ['neuro'] : selectedKeys
   const discover = {
     items: found.map((a) => ({
       ...a,
@@ -182,12 +287,18 @@ export function useLeewayFlow() {
       onToggle: () => setS((prev) => ({ ...prev, sel: { ...prev.sel, [a.key]: !prev.sel[a.key] } })),
     })),
     skipped: cal ? cal.skipped : 4,
-    arrangeLabel: selectedKeys.length
-      ? `Arrange rides (${selectedKeys.length})`
-      : 'Select an appointment',
-    arrangeDisabled: selectedKeys.length === 0,
+    arrangeLabel: arranging
+      ? 'Arranging…'
+      : arrangeError
+        ? 'Couldn’t plan that. Try again'
+        : selectedKeys.length
+          ? `Arrange rides (${selectedKeys.length})`
+          : 'Select an appointment',
+    arrangeDisabled: !!arranging || selectedKeys.length === 0,
     onArrange: () => {
-      if (selectedKeys.length) go('recommend', { queue: demoQueue, qi: 0 })
+      if (!selectedKeys.length) return
+      if (real) arrange(cal.calendar.filter((e) => s.sel[e.id]))
+      else go('recommend', { queue: selectedKeys, qi: 0 })
     },
   }
 
@@ -196,14 +307,25 @@ export function useLeewayFlow() {
     stepLabel:
       s.queue.length > 1 ? `APPOINTMENT ${s.qi + 1} OF ${s.queue.length}` : 'APPOINTMENT',
     headlineGray: `For ${rec.visitReason.toLowerCase()} on ${rec.date.replace(',', '')} at ${rec.arriveByTime}, this gives you the best chance of arriving on time.`,
-    locationName: LOCATION.name,
-    locationAddress: LOCATION.address,
+    locationName: recLocation.name,
+    locationAddress: recLocation.address,
     windowValue: `${rec.pickupWindowStart} – ${rec.pickupWindowEnd}`,
     dayLine: `${rec.day}. Be ready at ${rec.pickupWindowStart}.`,
     oddsLabel: `Chance of arriving by ${rec.arriveByTime}`,
     oddsValue: `${Math.round(rec.pOnTime * 100)}%`,
     explanation: rec.explanation,
-    onConfirm: () => go('working', { work: 'book' }),
+    onConfirm: async () => {
+      if (rec.pickupTime) {
+        try {
+          const t = await api.book(rec.key, rec.pickupTime)
+          setTrips((prev) => ({ ...prev, [t.id]: t }))
+        } catch (e) {
+          console.warn('booking failed', e)
+          return
+        }
+      }
+      go('working', { work: 'book' })
+    },
   }
 
   // working
@@ -232,7 +354,8 @@ export function useLeewayFlow() {
         pendingTask('Waiting for confirmation', n >= 6, `Confirmation ${rec.confirmationNumber}`, n >= 4),
       ]
       const more = s.qi + 1 < s.queue.length
-      nextLabel = more ? `Next: ${A[s.queue[s.qi + 1]].visitReason}` : 'Done'
+      const next = more && (A[s.queue[s.qi + 1]] || trips[s.queue[s.qi + 1]])
+      nextLabel = more ? `Next: ${next?.visitReason || next?.title || 'Appointment'}` : 'Done'
       onNext = () =>
         more ? go('recommend', { qi: s.qi + 1 }) : go('home', { today: false })
     } else if (s.work === 'thu') {

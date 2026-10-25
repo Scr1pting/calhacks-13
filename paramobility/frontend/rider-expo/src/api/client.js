@@ -1,6 +1,6 @@
-// Client for the Paramobility backend (paramobility/docs/INTERFACES.md). Only
-// what the calendar sync needs so far; the rest of the app still runs on the
-// sample data in src/data.
+// Client for the Paramobility backend (paramobility/docs/INTERFACES.md): the
+// calendar sync and planning and booking rides for calendar appointments. The
+// rest of the app still runs on the sample data in src/data.
 //
 // Configure with Expo public env vars (in .env or the shell):
 //   EXPO_PUBLIC_API_BASE  backend URL, defaults to the deployed server
@@ -23,4 +23,7 @@ export const api = {
   putRider: (id, profile) => request('PUT', `/riders/${id}`, profile),
   // Every calendar entry in; {calendar, skipped} out: the ones that need a ride.
   syncCalendar: (id, entries) => request('PUT', `/riders/${id}/calendar`, { entries }),
+  createTrip: (tripRequest) => request('POST', '/trips', tripRequest),
+  getTrip: (id) => request('GET', `/trips/${id}`),
+  book: (id, pickupTime) => request('POST', `/trips/${id}/book`, { pickup_time: pickupTime }),
 }
