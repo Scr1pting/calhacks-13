@@ -34,7 +34,7 @@ When a user hasn't taken any trips yet, the best we can do is to tell them how t
 
 We assume that the delay is roughly distributed like a **shifted log-normal** and find the parameters that minimize the deviation from those values (our error). We fix the shift at -5 to allow for too early pickups.
 
-![Fitted Shifted Lognormal](graphics/fitted-shifted-lognormal.svg)
+![Delay curve fitted to the on-time and late shares](graphics/fitted-shifted-lognormal.svg)
 
 This estimate is still very crude because the time of day makes a big difference: a van caught in rush hour traffic driving arrives late with higher probability.
 
@@ -44,11 +44,11 @@ In other words, if the the mean lateness in NY at time $t$ is $g(t)$ higher than
 
 We still want to get the same probabilities for falling into the different buckets from the table earlier, so we optimize $\mu_{\text{base}}$ and our standard deviation so those match.
 
-![](graphics/pickup-prior-17h.svg)
+![Pickups at 5 pm run later than the all-day average](graphics/pickup-prior-17h.svg)
 
 NYC only reports one value per hour, so we only know $g(t)$ once per hour, but riders book at any minute. We need a smooth curve through those points, so we first tried a polynomial. Some might say the result was slightly unrealistic (shoutout to Runge's phenomenon):
 
-![](graphics/runge-mu0.svg)
+![Polynomial swinging wildly between the hourly points](graphics/runge-mu0.svg)
 
 We ultimately settled for a **cubic spline to interpolate** the datapoints. We didn't smooth the points with a least-squares fit because each hourly value already rests on 30k–2M NYC trips.
 
@@ -66,29 +66,25 @@ Under the hood this is a **Bayesian linear regression**: fading old trips = trea
 
 ### Travel Time
 
-Google Maps takes traffic data into account. Therefore, our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. 
+Google Maps takes traffic data into account. Therefore, our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. But a shared van picks up and drops off other riders along the way, so we multiply Google's drive time by about 2.2. 
+
+We know that the average paratransit trip in East Bay is 11.43 miles and takes 48.9 minutes. We therefore sampled 120 trips between BART stations across the service area and asked Google how long each would take. After weighting them so that we matched the length, we get an average travel time of 22 minutes, so the factor is 48.9 / 22 = 2.2.
 
 This is great for the *average* case. But we care most about what happens in the slow tail. That's when we might need to reschedule. We therefore again used NYC data to inform our choice of spread.
 
-![](graphics/ride-prior-08h.svg)
-*Example trip: Hayward to Highland Hospital, Oakland (~14 mi). Most affected by morning traffic because it runs toward Oakland with the morning commute, and against the evening one.*
+![Spread of ride times for an 8 am trip vs. the direct drive](graphics/ride-prior-08h.svg)
+*Example trip: Hayward to Highland Hospital, Oakland (14 mi). Most affected by morning traffic because it runs toward Oakland with the morning commute, and against the evening one.*
 
 ### Calculating the Arrival
 
-The rider is on time if `pickup_delay + travel_time` fits into the time between `booking_start` and the appointment.
+The rider is on time if `pickup_delay + travel_time` fits between `booking_start` and the appointment. There's no closed formula for the sum of our two distributions, so we go one pickup delay at a time: if the van is 15 minutes late, how likely is the ride to fit into the time that's left? We average that over **2,000 evenly spaced quantiles** of the pickup delay. That's deterministic and takes about 1 ms, so it reruns whenever something changes:
 
-The pickup delay is a shifted log-normal and the travel time a log-normal. Each has a simple closed-form CDF on its own, but their **sum doesn't**. So we go one pickup delay at a time: if the van shows up 15 minutes late, how likely is the ride to fit into the time that's left? We answer that for every possible pickup delay and average the answers, weighting each by how likely that delay is.
-
-We do this for **2000 evenly spaced quantiles of the pickup delay** (not random samples). That makes it deterministic and takes about 1 ms, so we can rerun it every time something changes:
-
-- **Still waiting:** we keep only the pickup delays that are still possible, so the probability drops the longer the van doesn't show
-- **On board:** the pickup delay is known, and only the rest of the ride is uncertain
+- **Still waiting:** delays that are no longer possible drop out, so the probability falls the longer the van doesn't show
+- **On board:** the pickup delay is known, and only the ride is uncertain
 
 ### Future: Waze for Paratransit
 
-East Bay Paratransit doesn't publish delays by time of day, so today we borrow them from New York. But every trip someone takes with Leeway already records when the van came and how long the ride took (we keep just those numbers and throw away the GPS track). Today that only improves that rider's own predictions.
-
-Pooled across riders (anonymized, and only with their consent), those trips would replace our NYC stand-in with real East Bay data: how delays change through the day, how much rides vary, and whether a late van also means a longer ride. And like Waze, it works live: if vans in Hayward are running late right now, riders still waiting there can find out before their own van is late, and reschedule while there's still time.
+East Bay Paratransit doesn't publish delays by time of day, so we borrow them from New York. But every Leeway trip records when the van came and how long the ride took (without saving the exact GPS path). Pooled across riders, anonymized and with their consent, that becomes real, live East Bay data: if vans in Hayward are running late right now, riders waiting there can reschedule before their own van is late.
 
 ## Solution Development & Research
 
@@ -129,7 +125,7 @@ We don't have much real data, and what we have is coarse: on-time percentages pe
 
 We create a pool of 7,000 synthetic riders. Each one gets:
 - **a home** in one of 18 East Bay neighborhoods, from Richmond to Fremont
-- **a reason to travel**: dialysis (20%), medical appointments (30%), senior programs (30%) or other errands (20%)
+- **a reason to travel:** dialysis (20%), medical appointments (30%), senior programs (30%) or other errands (20%)
 - **a usual destination**, usually one close by: real hospitals, plus placeholder dialysis centers, senior centers and stores
 - **a mobility type** (ambulatory, walker or wheelchair), which sets how long boarding takes
 
@@ -145,7 +141,7 @@ Then we drive those routes through a noisy world. Each leg gets **log-normal tra
 
 Every stop also records *why* it ran late, which gives us a labeled dataset for free. One thing stood out: 96% of late pickups came from vans that were already 15+ minutes behind plan when they left the previous stop. **Lateness is mostly inherited**, so you can see it coming long before the van arrives, which is what makes live prediction possible.
 
-![The Leeway fleet dashboard replaying a simulated day: the late pickups mostly came from vans that were already behind](graphics/sim-dashboard.png)
+![Fleet dashboard replaying a simulated day](graphics/sim-dashboard.png)
 
 #### Calibration
 
@@ -160,3 +156,23 @@ We left everything else alone and used it as a sanity check:
 | Rider no-shows | 2.2% | 2.6% |
 | Van minutes per passenger | 46.6 | 42.0 |
 | Miles per passenger | 6.6 | 9.8 |
+
+## Cartesia Integration
+
+East Bay Paratransit only takes bookings by phone, and clinics are reached by phone too. When a ride runs late, someone has to call the appointment, usually the rider waiting at the curb. With Leeway, a **Cartesia phone agent makes that call**, and the rider can **talk to Leeway** instead of typing.
+
+**Three phone agents** (Agents API, Claude Haiku as the LLM, one shared voice):
+- **Policy inquiry:** before booking, asks the appointment how late the rider can arrive and still be seen. That grace period moves the deadline the model predicts against, so Leeway books only as early as needed.
+- **Late notice:** when the chance of arriving on time drops below 50%, calls with the model's estimated arrival and asks whether the rider can still be seen.
+- **Rider message:** passes on a message the rider dictated and brings back the reply.
+
+**How a call works:**
+- **Dynamic variables** fill in the rider, the appointment and the delay, so one agent covers every rider.
+- **Webhook tools** return typed results (`grace_minutes`, `appointment_held`, …) that the app acts on. If the agent hangs up without reporting, Claude Haiku reads the transcript instead.
+- **Live transcripts** show the call in the app as it happens.
+
+**In the app:** hold the mic and say what you need. **Ink-Whisper** transcribes it, and **Sonic 3.6** reads Leeway's reply aloud in the phone agents' voice.
+
+**Responsible calling:** Leeway only calls within each trip's permissions, and in the app it asks before calling about a delay. The agents say they are automated and share only the rider's name, the appointment time and the delay. The server only dials approved US/Canada numbers, never real agency lines, and at most 4 times an hour per number.
+
+The East Bay Paratransit booking call is a mock, since we never call real agency lines. Setup, every Cartesia feature we use, and known limitations are in the [README](https://github.com/Scr1pting/calhacks-13#voice-cartesia).
