@@ -58,10 +58,16 @@
 }
 
 .lw-chat-agent-text {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 22px 22px 22px 6px;
+  background: var(--lw-card-bg);
+  color: var(--lw-ink);
   font-size: var(--lw-fs-body);
   line-height: 1.4;
-  padding: 0 4px;
   text-wrap: pretty;
+  box-shadow: var(--lw-shadow-card);
 }
 
 .lw-chat-card {

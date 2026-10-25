@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import Headline from '../components/Headline.jsx'
 import Button from '../components/Button.jsx'
 import EyebrowLabel from '../components/EyebrowLabel.jsx'
@@ -48,7 +49,7 @@ export default function ChatScreen({ chat }) {
     <div className="lw-chat-thread-outer" aria-live="polite">
       <div className="lw-chat-thread-inner">
         {chat.messages.map((m, i) => (
-          <div key={i}>
+          <Fragment key={i}>
             {m.isMe ? (
               <div className="lw-chat-bubble-me">{m.text}</div>
             ) : (
@@ -79,7 +80,7 @@ export default function ChatScreen({ chat }) {
                 )}
               </div>
             )}
-          </div>
+          </Fragment>
         ))}
         {chat.typing && <p className="lw-chat-typing">{'Leeway is checking…'}</p>}
       </div>

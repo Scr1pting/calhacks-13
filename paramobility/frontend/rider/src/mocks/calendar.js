@@ -36,7 +36,7 @@ function laterToday() {
 export function upcomingAppointments() {
   return [
     { id: 'cal-neuro', title: 'Neurology', start: laterToday(), location: KAISER },
-    { id: 'cal-pt', title: 'Physical therapy', start: at(2, 14, 0), location: KAISER },
+    { id: 'cal-pt', title: 'Physical Therapy', start: at(2, 14, 0), location: KAISER },
   ]
 }
 
