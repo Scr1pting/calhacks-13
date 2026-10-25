@@ -218,3 +218,20 @@ def test_the_timeline_matches_the_ride_the_clock_plays(client, store, monkeypatc
     clock(client, asks[0]["t"])
     assert store.get_trip(trip_id).late_ask is not None
     assert points[-1]["phase"] == "arrived" and points[-1]["eta_low"] <= points[-1]["eta_high"]
+
+
+def test_presentation_calls_skip_the_hourly_limit_but_not_their_own_daily_cap(store, monkeypatch):
+    from app.voice import numbers
+
+    monkeypatch.setattr(numbers, "approved_numbers", lambda: {"+14155550199"})
+    monkeypatch.setattr(numbers.get_settings(), "call_limit_per_hour", 2)
+    monkeypatch.setattr(numbers, "PRESENTATION_PER_DAY", 3)
+    for _ in range(numbers.get_settings().call_limit_per_hour):
+        numbers.record_call("+14155550199")
+    with pytest.raises(numbers.NumberRejected):
+        numbers.authorize_call("+14155550199")  # a rider's call: the hour is used up
+    assert numbers.authorize_call("+14155550199", presentation=True) == "+14155550199"
+    for _ in range(numbers.PRESENTATION_PER_DAY):
+        numbers.record_call("+14155550199", presentation=True)
+    with pytest.raises(numbers.NumberRejected):
+        numbers.authorize_call("+14155550199", presentation=True)

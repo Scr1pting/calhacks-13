@@ -52,8 +52,8 @@ class Settings(BaseSettings):
     # plus any added in the app with this PIN (no PIN: adding is off).
     call_allowlist: str = ""
     call_pin: str = ""
-    call_limit_per_hour: int = 4  # per number
-    call_limit_per_day: int = 12
+    call_limit_per_hour: int = 1000  # per approved number (the numbers are ours, on an allowlist)
+    call_limit_per_day: int = 1000
 
     monitor_interval_seconds: int = 60
     # A trip counts as running late once P(arrive by deadline) drops below this.

@@ -96,6 +96,10 @@ We read forums and public discussions and did street interviews. Two priorities 
 
 **Prototyping with Claude:** We wireframed Leeway in Claude Design, starting broad and narrowing to the key screens of one clear user flow. After several rounds of feedback from street interviews, we handed the design files to Claude Code to build the front-end prototype.
 
+![Claude Design Screens](claude-design-screens)
+
+
+
 ## Mobile App
 
 **Design objective:** Reducing cognitive load, proactively taking action, and preserving user agency.
