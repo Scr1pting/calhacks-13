@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SplashScreen from 'expo-splash-screen'
 import {
   useFonts,
@@ -16,6 +16,7 @@ import { useNavSync } from '../state/useNavSync'
 import { ShellContext } from '../components/ShellContext'
 import DemoMenu from '../components/DemoMenu'
 import DemoPanel from '../components/DemoPanel'
+import BottomBar, { useKeyboardShift } from '../components/BottomBar'
 import { colors } from '../theme/tokens'
 
 SplashScreen.preventAutoHideAsync()
@@ -54,7 +55,19 @@ function Shell() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { width } = useWindowDimensions()
   const framed = Platform.OS === 'web' && width >= DESK_MIN_WIDTH
-  const shell = { openMenu: () => setMenuOpen(true), framed, frameTop: framed ? FRAME_STATUS_BAR : 0 }
+  const insets = useSafeAreaInsets()
+  // Space below the Ask Leeway bar: the home indicator, or the frame's.
+  const bottomGap = framed ? 26 : Math.max(insets.bottom, 10)
+  const keyboardShift = useKeyboardShift(bottomGap)
+  const [footerHeight, setFooterHeight] = useState(0)
+  const shell = {
+    openMenu: () => setMenuOpen(true),
+    framed,
+    frameTop: framed ? FRAME_STATUS_BAR : 0,
+    footerHeight,
+    bottomGap,
+    keyboardShift,
+  }
 
   // Every page is a src/app route rendering Page, pushed and popped by
   // useNavSync. On iOS the native header is the top bar, transparent so pages
@@ -70,8 +83,25 @@ function Shell() {
         headerTintColor: colors.ink,
         contentStyle: { backgroundColor: colors.screenBg },
       }}
-    />
+    >
+      {/* Opening the chat feels like tapping a search field: it comes in
+          over the page, which blurs behind it, while the Ask Leeway bar stays
+          put and becomes its text field. The page runs that animation itself
+          (see Page and ChatBackdrop), and closes with its X, not a swipe. */}
+      <Stack.Screen
+        name="chat"
+        options={{
+          presentation: 'transparentModal',
+          animation: 'none',
+          headerShown: false,
+          gestureEnabled: false,
+          contentStyle: { backgroundColor: 'transparent' },
+        }}
+      />
+    </Stack>
   )
+  // Over the stack, not in each page, so it stays still as pages slide.
+  const bar = <BottomBar shift={keyboardShift} bottomGap={bottomGap} onHeight={setFooterHeight} />
   const menu = <DemoMenu visible={menuOpen} onClose={() => setMenuOpen(false)} demo={flow.demo} />
 
   if (framed) {
@@ -80,6 +110,7 @@ function Shell() {
         <ScrollView style={styles.desk} contentContainerStyle={styles.deskContent}>
           <View style={styles.frame}>
             {stack}
+            {bar}
             <View style={styles.homeIndicator} pointerEvents="none" />
           </View>
           <View style={styles.sidePanel}>
@@ -94,13 +125,19 @@ function Shell() {
   return (
     <ShellContext.Provider value={shell}>
       <StatusBar style="dark" />
-      {stack}
+      <View style={styles.app}>
+        {stack}
+        {bar}
+      </View>
       {menu}
     </ShellContext.Provider>
   )
 }
 
 const styles = StyleSheet.create({
+  app: {
+    flex: 1,
+  },
   desk: {
     flex: 1,
     backgroundColor: colors.backdrop,

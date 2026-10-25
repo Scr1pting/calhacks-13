@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { HeaderHeightContext } from 'expo-router/react-navigation'
 import Svg, { Path } from 'react-native-svg'
@@ -9,8 +9,9 @@ import { useFlow } from '../state/FlowContext'
 import { useShell } from './ShellContext'
 import { colors, fonts, type } from '../theme/tokens'
 import TopBar, { TOP_BAR_HEIGHT } from './TopBar'
-import AskBar from './AskBar'
 import Headline from './Headline'
+import ChatBackdrop from './ChatBackdrop'
+import { hasBar as routeHasBar } from './BottomBar'
 
 import CalendarDiscoveryScreen from '../screens/CalendarDiscoveryScreen'
 import RecommendedBookingScreen from '../screens/RecommendedBookingScreen'
@@ -49,13 +50,12 @@ const SCREENS = {
 const viewOf = (name, flow) =>
   name === 'home' ? (flow.ride ? { ride: flow.ride } : flow.home && { home: flow.home }) : flow[name]
 
-// No Ask Leeway bar on pages whose only action is a forced next step.
-const NO_BAR = ['recommend', 'decision', 'working']
-
-// One page of the navigation stack: top bar, the screen, the Ask Leeway bar.
+// One page of the navigation stack: its top bar and its screen, scrolling
+// under the top bar and under the Ask Leeway bar (BottomBar, which floats
+// over all pages).
 export default function Page({ name }) {
   const flow = useFlow()
-  const { openMenu, framed, frameTop } = useShell()
+  const { openMenu, framed, frameTop, footerHeight, bottomGap, keyboardShift } = useShell()
   const insets = useSafeAreaInsets()
   const scrollRef = useRef(null)
 
@@ -68,40 +68,55 @@ export default function Page({ name }) {
   const shown = flow.route === name ? view : view || lastView.current
 
   const isRoot = name === 'chatHome'
-  const hasInput = name === 'chat' || name === 'chatHome'
-  const hasBar = !NO_BAR.includes(name)
+  const isChat = name === 'chat'
+  const hasBar = routeHasBar(name)
+  // The chat is an overlay without a native header (see _layout); it draws
+  // its own close button.
+  const nativeHeader = NATIVE_HEADER && !isChat
   const top = framed ? frameTop : insets.top
   // Where the page starts: below the native header on iOS (its height,
   // status bar included), below TopBar elsewhere. 26px more, as in the design.
   const headerHeight = useContext(HeaderHeightContext) ?? 0
-  const contentTop = (NATIVE_HEADER ? headerHeight : top + TOP_BAR_HEIGHT) + 26
+  const contentTop = (nativeHeader ? headerHeight : top + TOP_BAR_HEIGHT) + 26
   const goBack = () => (router.canGoBack() ? router.back() : flow.onCloseChat())
 
-  // The Ask Leeway bar floats over the page; the page scrolls under it, so
-  // its content ends with room for the bar (measured).
-  const [footerHeight, setFooterHeight] = useState(0)
-  const bottomGap = framed ? 26 : Math.max(insets.bottom, 10)
-  const keyboardLift = useKeyboardLift()
-  // The bar rides 10px above the keyboard, rather than above the home indicator.
-  const lift = Math.max(bottomGap - 10, 0)
-  const footerShift = keyboardLift.interpolate({
-    inputRange: [0, lift, lift + 1000],
-    outputRange: [0, 0, -1000],
-  })
-
-  // In the chat, the newest message stays in view above the keyboard (iOS
-  // makes room for it, see automaticallyAdjustKeyboardInsets below).
+  // The chat comes in like Apple's search: the page beneath blurs while the
+  // chat fades and settles in (0 → 1), and goes back the same way on close.
+  const reveal = useRef(new Animated.Value(isChat ? 0 : 1)).current
+  const animateReveal = (toValue, done) =>
+    Animated.timing(reveal, {
+      toValue,
+      duration: toValue ? 320 : 220,
+      easing: Easing.out(Easing.cubic),
+      // The blur's intensity can't run on the native driver.
+      useNativeDriver: false,
+    }).start(done)
   useEffect(() => {
-    if (name !== 'chat') return
-    const sub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () =>
-      scrollRef.current?.scrollToEnd({ animated: true }),
-    )
-    return () => sub.remove()
-  }, [name])
+    if (isChat) animateReveal(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const closeChat = () => animateReveal(0, goBack)
+
+  // The home page's suggestion chips float just above the bar, and belong to
+  // the page (they slide away with it); measured to leave room for them too.
+  const hasChips = name === 'chatHome'
+  const [chipsHeight, setChipsHeight] = useState(0)
+  const bottomCovered = hasBar ? footerHeight + (hasChips ? chipsHeight : 0) : bottomGap
+
+  // The chat thread reads bottom up. It opens already at the newest message
+  // (no visible scroll while the page fades in); after that, new messages
+  // scroll into view.
+  const scrolledToEnd = useRef(false)
+  const onContentSizeChange = () => {
+    if (!isChat) return
+    scrollRef.current?.scrollToEnd({ animated: scrolledToEnd.current })
+    scrolledToEnd.current = true
+  }
 
   return (
-    <View style={styles.page}>
-      {NATIVE_HEADER && (
+    <View style={isChat ? styles.flex : styles.page}>
+      {isChat && <ChatBackdrop reveal={reveal} />}
+      {nativeHeader && (
         <>
           {isRoot && (
             <Stack.Toolbar placement="left">
@@ -118,25 +133,38 @@ export default function Page({ name }) {
         </>
       )}
 
-      <ScrollView
+      <Animated.View
+        style={[
+          styles.flex,
+          isChat && {
+            opacity: reveal,
+            transform: [{ scale: reveal.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }],
+          },
+        ]}
+      >
+      <Animated.ScrollView
         ref={scrollRef}
-        style={styles.page}
+        style={[
+          styles.flex,
+          // In the chat the whole thread rises with the keyboard, on the same
+          // animation as the bar, so the newest message stays right above it.
+          isChat && { transform: [{ translateY: keyboardShift }] },
+        ]}
         contentContainerStyle={[
           styles.content,
           // The chat fills the page so its thread can sit at the bottom.
-          name === 'chat' && styles.fill,
-          { paddingTop: contentTop, paddingBottom: (hasBar ? footerHeight : bottomGap) + 16 },
+          isChat && styles.fill,
+          { paddingTop: contentTop, paddingBottom: bottomCovered + 16 },
         ]}
         // The page pads itself for the header and the bar it scrolls under.
         contentInsetAdjustmentBehavior="never"
-        scrollIndicatorInsets={{ top: contentTop - 26, bottom: hasBar ? footerHeight : bottomGap }}
-        // iOS makes room for the keyboard natively, in step with it, and
-        // scrolling puts the keyboard away (the bar slides down with it).
-        automaticallyAdjustKeyboardInsets
+        scrollIndicatorInsets={{ top: contentTop - 26, bottom: bottomCovered }}
+        // Elsewhere iOS makes room for the keyboard natively, in step with it.
+        // Scrolling puts the keyboard away (the bar slides down with it).
+        automaticallyAdjustKeyboardInsets={!isChat}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        // The chat thread reads bottom up: keep the newest message in view.
-        onContentSizeChange={() => name === 'chat' && scrollRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={onContentSizeChange}
       >
         {!!flow.error && (
           <View style={styles.error} accessibilityRole="alert">
@@ -147,57 +175,30 @@ export default function Page({ name }) {
           </View>
         )}
         {shown && SCREENS[name] ? SCREENS[name](shown) : <Headline lead="One moment.">Getting your rides.</Headline>}
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {!NATIVE_HEADER && (
-        <TopBar variant={isRoot ? 'logo' : 'back'} onBack={goBack} onMenuPress={openMenu} top={top} />
+      {!nativeHeader && (
+        <TopBar
+          variant={isRoot ? 'logo' : isChat ? 'close' : 'back'}
+          onBack={isChat ? closeChat : goBack}
+          onMenuPress={openMenu}
+          top={top}
+          bare={isChat}
+        />
       )}
+      </Animated.View>
 
-      {hasBar && (
+      {hasChips && (
         <Animated.View
           pointerEvents="box-none"
-          onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
-          style={[styles.footer, { paddingBottom: bottomGap, transform: [{ translateY: footerShift }] }]}
+          onLayout={(e) => setChipsHeight(e.nativeEvent.layout.height)}
+          style={[styles.chips, { bottom: footerHeight, transform: [{ translateY: keyboardShift }] }]}
         >
-          {name === 'chatHome' && <ChatHomeSuggestions chatHome={flow.chatHome} />}
-          {hasInput ? (
-            <AskBar
-              mode="input"
-              value={flow.chat.draft}
-              onChangeText={flow.chat.onDraftChange}
-              onSubmit={flow.chat.onSend}
-              onSend={flow.chat.onSend}
-              voice={flow.voice}
-            />
-          ) : (
-            <AskBar mode="button" onOpenChat={flow.onOpenChat} voice={flow.voice} />
-          )}
+          <ChatHomeSuggestions chatHome={flow.chatHome} />
         </Animated.View>
       )}
     </View>
   )
-}
-
-// How far the keyboard covers the screen, as an Animated value that moves with
-// it. iOS announces the keyboard before it slides and says how long the slide
-// takes, so the value runs on the native thread over that same time, with an
-// easing close to the keyboard's own spring: the bar travels with the keyboard.
-// Android resizes the app for the keyboard by itself, so it stays 0 there.
-const KEYBOARD_EASING = Easing.bezier(0.38, 0.7, 0.125, 1)
-
-function useKeyboardLift() {
-  const lift = useRef(new Animated.Value(0)).current
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return
-    const slide = (toValue, duration) =>
-      Animated.timing(lift, { toValue, duration, easing: KEYBOARD_EASING, useNativeDriver: true }).start()
-    const subs = [
-      Keyboard.addListener('keyboardWillShow', (e) => slide(e.endCoordinates.height, e.duration)),
-      Keyboard.addListener('keyboardWillHide', (e) => slide(0, e.duration)),
-    ]
-    return () => subs.forEach((s) => s.remove())
-  }, [lift])
-  return lift
 }
 
 // The design's menu icon (three 14px lines), in the native header's right
@@ -236,6 +237,9 @@ function Logo() {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   page: {
     flex: 1,
     backgroundColor: colors.screenBg,
@@ -259,13 +263,12 @@ const styles = StyleSheet.create({
     height: 1.8,
     backgroundColor: colors.ink,
   },
-  footer: {
+  chips: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     paddingHorizontal: 16,
-    gap: 16,
+    paddingBottom: 16,
   },
   error: {
     paddingVertical: 12,

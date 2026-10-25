@@ -276,9 +276,23 @@ export function useLeewayFlow() {
   const liveIds = tripIds.filter((id) => trips[id].status !== 'completed')
   const streamKey = liveIds.join(',')
   useEffect(() => {
-    const closers = liveIds.map((id) => streamTrip(id, { onEvent: (ev) => onTripEvent(id, ev) }))
+    // On (re)connecting, fetch the trip: the backend doesn't replay what it
+    // published before the stream opened (see api/client.js).
+    const closers = liveIds.map((id) =>
+      streamTrip(id, { onEvent: (ev) => onTripEvent(id, ev), onOpen: () => refreshTrip(id).catch(() => {}) }),
+    )
     return () => closers.forEach((close) => close())
   }, [streamKey, onTripEvent]) // streamKey stands in for tripIds
+
+  // Trips still being planned are also checked every two seconds, so a plan
+  // that's ready shows up even if its stream stays quiet (a phone's network
+  // dropping the connection, or a proxy holding it back).
+  const planningKey = tripIds.filter((id) => trips[id].status === 'planning').join(',')
+  useEffect(() => {
+    if (!planningKey) return
+    const iv = setInterval(() => planningKey.split(',').forEach((id) => refreshTrip(id).catch(() => {})), 2000)
+    return () => clearInterval(iv)
+  }, [planningKey, refreshTrip])
 
   // A clock for the call timer.
   useEffect(() => {
@@ -318,16 +332,29 @@ export function useLeewayFlow() {
     return created.map((t) => t.id)
   }
 
+  // Calendar appointments whose trip is being created right now. A second tap
+  // (or anything else calling arrange again) before the backend answers would
+  // otherwise create another trip for the same appointment.
+  const creatingRef = useRef(new Set())
+  const [creating, setCreating] = useState([])
+
   async function arrange(appointments) {
+    const fresh = appointments.filter((a) => !creatingRef.current.has(a.id))
+    if (!fresh.length) return
+    fresh.forEach((a) => creatingRef.current.add(a.id))
+    setCreating([...creatingRef.current])
     try {
       setS((prev) => ({ ...prev, error: '' }))
-      const ids = await createTrips(appointments)
+      const ids = await createTrips(fresh)
       // Stay on "discover" (the button shows it's working) until the first
       // recommendation is actually ready, then jump straight to it — no
       // half-loaded "Here's what I'd book" in between.
       setS((prev) => ({ ...prev, pending: { queue: ids, qi: 0 } }))
     } catch (e) {
       fail(e)
+    } finally {
+      fresh.forEach((a) => creatingRef.current.delete(a.id))
+      setCreating([...creatingRef.current])
     }
   }
 
@@ -1171,6 +1198,11 @@ export function useLeewayFlow() {
       items: nextOnCalendar.map((a) => {
         const trip = linked.find((t) => t.calendar_event_id === a.id)
         const date = `${shortDate(a.start)} · ${clock(a.start)}`
+        // Tapped, and waiting for the plan: say so rather than look stuck.
+        const planning = creating.includes(a.id) || (trip && s.pending?.queue.includes(trip.id))
+        if (planning) {
+          return { key: a.id, title: a.title, date, status: null, actionLabel: 'Planning…', onAction: null }
+        }
         if (!trip) {
           return { key: a.id, title: a.title, date, status: null, actionLabel: 'Book ride', onAction: () => arrange([a]) }
         }

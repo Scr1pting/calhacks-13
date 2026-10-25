@@ -6,7 +6,7 @@ import Glass from './Glass'
 
 // The bottom bar, floating over the page in Liquid Glass (a white bar where
 // there's no glass). In `mode="button"` it's a button that opens chat. In
-// `mode="input"` (chat and "chat as home") it becomes a real text field, and
+// `mode="input"` (the chat page) it becomes a real text field, and
 // the mic becomes a send button once there's a draft.
 //
 // The mic is hold-to-talk: press and hold, speak, let go. `voice.state` is
@@ -25,6 +25,7 @@ export default function AskBar({
   onSubmit,
   onSend,
   voice = { state: 'idle' },
+  autoFocus = false,
 }) {
   const listening = voice.state === 'listening'
   const status = STATUS[voice.state]
@@ -45,6 +46,7 @@ export default function AskBar({
           value={value}
           onChangeText={onChangeText}
           onSubmitEditing={onSubmit}
+          autoFocus={autoFocus}
           returnKeyType="send"
           style={styles.input}
         />
