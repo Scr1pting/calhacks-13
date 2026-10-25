@@ -176,11 +176,15 @@ export function useLeewayFlow() {
         // planned or waiting to be booked shows up there (Coming Up already
         // renders "Planning…"/"Book ride" for exactly that), rather than
         // dropping the rider straight onto the recommend screen for it.
-        if (!demoMode.current && list.length === 0 && appts.length) {
-          // A brand new rider: book the first appointment automatically, so
-          // Chat as home opens already showing it instead of the bare
-          // "nothing booked yet" state — stays on the loading screen meanwhile.
-          await autoBookFirst(appts[0])
+        // Auto-book the first appointment that's never had a trip, as long
+        // as nothing is currently booked — not just on a rider's very first
+        // trip ever. Gating on "list.length === 0" meant any leftover trip
+        // (a demo run, a failed attempt) permanently blocked this, leaving
+        // Chat as home with no "Next ride" every time the app reopened.
+        const untried = appts.find((a) => !list.some((t) => t.calendar_event_id === a.id))
+        if (!demoMode.current && untried && !list.some((t) => ACTIVE.includes(t.status))) {
+          // Stays on the loading screen meanwhile.
+          await autoBookFirst(untried)
           if (!cancelled) go('chatHome')
         } else {
           go('chatHome')
