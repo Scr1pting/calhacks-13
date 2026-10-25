@@ -1,5 +1,7 @@
 # Leeway
 
+We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
+
 **The law:** The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit.
 
 **The problem:** The service exists, but it's burdensome. For East Bay Paratransit:
@@ -91,8 +93,6 @@ East Bay Paratransit doesn't publish delays by time of day, so today we borrow t
 Pooled across riders (anonymized, and only with their consent), those trips would replace our NYC stand-in with real East Bay data: how delays change through the day, how much rides vary, and whether a late van also means a longer ride. And like Waze, it works live: if vans in Hayward are running late right now, riders still waiting there can find out before their own van is late, and reschedule while there's still time.
 
 ## Solution Development & Research
-
-We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
 
 We conducted online research, reviewed public discussions and forums, and gathered feedback through street interviews. These conversations helped us refine the solution around two priorities:
 - Reduce coordination and uncertainty. Leeway proactively manages ride planning and responds to potential delays, reducing the burden on riders and caregivers.
