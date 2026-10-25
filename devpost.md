@@ -36,7 +36,7 @@ When a user hasn't taken any trips yet, the best we can do is to tell them how t
 
 We assume that the delay is roughly distributed like a **shifted log-normal** and find the parameters that minimize the deviation from those values (our error). We fix the shift at -5 to allow for too early pickups.
 
-![Delay curve fitted to the on-time and late shares](graphics/fitted-shifted-lognormal.svg)
+![Delay curve fitted to the on-time and late shares](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/fitted-shifted-lognormal.svg)
 
 This estimate is still very crude because the time of day makes a big difference: a van caught in rush hour traffic driving arrives late with higher probability.
 
@@ -46,11 +46,11 @@ In other words, if the the mean lateness in NY at time $t$ is $g(t)$ higher than
 
 We still want to get the same probabilities for falling into the different buckets from the table earlier, so we optimize $\mu_{\text{base}}$ and our standard deviation so those match.
 
-![Pickups at 5 pm run later than the all-day average](graphics/pickup-prior-17h.svg)
+![Pickups at 5 pm run later than the all-day average](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/pickup-prior-17h.svg)
 
 NYC only reports one value per hour, so we only know $g(t)$ once per hour, but riders book at any minute. We need a smooth curve through those points, so we first tried a polynomial. Some might say the result was slightly unrealistic (shoutout to Runge's phenomenon):
 
-![Polynomial swinging wildly between the hourly points](graphics/runge-mu0.svg)
+![Polynomial swinging wildly between the hourly points](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/runge-mu0.svg)
 
 We ultimately settled for a **cubic spline to interpolate** the datapoints. We didn't smooth the points with a least-squares fit because each hourly value already rests on 30k–2M NYC trips.
 
@@ -74,7 +74,7 @@ We know that the average paratransit trip in East Bay is 11.43 miles and takes 4
 
 This is great for the *average* case. But we care most about what happens in the slow tail. That's when we might need to reschedule. We therefore again used NYC data to inform our choice of spread.
 
-![Spread of ride times for an 8 am trip vs. the direct drive](graphics/ride-prior-08h.svg)
+![Spread of ride times for an 8 am trip vs. the direct drive](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/ride-prior-08h.svg)
 *Example trip: Hayward to Highland Hospital, Oakland (14 mi). Most affected by morning traffic because it runs toward Oakland with the morning commute, and against the evening one.*
 
 ### Calculating the Arrival
@@ -126,7 +126,7 @@ Real data is coarse: EBP publishes on-time rates per month, not individual rides
 
 **Delays:** each leg gets log-normal traffic noise, wider at rush hour, plus incidents, hard-to-find addresses, riders who aren't ready, breakdowns and late shift starts. Each stop starts when the previous one ends, so delays carry down the route. 96% of late pickups came from vans already 15+ minutes behind when they left the previous stop: **lateness is mostly inherited**.
 
-![Fleet dashboard replaying a simulated day](graphics/sim-dashboard.png)
+![Fleet dashboard replaying a simulated day](https://raw.githubusercontent.com/Scr1pting/calhacks-13/main/graphics/sim-dashboard.png)
 
 **Calibration:** we tune only how optimistic the van scheduler is about travel times, using a bisection search until the on-time rate matches EBP's. We didn't tune the other numbers:
 
