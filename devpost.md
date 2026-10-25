@@ -92,6 +92,14 @@ Pooled across riders (anonymized, and only with their consent), those trips woul
 
 ## Mobile App
 
+**Solution Development & Research**
+
+We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized, large wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
+
+We conducted online research, reviewed public discussions and forums, and gathered feedback through street interviews. These conversations helped us refine the solution around two priorities:
+- Reduce coordination and uncertainty. Leeway proactively manages ride planning and responds to potential delays, reducing the burden on riders and caregivers.
+- Balance autonomy with user control. Since people expressed concerns about AI making changes independently and accessing personal data, Leeway asks for confirmation along the way. Future iterations could allow users to customize the agent’s autonomy and accessibility preferences.
+
 **Design Considerations:** Reducing cognitive load, proactively taking action, and preserving user agency.
 
 **Key design choices**
@@ -108,6 +116,10 @@ Pooled across riders (anonymized, and only with their consent), those trips woul
 - During setup, users can customize accessibility preferences, including text size, voice input and control, and color-vision needs.
 - Support screen readers with descriptive alt text, strong contrast, and large touch targets.
 - Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
+
+**Prototyping with Claude**
+
+We iterated on wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. We then handed off the design files to Claude Code to develop the front-end prototype.
 
 ## Simulation
 
