@@ -72,3 +72,14 @@ export function toLocalISO(v) {
 }
 
 export const percent = (p) => `${Math.round(p * 100)}%`
+
+// On-time odds, colored by how good they are: red under 60%, orange 60-90%,
+// green over 90% — used anywhere a chance-of-arriving percentage is shown.
+export const oddsColor = (p) =>
+  p == null
+    ? 'var(--lw-text-secondary)'
+    : p < 0.6
+      ? 'var(--lw-danger)'
+      : p < 0.9
+        ? 'var(--lw-ride-amber)'
+        : 'var(--lw-success)'

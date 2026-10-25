@@ -5,9 +5,10 @@
 // whenever it runs: two appointments, one soon and one in two days, plus four
 // that don't need a ride.
 //
-// The clinic's phone number comes from VITE_DEMO_CLINIC_PHONE (a phone you
-// can answer) and is written in the entries' notes, where Haiku finds it.
-// Without it, trips are created with calls to the clinic turned off, so the
+// The clinic's phone number is the one set in the demo panel (approved by the
+// server, see backend app/voice/numbers.py), or VITE_DEMO_CLINIC_PHONE to
+// start with. It's written in the clinic entries' notes, where Haiku finds it.
+// Without one, trips are created with calls to the clinic turned off, so the
 // demo never phones a stranger.
 
 import { riderTime, toLocalISO, wallClock } from '../lib/time.js'
@@ -20,7 +21,7 @@ export const RIDER = {
 }
 
 const KAISER = 'Kaiser Permanente Oakland Medical Center, 3600 Broadway, Oakland, CA 94611'
-const KAISER_NOTES = DEMO_CLINIC_PHONE ? `Questions? Call the clinic at ${DEMO_CLINIC_PHONE}.` : ''
+const clinicNotes = (phone) => (phone ? `Questions? Call the clinic at ${phone}.` : '')
 
 // Times are in the rider's zone (Bay Area), not the demo machine's, and fall
 // in clinic hours there. The first appointment is the next half hour at least
@@ -41,10 +42,11 @@ function entry(id, title, start, location = '', notes = '') {
   return { id, title, start: toLocalISO(start), end: toLocalISO(hourLater(start)), location, notes }
 }
 
-export function calendarEntries() {
+// `phone`: the number Leeway calls as the clinic.
+export function calendarEntries(phone) {
   return [
-    entry('cal-neuro', 'Neurology follow-up – Dr. Patel', soonest(), KAISER, KAISER_NOTES),
-    entry('cal-pt', 'PT session', riderTime(2, 14, 0), KAISER, KAISER_NOTES),
+    entry('cal-neuro', 'Neurology follow-up – Dr. Patel', soonest(), KAISER, clinicNotes(phone)),
+    entry('cal-pt', 'PT session', riderTime(2, 14, 0), KAISER, clinicNotes(phone)),
     entry('cal-standup', 'Team stand-up', riderTime(1, 9, 0), 'https://zoom.us/j/84121'),
     entry('cal-mom', 'Call with Mom', riderTime(1, 18, 0)),
     entry('cal-review', 'Quarterly review', riderTime(3, 11, 0), 'Google Meet', 'meet.google.com/abc-defg-hij'),

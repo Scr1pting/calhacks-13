@@ -1,0 +1,11 @@
+.lw-not-now {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--lw-fs-body);
+  color: var(--lw-text-secondary);
+  cursor: pointer;
+}

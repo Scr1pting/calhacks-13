@@ -41,7 +41,7 @@ cp .env.example .env    # or put the values in the repo-root .env
 
 ```bash
 cd paramobility/frontend/rider
-cp .env.example .env.local   # set VITE_API_KEY; VITE_DEMO_CLINIC_PHONE to hear the agent call
+cp .env.example .env.local   # set VITE_API_KEY; pick the number to call in the demo panel
 npm install
 npm run dev
 ```

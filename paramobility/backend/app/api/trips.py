@@ -173,9 +173,13 @@ async def send_message(trip_id: str, body: RiderMessage) -> list[ChatMessage]:
 
 @router.get("/trips/{trip_id}/stream")
 async def stream(trip_id: str, request: Request):
-    """Server-sent events: `events` for the activity log; `messages` for trips without a rider."""
+    """Server-sent events: `events` for the activity log; `messages` for trips without a rider.
+
+    Replays the trip's existing activity log on connect (see streams.sse) so the rider
+    app still notices if planning already finished by the time this connects.
+    """
     _trip(trip_id)
-    return sse(request, trip_id)
+    return sse(request, trip_id, backlog=lambda: [e.model_dump_json() for e in get_store().events(trip_id)])
 
 
 # Dashboard
