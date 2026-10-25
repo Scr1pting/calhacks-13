@@ -7,7 +7,28 @@ import Button from '../components/Button.jsx'
 import './RecommendedBookingScreen.css'
 
 // Screen 2: "Recommended booking". No bottom bar on this screen.
+// While the plan is still being worked out, `recommend.ready` is false and
+// only the headline shows — the rider lands here directly from "Arrange
+// rides" rather than passing through a separate loading screen.
 export default function RecommendedBookingScreen({ recommend }) {
+  if (!recommend.ready) {
+    return (
+      <>
+        <div className="lw-recommend-head">
+          <div className="lw-recommend-headline">
+            Here's what I'd book.{' '}
+            <span className="lw-recommend-headline-gray">{recommend.headlineGray}</span>
+          </div>
+        </div>
+        {recommend.failed && (
+          <Button variant="primary" onClick={recommend.onRetry}>
+            Try again
+          </Button>
+        )}
+      </>
+    )
+  }
+
   return (
     <>
       <div className="lw-recommend-head">

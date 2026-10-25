@@ -13,6 +13,7 @@ import CallingClinicScreen from './screens/CallingClinicScreen.jsx'
 import OutcomeScreen from './screens/OutcomeScreen.jsx'
 import RiderDecisionScreen from './screens/RiderDecisionScreen.jsx'
 import ChatScreen from './screens/ChatScreen.jsx'
+import LiveTripScreen from './screens/LiveTripScreen.jsx'
 import Headline from './components/Headline.jsx'
 
 function renderScreen(flow) {
@@ -24,7 +25,7 @@ function renderScreen(flow) {
     case 'working':
       return <BookingProgressScreen working={flow.working} />
     case 'home':
-      return <HomeScreen home={flow.home} />
+      return flow.ride ? <LiveTripScreen ride={flow.ride} /> : <HomeScreen home={flow.home} />
     case 'empty':
       return <EmptyHomeScreen empty={flow.empty} />
     case 'everyday':

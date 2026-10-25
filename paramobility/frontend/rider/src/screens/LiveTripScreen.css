@@ -1,0 +1,50 @@
+.lw-ride-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lw-ride-big-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lw-ride-big {
+  font-size: var(--lw-fs-display-lg);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.lw-ride-delta {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-ride-reason {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  line-height: 1.4;
+  color: var(--lw-text-secondary);
+  text-wrap: pretty;
+}
+
+.lw-ride-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lw-ride-row-label {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-ride-row-value {
+  font-size: var(--lw-fs-body);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}

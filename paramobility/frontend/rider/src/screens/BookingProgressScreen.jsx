@@ -11,7 +11,7 @@ export default function BookingProgressScreen({ working }) {
       <Headline lead={working.headlineLead}>{working.headlineGray}</Headline>
       <TaskList tasks={working.tasks} />
       {working.done && (
-        <Button variant="primary" onClick={working.onNext}>
+        <Button variant="primary" disabled={working.nextDisabled} onClick={working.onNext}>
           {working.nextLabel}
         </Button>
       )}

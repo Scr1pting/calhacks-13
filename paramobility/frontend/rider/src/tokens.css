@@ -26,6 +26,7 @@
   --lw-accent: #4a3bb8;
   --lw-accent-bg: #ece9fa;
   --lw-warning-text: #8a5a00;
+  --lw-ride-amber: #9a5b13; /* live-trip screen: odds below 80% */
 
   /* Radii */
   --lw-radius-map: 12px;

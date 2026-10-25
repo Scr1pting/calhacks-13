@@ -4,6 +4,7 @@ import { DEMO_CLINIC_PHONE, RIDER, SKIPPED_EVENTS, upcomingAppointments } from '
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
 import { addMinutes, clock, clockShort, isToday, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
+import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 
 // The rider app's logic, backed by the Paramobility API. Screens stay
 // presentational: this hook turns the rider's trips, activity events and
@@ -73,6 +74,7 @@ const INIT = {
   callTripId: null,
   outcome: null, // {tripId, kind: held | moved | unclear, was}
   decision: { tripId: null, choice: 'offer' },
+  pending: null, // {queue, qi} of a recommendation we're waiting to become ready
   showTranscript: false,
   back: 'home',
   voice: 'idle', // idle | listening | thinking | speaking
@@ -215,6 +217,15 @@ export function useLeewayFlow() {
     return () => clearInterval(iv)
   }, [])
 
+  // Previous on-time odds, per trip, so the live-trip screen can show
+  // "Up from 74%" / "Down from 88%" against the backend's real outlook.
+  const prevOddsRef = useRef({})
+  useEffect(() => {
+    if (current?.status === 'riding' && current.outlook) {
+      prevOddsRef.current[current.id] = current.outlook.p_on_time
+    }
+  })
+
   // ---- actions --------------------------------------------------------------
 
   async function createTrips(appointments) {
@@ -242,11 +253,24 @@ export function useLeewayFlow() {
     try {
       setS((prev) => ({ ...prev, error: '' }))
       const ids = await createTrips(appointments)
-      go('recommend', { queue: ids, qi: 0 })
+      // Stay on "discover" (the button shows it's working) until the first
+      // recommendation is actually ready, then jump straight to it — no
+      // half-loaded "Here's what I'd book" in between.
+      setS((prev) => ({ ...prev, pending: { queue: ids, qi: 0 } }))
     } catch (e) {
       fail(e)
     }
   }
+
+  // Once a pending recommendation's trip leaves "planning", move to it.
+  useEffect(() => {
+    if (!s.pending) return
+    const t = trips[s.pending.queue[s.pending.qi]]
+    if (t && t.status !== 'planning') {
+      const { queue, qi } = s.pending
+      go('recommend', { queue, qi, pending: null, booking: null })
+    }
+  }, [trips, s.pending])
 
   async function startBooking(trip) {
     go('working', { booking: { tripId: trip.id, step: 0 } })
@@ -354,8 +378,12 @@ export function useLeewayFlow() {
         setS((prev) => ({ ...prev, sel: { ...prev.sel, [a.id]: !(prev.sel[a.id] ?? true) } })),
     })),
     skipped: SKIPPED_EVENTS,
-    arrangeLabel: selectedApps.length ? `Arrange rides (${selectedApps.length})` : 'Select an appointment',
-    arrangeDisabled: selectedApps.length === 0,
+    arrangeLabel: s.pending
+      ? 'Arranging…'
+      : selectedApps.length
+        ? `Arrange rides (${selectedApps.length})`
+        : 'Select an appointment',
+    arrangeDisabled: !!s.pending || selectedApps.length === 0,
     onArrange: () => selectedApps.length && arrange(selectedApps),
   }
 
@@ -380,6 +408,7 @@ export function useLeewayFlow() {
       const w = pickupWindow(recTrip)
       const arrive = clock(recTrip.arrive_by)
       recommend = {
+        ready: true,
         stepLabel: queue.length > 1 ? `APPOINTMENT ${qi + 1} OF ${queue.length}` : 'APPOINTMENT',
         headlineGray: `For ${titleOf(recTrip).toLowerCase()} on ${shortDate(recTrip.arrive_by).replace(',', '')} at ${arrive}, this gives you the best chance of arriving on time.`,
         locationName: recTrip.appointment.name,
@@ -432,6 +461,15 @@ export function useLeewayFlow() {
             tasks,
             done: false,
           }
+      // The rider lands on "Recommended booking" straight from "Arrange
+      // rides" — no separate loading screen — so this screen shows the same
+      // wait as a pending headline instead of a distinct step.
+      recommend = {
+        ready: false,
+        failed,
+        headlineGray: planning.headlineGray,
+        onRetry: planning.onNext,
+      }
     }
   }
 
@@ -465,8 +503,15 @@ export function useLeewayFlow() {
             pendingTask('Waiting for confirmation', done, `Confirmation ${s.booking.confirmation}`, step >= 2),
           ],
           done,
-          nextLabel: nextTrip ? `Next: ${titleOf(nextTrip)}` : 'Done',
-          onNext: () => (nextTrip ? go('recommend', { qi: s.qi + 1, booking: null }) : go('home', { booking: null })),
+          nextLabel: s.pending ? 'Finding your next ride…' : nextTrip ? `Next: ${titleOf(nextTrip)}` : 'Done',
+          nextDisabled: !!s.pending,
+          // Stay on this screen (booking stays set so it keeps rendering)
+          // until the next trip is actually planned — the pending-watcher
+          // effect above does the actual screen change once it's ready.
+          onNext: () =>
+            nextTrip
+              ? setS((prev) => ({ ...prev, pending: { queue: s.queue, qi: s.qi + 1 } }))
+              : go('home', { booking: null }),
         }
   }
 
@@ -520,6 +565,54 @@ export function useLeewayFlow() {
       hasSecondary: !!secondary && !riding,
       secondary,
       onPlanSecondary: () => secondary?.onClick(),
+    }
+  }
+
+  // ---- live trip (screen 8, shown once the van has picked the rider up) -----
+  // The backend has no GPS feed (see Trip in core/schemas.py — just
+  // timestamps), so `progress`/the map position are a sample path (see
+  // lib/liveRoute.js), same as the design prototype's own demo position.
+  // Odds, the reason and the timing are the real backend outlook.
+
+  let ride = null
+  if (current?.status === 'riding') {
+    const pickedUpAt = current.live.picked_up_at ? new Date(current.live.picked_up_at).getTime() : null
+    const expectedArrival = current.outlook?.expected_arrival
+      ? new Date(current.outlook.expected_arrival).getTime()
+      : null
+    const progress =
+      pickedUpAt && expectedArrival && expectedArrival > pickedUpAt
+        ? Math.max(0, Math.min(1, (now - pickedUpAt) / (expectedArrival - pickedUpAt)))
+        : 0
+    const pOnTime = current.outlook?.p_on_time
+    const minutesLate = current.outlook?.minutes_late ?? 0
+    const prevOdds = prevOddsRef.current[current.id]
+    const delta =
+      prevOdds == null || pOnTime == null || prevOdds === pOnTime
+        ? 'Live'
+        : pOnTime > prevOdds
+          ? `Up from ${percent(prevOdds)}`
+          : `Down from ${percent(prevOdds)}`
+    const appt = current.appointment.name
+    const riderPos = routeAt(progress)
+    ride = {
+      headlineLead: 'You’re on your way.',
+      headlineGray: current.live.picked_up_at
+        ? `Picked up at ${clock(current.live.picked_up_at)}. I’m watching this trip and will update your chance of arriving on time.`
+        : 'I’m watching this trip and will update your chance of arriving on time.',
+      mapLabel: `Map of your ride to ${appt}`,
+      progress,
+      heavyTraffic: minutesLate >= 10,
+      label: `Chance of arriving by ${clock(current.arrive_by)}`,
+      big: pOnTime != null ? percent(pOnTime) : '–',
+      color: pOnTime != null && pOnTime < 0.8 ? 'var(--lw-ride-amber)' : 'var(--lw-success)',
+      delta,
+      reason:
+        minutesLate > 0
+          ? `Running about ${minutesLate} minute${minutesLate === 1 ? '' : 's'} behind right now.`
+          : 'On track to arrive on time.',
+      rowLabel: `Distance to ${appt}`,
+      rowValue: `${milesBetween(riderPos, DESTINATION).toFixed(1)} mi`,
     }
   }
 
@@ -779,7 +872,10 @@ export function useLeewayFlow() {
   // ---- which screen to show ----------------------------------------------------
 
   let screen = viewScreen
-  if (screen === 'recommend' && (planning || !recommend)) screen = recTrip ? 'working' : 'loading'
+  // While planning, stay on "recommend" (it shows its own pending headline)
+  // rather than detouring through a separate "working" screen — only a
+  // trip that hasn't synced locally at all yet needs the loading screen.
+  if (screen === 'recommend' && !recTrip) screen = 'loading'
   if (screen === 'home' && !home) screen = 'loading'
   if (screen === 'everyday' && !everyday) screen = 'loading'
 
@@ -800,6 +896,7 @@ export function useLeewayFlow() {
     recommend,
     working,
     home,
+    ride,
     call,
     outcome,
     decision,
