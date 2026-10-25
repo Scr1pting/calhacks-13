@@ -21,8 +21,7 @@ export function useNavSync(flow) {
   useEffect(() => {
     const target = flow.route
     const pages = stack.current
-    // The chat is an overlay over the stack (src/app/_layout.js), not a page.
-    if (target === 'chat' || target === pages.at(-1)) return
+    if (target === pages.at(-1)) return
     const i = pages.lastIndexOf(target)
     if (i === 0) {
       router.dismissAll()

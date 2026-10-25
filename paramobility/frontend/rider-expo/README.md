@@ -41,9 +41,10 @@ Restart `expo start` after changing `.env`.
   `src/state/useNavSync.js` turns that into pushes and pops, and reports a page
   the rider goes back to. On iOS the top bar is the native header,
   transparent with native buttons (Liquid Glass on iOS 26); on Android and
-  web it's `TopBar`, frosted. The Ask Leeway bar floats over the page in
-  Liquid Glass (`Glass`, a white bar where there's no glass) and moves with
-  the keyboard.
+  web it's `TopBar`, frosted. The Ask Leeway bar floats over the pages in
+  Liquid Glass (`Glass`, a white bar where there's no glass) and opens the
+  chat (`src/app/chat`), a transparent modal over the page with its own
+  native header (close button) and text field.
 
 - **Calendar.** On a phone with a development build, the app reads the phone's
   calendar (two weeks ahead) and the backend picks the entries that need a
