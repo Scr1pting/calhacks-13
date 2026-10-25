@@ -152,6 +152,4 @@ East Bay Paratransit only takes bookings by phone, and clinics are reached by ph
 
 **In the app:** hold the mic and say what you need. **Ink-Whisper** transcribes it, and **Sonic 3.6** reads Leeway's reply aloud in the phone agents' voice.
 
-**Responsible calling:** Leeway only calls within each trip's permissions, and in the app it asks before calling about a delay. The agents say they are automated and share only the rider's name, the appointment time and the delay. The server only dials approved US/Canada numbers, never real agency lines, and at most 4 times an hour per number.
-
-The East Bay Paratransit booking call is a mock, since we never call real agency lines. Setup, every Cartesia feature we use, and known limitations are in the [README](https://github.com/Scr1pting/calhacks-13#voice-cartesia).
+**Responsible calling:** Leeway only calls within each trip's permissions, and in the app it asks before calling about a delay. The agents say they are automated and share only the rider's name, the appointment time and the delay. The server only dials approved US/Canada numbers, never real agency lines, and at most 4 times an hour per number. The East Bay Paratransit booking call is a mock, since we never call real agency lines.
