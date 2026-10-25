@@ -94,7 +94,7 @@ Pooled across riders (anonymized, and only with their consent), those trips woul
 
 **Solution Development & Research**
 
-We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized, large wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
+We designed Leeway to reduce the logistical burden of unreliable paratransit for both riders and caregivers. The concept was informed by a team member’s former boss, who is quadriplegic and relies on paratransit because his specialized wheelchair limits other transportation options. Unreliable rides sometimes forced him to use expensive private services, often requiring coordination from his caretaker.
 
 We conducted online research, reviewed public discussions and forums, and gathered feedback through street interviews. These conversations helped us refine the solution around two priorities:
 - Reduce coordination and uncertainty. Leeway proactively manages ride planning and responds to potential delays, reducing the burden on riders and caregivers.
@@ -102,7 +102,7 @@ We conducted online research, reviewed public discussions and forums, and gather
 
 **Prototyping with Claude**
 
-We iterated on wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. We then handed off the design files to Claude Code to develop the front-end prototype.
+We created wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. The design evolved through several iterations informed by key research findings and feedback from street interviews. We then handed off the design files to Claude Code to develop the front-end prototype.
 
 **Design Considerations:** Reducing cognitive load, proactively taking action, and preserving user agency.
 
