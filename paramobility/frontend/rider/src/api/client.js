@@ -2,10 +2,14 @@
 //
 // Configure with Vite env vars (see .env.example):
 //   VITE_API_BASE  backend URL, defaults to the deployed server
-//   VITE_API_KEY   shared key the backend expects as X-API-Key
+//   VITE_API_KEY   shared key the backend expects as X-API-Key; a phone paired with
+//                  the dashboard's presentation was given it instead (lib/pairing.js)
+
+import { pairedKey } from '../lib/pairing.js'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE || 'https://api.cal.fuzz.li').replace(/\/$/, '')
-const API_KEY = import.meta.env.VITE_API_KEY || ''
+// Read when called: a pairing code in the address is traded for the key just before the app starts.
+const apiKey = () => (import.meta.env.VITE_API_KEY || '').trim() || pairedKey()
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -18,7 +22,7 @@ async function send(method, path, { json, form } = {}) {
   const res = await fetch(API_BASE + path, {
     method,
     headers: {
-      'X-API-Key': API_KEY,
+      'X-API-Key': apiKey(),
       ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
     body: json !== undefined ? JSON.stringify(json) : form,
@@ -29,6 +33,12 @@ async function send(method, path, { json, form } = {}) {
       detail = (await res.json()).detail ?? detail
     } catch {
       // not JSON
+    }
+    // No key, or the wrong one: say how to get the right one (deployed, the app has none built in).
+    if (res.status === 401) {
+      detail = apiKey()
+        ? 'This phone has an old key. Pair it again: scan the code in the dashboard’s Presentation setup.'
+        : 'This phone isn’t paired yet. Scan the code in the dashboard’s Presentation setup.'
     }
     throw new ApiError(res.status, typeof detail === 'string' ? detail : JSON.stringify(detail))
   }
@@ -46,6 +56,8 @@ export const api = {
   replan: (id, certainty) => request('POST', `/trips/${id}/plan`, certainty ? { certainty } : {}),
   book: (id, pickupTime) => request('POST', `/trips/${id}/book`, { pickup_time: pickupTime }),
   status: (id, kind, at) => request('POST', `/trips/${id}/status`, at ? { kind, at } : { kind }),
+  // Leeway asked whether to tell the appointment the rider is running late (Trip.late_ask).
+  answerLateAsk: (id, call) => request('POST', `/trips/${id}/late-ask`, { call }),
 
   // The rider: profile and calendar, all their trips, and their conversation with Leeway.
   putRider: (id, profile) => request('PUT', `/riders/${id}`, profile),
@@ -91,7 +103,7 @@ export function streamRider(id, { onMessage, onTrip, onOpen }) {
 }
 
 function stream(path, handlers, onOpen) {
-  const es = new EventSource(`${API_BASE}${path}?api_key=${encodeURIComponent(API_KEY)}`)
+  const es = new EventSource(`${API_BASE}${path}?api_key=${encodeURIComponent(apiKey())}`)
   for (const [event, handle] of Object.entries(handlers)) {
     es.addEventListener(event, (e) => handle(JSON.parse(e.data)))
   }

@@ -11,7 +11,7 @@ export default function LocationCard({ name, address }) {
     <Card size="small" style={styles.card}>
       <View style={styles.info}>
         <View style={styles.nameRow}>
-          <Svg width={14} height={14} viewBox="0 0 14 14">
+          <Svg width={28} height={28} viewBox="0 0 14 14">
             <Polygon points="1,1 13,6 7.5,7.5 6,13" fill={colors.ink} />
           </Svg>
           <Text style={styles.name}>{name}</Text>

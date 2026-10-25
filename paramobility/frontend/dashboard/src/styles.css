@@ -911,3 +911,356 @@ button {
     display: none;
   }
 }
+
+/* the live story (?live): the map on the left, Maria's phone on the right */
+.live {
+  --phone-col: 470px;
+}
+
+.live-caption {
+  position: absolute;
+  left: 0;
+  right: var(--phone-col);
+  bottom: 200px;
+  padding: 0 48px;
+  text-align: center;
+  animation: story-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.live .film-exit {
+  right: auto;
+  left: 32px;
+}
+
+.live-caption.is-wide {
+  right: 0;
+}
+
+/* The presentation with a paired real phone: nothing on screen on the right */
+.live.no-phone {
+  --phone-col: 0px;
+}
+
+/* The presentation's setup panel (the presenter's laptop, before playing) */
+.setup {
+  width: 360px;
+  gap: 8px;
+}
+
+.setup-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setup-close {
+  border: 0;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.setup-title {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.setup-note,
+.setup-status {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--gray);
+}
+
+.setup-status.is-ok {
+  color: #2f7d4f;
+}
+
+.setup-status.is-error {
+  color: #b23b2a;
+}
+
+.setup-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.setup input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid #dcdcd8;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  background: #fff;
+}
+
+.setup .setup-pin {
+  flex: 0 0 72px;
+}
+
+.setup-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.setup-qr {
+  align-self: center;
+  width: 180px;
+  height: 180px;
+  image-rendering: pixelated;
+}
+
+.setup-code {
+  align-self: center;
+  font: 600 30px/1 var(--font);
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The panel scrolls rather than running off a short screen */
+.setup {
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+.live-caption.is-center {
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: film-fade 0.6s ease both;
+}
+
+.live-caption .film-eyebrow {
+  margin-bottom: 14px;
+}
+
+.live-caption .story-line {
+  animation-delay: 0.2s;
+}
+
+.live-points {
+  margin: 26px auto 0;
+  padding: 0;
+  list-style: none;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  counter-reset: point;
+}
+
+.live-points li {
+  font-size: clamp(18px, 1.7vw, 24px);
+  color: #2a2d31;
+  counter-increment: point;
+  animation: story-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.live-points li::before {
+  content: counter(point, decimal-leading-zero);
+  margin-right: 14px;
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.live-chart {
+  position: absolute;
+  left: 0;
+  right: var(--phone-col);
+  bottom: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  animation: film-fade 0.6s ease both;
+}
+
+.live-odds {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 132px;
+}
+
+.live-odds-value {
+  font: 400 58px/1 var(--serif);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s;
+}
+
+.live-odds-value[data-state='late'] {
+  color: #b8641f;
+}
+
+/* After arrival it says how it went, in words: smaller than a number */
+.live-odds-value[data-arrived='yes'] {
+  font-size: 34px;
+}
+
+.live-odds-label {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+  color: var(--gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-chart-ok {
+  fill: rgba(74, 59, 184, 0.22);
+}
+
+.live-chart-late {
+  fill: rgba(217, 130, 43, 0.3);
+}
+
+.live-chart-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.live-chart-axis {
+  stroke: #c9c8c3;
+}
+
+.live-chart-appt {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.live-chart-old {
+  stroke: #a9aaa6;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+}
+
+.live-chart-appt-label,
+.live-chart-tick {
+  font: 500 11px var(--font);
+  fill: var(--gray);
+}
+
+.live-chart-appt-label {
+  fill: var(--ink);
+}
+
+/* The presentation's chart: the chance of arriving on time, over the morning */
+.pres-chart-window {
+  fill: rgba(20, 22, 24, 0.045);
+}
+
+.pres-chart-area {
+  fill: rgba(74, 59, 184, 0.12);
+}
+
+.pres-chart-half {
+  stroke: #b8641f;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+}
+
+.pres-chart-mark {
+  stroke: #a9aaa6;
+  stroke-width: 1.2;
+}
+
+.pres-chart-ask {
+  fill: none;
+  stroke: #b8641f;
+  stroke-width: 2;
+}
+
+.pres-chart-dot {
+  fill: var(--accent);
+  transition: fill 0.4s;
+}
+
+.pres-chart-dot[data-state='late'] {
+  fill: #b8641f;
+}
+
+/* Maria's phone: the rider app's own phone, scaled to fit the screen */
+.live-phone {
+  position: absolute;
+  right: 64px;
+  top: 50%;
+  width: 390px;
+  height: 844px;
+  transform: translateY(-50%) scale(var(--phone-scale, 1));
+  transform-origin: right center;
+  transition: opacity 0.6s ease, translate 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  pointer-events: none;
+}
+
+.live-phone.is-off {
+  opacity: 0;
+  translate: 36px 0;
+}
+
+.live-phone-screen {
+  display: contents;
+}
+
+.live-phone-screen > * {
+  animation: story-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Maria taps "Call": the button presses, a ripple spreads from it */
+.live-phone .lw-btn-primary {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, background 0.25s;
+}
+
+.live-phone.is-tapped .lw-btn-primary {
+  transform: scale(0.97);
+  background: var(--accent);
+}
+
+.live-phone.is-tapping .lw-btn-primary::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  animation: lp-tap 0.9s ease-out both;
+}
+
+@keyframes lp-tap {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-caption,
+  .live-points li,
+  .live-chart,
+  .live-phone-screen > *,
+  .live-phone.is-tapping .lw-btn-primary::after {
+    animation: none;
+  }
+}

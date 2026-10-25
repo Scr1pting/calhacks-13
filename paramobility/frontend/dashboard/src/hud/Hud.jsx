@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BANDS, bandColor, causesOf, clock, clock24, nextStops, stopsBetween, totalsAt, vanState } from '../sim/fleet.js'
+import PresentationSetup from '../film/PresentationSetup.jsx'
 
 // The dashboard's overlay, in the Leeway look (the rider app's tokens and
 // components): one summary card, two actions, and cards that appear only when
@@ -15,6 +16,7 @@ const rgb = (c) => `rgb(${c.join(',')})`
 
 export default function Hud({ fleet, view, controls, maria }) {
   const [showLate, setShowLate] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
   const { t } = view
   const states = fleet.vans.map((v) => vanState(v, t)).filter(Boolean)
   const totals = totalsAt(fleet, t)
@@ -69,6 +71,22 @@ export default function Hud({ fleet, view, controls, maria }) {
           <button type="button" className="btn btn-outline" onClick={() => controls.playFilm(0, 'story')}>
             Play the story
           </button>
+          <button type="button" className="btn btn-outline" onClick={() => controls.playFilm(0, 'live')}>
+            Play the live story
+          </button>
+          {controls.hasPresentation && (
+            <button type="button" className="btn btn-outline" onClick={() => controls.playFilm(0, 'presentation')}>
+              Play the presentation
+            </button>
+          )}
+          <button
+            type="button"
+            className={`btn btn-outline ${showSetup ? 'pressed' : ''}`}
+            aria-pressed={showSetup}
+            onClick={() => setShowSetup(!showSetup)}
+          >
+            Presentation setup
+          </button>
           <button
             type="button"
             className={`btn btn-outline ${showLate ? 'pressed' : ''}`}
@@ -78,6 +96,7 @@ export default function Hud({ fleet, view, controls, maria }) {
             Late pickups · {totals.late}
           </button>
         </div>
+        {showSetup && <PresentationSetup onClose={() => setShowSetup(false)} />}
         {followingMaria && <MariaCard maria={maria} t={t} />}
         {selected && <VanCard fleet={fleet} van={selected} t={t} view={view} controls={controls} />}
         {showLate && <LateCard fleet={fleet} t={t} controls={controls} />}

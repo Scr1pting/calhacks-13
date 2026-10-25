@@ -10,8 +10,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
   return (
     <>
       <Headline lead="Let's plan ahead.">
-        I found a few upcoming appointments in your calendar. Would you like
-        me to arrange transportation?
+        I found a few upcoming appointments in your calendar.
       </Headline>
 
       <View accessibilityLabel="Appointments that may need a ride" style={styles.list}>
@@ -28,7 +27,14 @@ export default function CalendarDiscoveryScreen({ discover }) {
         I skipped {discover.skipped} events that don't look like they need a ride, like work
         meetings and calls.
       </Text>
+    </>
+  )
+}
 
+// Fixed at the bottom by Page.
+export function DiscoverActions({ discover }) {
+  return (
+    <>
       <Button variant="primary" disabled={discover.arrangeDisabled} onPress={discover.onArrange}>
         {discover.arrangeLabel}
       </Button>

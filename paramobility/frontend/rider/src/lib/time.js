@@ -73,6 +73,11 @@ export function toLocalISO(v) {
 
 export const percent = (p) => `${Math.round(p * 100)}%`
 
+// A chance of arriving on time, as the rider sees it: never 0% or 100%. A ride
+// that hasn't happened yet is never certain either way (once it has, say what
+// happened instead).
+export const chance = (p) => percent(Math.min(0.95, Math.max(0.05, p)))
+
 // On-time odds, colored by how good they are: red under 60%, orange 60-90%,
 // green over 90% — used anywhere a chance-of-arriving percentage is shown.
 export const oddsColor = (p) =>

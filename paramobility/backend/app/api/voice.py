@@ -38,6 +38,7 @@ class LateNoticeReport(BaseModel):
     reached_someone: bool = True
     acknowledged: bool = False
     appointment_held: bool | None = None
+    new_time: str = ""  # HH:MM the same day, when the call moved the appointment
     notes: str = ""
 
 

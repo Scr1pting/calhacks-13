@@ -20,10 +20,15 @@ as well as Routes.
 
 Live calls (drive_now, during a ride) depart now and are never cached on disk, since the van's
 position changes every call. Only with DEMO_CACHE=1 are live and route responses recorded in
-DEMO_CACHE_PATH and replayed afterwards, so a demo survives bad venue Wi-Fi.
+DEMO_CACHE_PATH and replayed afterwards, so a demo survives bad venue Wi-Fi. A scripted demo
+(app.demo) turns that on for its own calls with replaying(), and hears about every answer that
+wasn't recorded yet.
 """
 
+import contextlib
+import contextvars
 import json
+import logging
 import math
 import threading
 import time
@@ -42,12 +47,18 @@ ROUND_MIN = 15
 
 GOOGLE_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 ORS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
+OSRM_URL = "https://router.project-osrm.org/route/v1/driving"
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 ORS_GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
 
 LatLng = tuple[float, float]
 
 _lock = threading.Lock()
+log = logging.getLogger(__name__)
+# Keys the current replaying() block had to fetch live; None outside one.
+_replay_misses: contextvars.ContextVar[list[str] | None] = contextvars.ContextVar(
+    "replay_misses", default=None
+)
 
 
 class RoutingError(RuntimeError):
@@ -55,8 +66,11 @@ class RoutingError(RuntimeError):
 
 
 def provider() -> str:
-    """'google' or 'ors', whichever key is set; raises if neither is."""
+    """'google' or 'ors', whichever key is set ('osrm' when ROUTING_PROVIDER says so); raises
+    if none is."""
     settings = get_settings()
+    if settings.routing_provider == "osrm":
+        return "osrm"
     if settings.google_maps_key:
         return "google"
     if settings.ors_api_key:
@@ -87,7 +101,11 @@ def drive_minutes(
     return _cached(
         key,
         max_age_days,
-        lambda: _google(origin, destination, t) if name == "google" else _ors(origin, destination),
+        lambda: (
+            _google(origin, destination, t)
+            if name == "google"
+            else _drive(name, origin, destination)
+        ),
     )
 
 
@@ -108,7 +126,10 @@ def drive_now(origin: LatLng, destination: LatLng) -> float:
     name = provider()
     key = "|".join(["now", *(f"{v:.5f}" for v in (*origin, *destination)), name])
     return _demo_cached(
-        key, lambda: _google(origin, destination) if name == "google" else _ors(origin, destination)
+        key,
+        lambda: (
+            _google(origin, destination) if name == "google" else _drive(name, origin, destination)
+        ),
     )
 
 
@@ -224,6 +245,27 @@ def _google_geocode(address: str) -> LatLng:
     return loc["lat"], loc["lng"]
 
 
+def _drive(name: str, origin: LatLng, destination: LatLng) -> float:
+    """Untimed drive minutes from OpenRouteService, or OSRM. When OpenRouteService fails (its
+    free daily quota runs out), OSRM answers instead: both are untimed, so the numbers agree."""
+    if name == "osrm":
+        return _osrm(origin, destination)
+    try:
+        return _ors(origin, destination)
+    except RoutingError as e:
+        log.warning("openrouteservice failed, asking osrm: %s", e)
+        return _osrm(origin, destination)
+
+
+def _osrm(origin: LatLng, destination: LatLng) -> float:
+    url = f"{OSRM_URL}/{origin[1]},{origin[0]};{destination[1]},{destination[0]}"
+    res = _get(url, {"overview": "false"})
+    try:
+        return float(res["routes"][0]["duration"]) / 60
+    except (KeyError, IndexError, ValueError) as e:
+        raise RoutingError(f"osrm: no route in response {res!r}") from e
+
+
 def _ors_geocode(address: str) -> LatLng:
     params = {
         "text": address,
@@ -275,10 +317,26 @@ def _cached(key: str, max_age_days: float, fetch):
     return value
 
 
+@contextlib.contextmanager
+def replaying():
+    """Record and replay live and route answers inside the block as with DEMO_CACHE=1.
+
+    Yields the list of keys that weren't recorded yet and were fetched live, so a rehearsed demo
+    can check it never needs one. Each miss is also logged.
+    """
+    misses: list[str] = []
+    token = _replay_misses.set(misses)
+    try:
+        yield misses
+    finally:
+        _replay_misses.reset(token)
+
+
 def _demo_cached(key: str, fetch):
-    """fetch(), recorded in / replayed from DEMO_CACHE_PATH when DEMO_CACHE=1."""
+    """fetch(), recorded in / replayed from DEMO_CACHE_PATH when DEMO_CACHE=1 or replaying()."""
     settings = get_settings()
-    if not settings.demo_cache:
+    misses = _replay_misses.get()
+    if not settings.demo_cache and misses is None:
         return fetch()
     path = Path(settings.demo_cache_path)
     with _lock:
@@ -286,6 +344,9 @@ def _demo_cached(key: str, fetch):
     if key in cache:
         hit = cache[key]
         return (list(map(tuple, hit[0])), hit[1]) if isinstance(hit, list) else hit
+    if misses is not None:
+        misses.append(key)
+        log.warning("demo replay: no recorded answer for %s, asking %s live", key, provider())
     value = fetch()
     with _lock:
         cache = _read(path)

@@ -5,19 +5,26 @@ import EyebrowLabel from '../components/EyebrowLabel'
 import Divider from '../components/Divider'
 import StatusPill from '../components/StatusPill'
 import { ChevronIcon } from '../components/icons'
+import Glass, { GLASS_AVAILABLE } from '../components/Glass'
 import { colors, fonts, radii, type } from '../theme/tokens'
 
 // Screen 7c: "Chat as home" — the app's home screen, where the Ask Leeway
 // input bar is the main surface. Widgets above it show the next ride and the
 // calendar appointments that still need one. Sending a message (typed, mic,
 // or a chip) opens the normal chat thread; see useLeewayFlow's `openChat`.
+// The suggestion chips sit just above that bar, outside the scrolling
+// widgets: ChatHomeSuggestions, which Page renders there.
 export default function ChatHomeScreen({ chatHome }) {
   return (
     <>
       <Headline lead="Good morning, Denise.">What can I help with?</Headline>
 
       {!!chatHome.nextRide && (
-        <Pressable accessibilityRole="button" onPress={chatHome.nextRide.onClick}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={chatHome.nextRide.onClick}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
           <Card>
             <View style={styles.nextHead}>
               <EyebrowLabel>NEXT RIDE · {chatHome.nextRide.dateCaps}</EyebrowLabel>
@@ -51,29 +58,48 @@ export default function ChatHomeScreen({ chatHome }) {
                     <StatusPill tone="green">{item.status}</StatusPill>
                   </View>
                 ) : (
-                  <Pressable accessibilityRole="button" style={styles.bookButton} onPress={item.onAction}>
+                  <Pressable
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.bookButton, pressed && styles.pressed]}
+                    onPress={item.onAction}
+                  >
                     <Text style={styles.bookLabel}>{item.actionLabel}</Text>
                   </Pressable>
                 )}
               </View>
             ))}
             <Divider />
-            <Pressable accessibilityRole="button" style={styles.seeAll} onPress={chatHome.comingUp.onSeeAll}>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.seeAll, pressed && styles.pressed]}
+              hitSlop={{ top: 12, bottom: 12 }}
+              onPress={chatHome.comingUp.onSeeAll}
+            >
               <Text style={styles.seeAllLabel}>See all appointments</Text>
               {ChevronIcon}
             </Pressable>
           </View>
         </Card>
       )}
-
-      <View style={styles.suggestions}>
-        {chatHome.suggestions.map((s) => (
-          <Pressable key={s.text} accessibilityRole="button" style={styles.chip} onPress={s.onClick}>
-            <Text style={styles.chipLabel}>{s.text}</Text>
-          </Pressable>
-        ))}
-      </View>
     </>
+  )
+}
+
+// Floating over the page like the bar below them: Liquid Glass capsules, or
+// the design's outlined chips on a background of their own.
+export function ChatHomeSuggestions({ chatHome }) {
+  return (
+    <View style={styles.suggestions}>
+      {chatHome.suggestions.map((s) => (
+        <Pressable key={s.text} accessibilityRole="button" onPress={s.onClick}>
+          {({ pressed }) => (
+            <Glass interactive style={[styles.chip, pressed && !GLASS_AVAILABLE && styles.pressed]} fallbackStyle={styles.chipSolid}>
+              <Text style={styles.chipLabel}>{s.text}</Text>
+            </Glass>
+          )}
+        </Pressable>
+      ))}
+    </View>
   )
 }
 
@@ -119,15 +145,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   seeAllLabel: { fontFamily: fonts.regular, fontSize: type.body, color: colors.ink },
-  // Pushed to the bottom of the screen, just above the Ask Leeway bar.
-  suggestions: { marginTop: 'auto', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // In line with the page content, which is 8px further in than the bar.
+  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 8 },
   chip: {
     minHeight: 44,
     paddingHorizontal: 16,
     borderRadius: radii.buttonSm,
-    borderWidth: 1,
-    borderColor: colors.borderSecondary,
     justifyContent: 'center',
   },
+  chipSolid: {
+    borderWidth: 1,
+    borderColor: colors.borderSecondary,
+    backgroundColor: colors.screenBg,
+  },
   chipLabel: { fontFamily: fonts.regular, fontSize: type.secondary, color: colors.ink },
+  pressed: { opacity: 0.6 },
 })

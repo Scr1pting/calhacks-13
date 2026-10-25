@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Drive times for app.prediction.routing: Google (traffic-aware) first, else OpenRouteService.
     google_maps_key: str = ""
     ors_api_key: str = ""
+    # "osrm": the public OSRM server instead (no key, no traffic). For dev snapshots when the
+    # other quotas are spent; never for the presentation itself (its fair-use policy).
+    routing_provider: str = ""
     drive_cache_path: str = "./drive_cache.json"  # temporary cache (Google's terms), git-ignored
     demo_cache: bool = False  # record live/route answers once and replay them (demos)
     demo_cache_path: str = "./demo_cache.json"
@@ -49,8 +52,8 @@ class Settings(BaseSettings):
     # plus any added in the app with this PIN (no PIN: adding is off).
     call_allowlist: str = ""
     call_pin: str = ""
-    call_limit_per_hour: int = 4  # per number
-    call_limit_per_day: int = 12
+    call_limit_per_hour: int = 1000  # per approved number (the numbers are ours, on an allowlist)
+    call_limit_per_day: int = 1000
 
     monitor_interval_seconds: int = 60
     # A trip counts as running late once P(arrive by deadline) drops below this.

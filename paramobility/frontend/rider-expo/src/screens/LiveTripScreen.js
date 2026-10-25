@@ -20,6 +20,9 @@ export default function LiveTripScreen({ ride }) {
           progress={ride.progress}
           heavyTraffic={ride.heavyTraffic}
           label={ride.mapLabel}
+          route={ride.route}
+          destination={ride.destination}
+          position={ride.position}
           dom={{ style: { flex: 1 }, scrollEnabled: false }}
         />
       </View>

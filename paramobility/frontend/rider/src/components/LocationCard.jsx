@@ -9,7 +9,7 @@ export default function LocationCard({ name, address }) {
     <Card size="small" className="lw-location-card">
       <div className="lw-location-info">
         <div className="lw-location-name">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 14 14" aria-hidden="true">
             <polygon points="1,1 13,6 7.5,7.5 6,13" fill="var(--lw-ink)" />
           </svg>
           {name}

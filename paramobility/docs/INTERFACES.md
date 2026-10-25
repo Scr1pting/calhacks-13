@@ -75,6 +75,14 @@ A trip created without a `rider_id` gets its own conversation at `/trips/{id}/me
 | `GET` | `/riders/{rider_id}/stream` | | server-sent events `messages` and `trips` |
 | `POST` | `/speech` | `{"text": "…"}` | `audio/mpeg`: the text in Leeway's voice |
 | `POST` | `/call-numbers/check` | `{"phone": "…"}` | `{"phone", "approved", "reason"}`: whether Leeway may call it (normalized to E.164) and if not, why |
+| `POST` | `/demo/calls` | `{"phone", "rider_name", "clinic", "appointment_time", "message"}` | `{"trip_id", "phone"}` (202): calls the approved number with the message, for the dashboard's live story; follow it on `/trips/{trip_id}/stream` |
+| `GET` | `/presentation` | | the presentation ride (`app/demo/presentation.py`): `sim_trip`, `rider`, `title`, `appointment_name`, `origin`, `dest`, `origin_pos`, `dest_pos` (lat, lng), `window_start`, `appointment`, `pickup_t`, `dropoff_t`, `start`, `end` (sim minutes after midnight), `path` (`[[t, lat, lng]]`, the van's street path, for a made-up ride; empty for one from the simulated day), `stops_on_way` and the current `trip_id` |
+| `GET` | `/presentation/timeline` | | what the rider app shows at every point of the ride, worked out ahead: `[{t, phase, p_on_time, eta, eta_low, eta_high, minutes_late, progress, detour, stopped, ask, ask_minutes}]`; `ask` is set once, where Leeway asks the rider |
+| `POST` | `/pairing` | `{"rider_id"}` | `{"code", "expires_in"}`: a six-digit code that pairs a phone as that rider, for 10 minutes |
+| `POST` | `/pairing/{code}` | | `{"rider_id", "api_key"}`; no key needed. 404 for a wrong or expired code, 429 after 20 wrong codes in 10 minutes |
+| `POST` | `/presentation/start` | `{"rider_id", "appointment_phone"}` | `Trip`: a new presentation trip for that rider, at the start of the ride |
+| `POST` | `/presentation/clock` | `{"t": 690.5}` | moves the ride to sim time `t` and updates its trip (earlier than the last post replays from the start); 409 before a start |
+| `POST` | `/trips/{id}/late-ask` | `{"call": true}` | answers Leeway's question; yes places the late-notice call. 409 if there's no question or it's already answered |
 | `POST` | `/call-numbers` | `{"phone": "…", "pin": "…"}` | the same, approved; 403 for a wrong or missing PIN (or none set on the server), 422 for a number that can never be called |
 | `GET` | `/trips/{id}` | | `Trip` |
 | `GET` | `/trips/{id}/messages` | | `ChatMessage[]` (the rider's conversation if the trip has one) |
@@ -128,7 +136,7 @@ Every call is checked again just before it is dialled (`app/voice/numbers.py`): 
     "explanation": "…"
   },
   "booked_pickup": "…",
-  "live": {"van_eta": null, "picked_up_at": null, "arrived_at": null},
+  "live": {"van_eta": null, "picked_up_at": null, "arrived_at": null, "progress": null, "position": null, "origin": null, "destination": null},
   "outlook": {"checked_at": "…", "p_on_time": 0.42, "expected_arrival": "…", "minutes_late": 6},
   "late_notice": {"sent_at": "…", "minutes_late": 6},
   "calls_used": 1

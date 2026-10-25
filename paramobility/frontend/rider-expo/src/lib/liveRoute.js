@@ -18,31 +18,32 @@ export const ROUTE = [
   [37.8246, -122.2563], // Kaiser Oakland, 3600 Broadway
 ]
 
-function routeCumulative() {
+function routeCumulative(route) {
   const c = [0]
-  for (let i = 1; i < ROUTE.length; i++) {
-    const dy = ROUTE[i][0] - ROUTE[i - 1][0]
-    const dx = (ROUTE[i][1] - ROUTE[i - 1][1]) * Math.cos((ROUTE[i][0] * Math.PI) / 180)
+  for (let i = 1; i < route.length; i++) {
+    const dy = route[i][0] - route[i - 1][0]
+    const dx = (route[i][1] - route[i - 1][1]) * Math.cos((route[i][0] * Math.PI) / 180)
     c.push(c[i - 1] + Math.hypot(dx, dy))
   }
   return c
 }
-const CUM = routeCumulative()
+const CUM = routeCumulative(ROUTE)
 
-// Position along the route at progress `p` (0 to 1).
-export function routeAt(p) {
-  const d = Math.max(0, Math.min(1, p)) * CUM[CUM.length - 1]
-  for (let i = 1; i < ROUTE.length; i++) {
-    if (d <= CUM[i]) {
-      const f = (d - CUM[i - 1]) / (CUM[i] - CUM[i - 1] || 1)
-      return [
-        ROUTE[i - 1][0] + (ROUTE[i][0] - ROUTE[i - 1][0]) * f,
-        ROUTE[i - 1][1] + (ROUTE[i][1] - ROUTE[i - 1][1]) * f,
-      ]
+// Position along a route ([lat, lng] points) at progress `p` (0 to 1).
+// Pass `cum` (from routeCumulative) when calling often with the same route.
+export function alongRoute(route, p, cum = routeCumulative(route)) {
+  const d = Math.max(0, Math.min(1, p)) * cum[cum.length - 1]
+  for (let i = 1; i < route.length; i++) {
+    if (d <= cum[i]) {
+      const f = (d - cum[i - 1]) / (cum[i] - cum[i - 1] || 1)
+      return [route[i - 1][0] + (route[i][0] - route[i - 1][0]) * f, route[i - 1][1] + (route[i][1] - route[i - 1][1]) * f]
     }
   }
-  return ROUTE[ROUTE.length - 1]
+  return route[route.length - 1]
 }
+
+// Position along the sample route at progress `p` (0 to 1).
+export const routeAt = (p) => alongRoute(ROUTE, p, CUM)
 
 export function milesBetween(a, b) {
   const r = Math.PI / 180

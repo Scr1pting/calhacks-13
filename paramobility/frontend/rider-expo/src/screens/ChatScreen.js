@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import Headline from '../components/Headline'
 import Button from '../components/Button'
@@ -22,13 +21,8 @@ const ChevronIcon = (
 )
 
 // Screens 7 / 7b: "Ask Leeway".
+// The page around it scrolls and keeps the newest message in view (see Page).
 export default function ChatScreen({ chat }) {
-  const scrollRef = useRef(null)
-
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true })
-  }, [chat.messages.length, chat.typing])
-
   if (chat.isEmpty) {
     return (
       <>
@@ -49,12 +43,7 @@ export default function ChatScreen({ chat }) {
   }
 
   return (
-    <ScrollView
-      ref={scrollRef}
-      style={styles.thread}
-      contentContainerStyle={styles.threadContent}
-      accessibilityLiveRegion="polite"
-    >
+    <View style={styles.thread} accessibilityLiveRegion="polite">
       {chat.messages.map((m, i) => (
         <View key={i}>
           {m.isMe ? (
@@ -92,7 +81,7 @@ export default function ChatScreen({ chat }) {
         </View>
       ))}
       {chat.typing && <Text style={styles.typing}>{'Leeway is checking…'}</Text>}
-    </ScrollView>
+    </View>
   )
 }
 
@@ -110,9 +99,8 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   suggestionText: { fontFamily: fonts.regular, fontSize: type.body, color: colors.ink, flexShrink: 1 },
-  // Edge to edge, so the bubbles' shadows aren't clipped at the sides.
-  thread: { flex: 1, marginHorizontal: -24 },
-  threadContent: { gap: 18, paddingHorizontal: 24, paddingBottom: 4 },
+  // Pushed to the bottom, just above the input, while the thread is short.
+  thread: { marginTop: 'auto', gap: 18, paddingBottom: 4 },
   bubbleMeWrap: { alignItems: 'flex-end' },
   bubbleMe: {
     maxWidth: '80%',

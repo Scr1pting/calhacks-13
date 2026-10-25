@@ -152,6 +152,30 @@ async def update_status(trip_id: str, body: StatusUpdate) -> Trip:
     return trip
 
 
+class LateAskAnswer(BaseModel):
+    call: bool  # true: phone the appointment now; false: not now
+
+
+@router.post("/trips/{trip_id}/late-ask")
+async def answer_late_ask(trip_id: str, body: LateAskAnswer) -> Trip:
+    """The rider's answer when Leeway asked whether to tell the appointment they'll be late.
+
+    Yes places the late-notice call, within the rider's permissions and call limits.
+    """
+    trip = _trip(trip_id)
+    if trip.late_ask is None:
+        raise HTTPException(409, "Leeway hasn't asked about this trip")
+    if trip.late_ask.answer is not None:
+        raise HTTPException(409, "already answered")
+    answer = "call" if body.call else "no"
+    trip = get_store().update_trip(trip_id, lambda t: setattr(t.late_ask, "answer", answer))
+    message = "Rider asked Leeway to call." if body.call else "Rider said not to call."
+    get_store().log(trip_id, "late_ask_answered", message, answer=answer)
+    if body.call:
+        spawn(monitor.call_confirmed(trip_id), name=f"late-call:{trip_id}")
+    return trip
+
+
 # Chat with the agent. A trip with a rider profile shares the rider's
 # conversation (see /riders/{rider_id}/messages); otherwise it has its own.
 

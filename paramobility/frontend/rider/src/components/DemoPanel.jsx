@@ -110,7 +110,15 @@ function CallNumber({ calls }) {
   return (
     <div className="lw-demo-panel-section">
       <div className="lw-demo-panel-heading">CALLS TO THE CLINIC</div>
-      {calls.phone ? (
+      {calls.phone && calls.approved === false ? (
+        <p className="lw-demo-panel-desc lw-demo-panel-warn">
+          <b>{calls.phone}</b> isn’t approved on this server, so calls to it are blocked. Enter it again with
+          the PIN.{' '}
+          <button type="button" className="lw-demo-link" onClick={calls.clear}>
+            Turn calls off
+          </button>
+        </p>
+      ) : calls.phone ? (
         <p className="lw-demo-panel-desc">
           Leeway calls <b>{calls.phone}</b> as the clinic, for rides planned from now on.{' '}
           <button type="button" className="lw-demo-link" onClick={calls.clear}>

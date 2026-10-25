@@ -14,7 +14,14 @@ export default function LiveTripScreen({ ride }) {
     <>
       <Headline lead={ride.headlineLead}>{ride.headlineGray}</Headline>
 
-      <LiveMap progress={ride.progress} heavyTraffic={ride.heavyTraffic} label={ride.mapLabel} />
+      <LiveMap
+        progress={ride.progress}
+        heavyTraffic={ride.heavyTraffic}
+        label={ride.mapLabel}
+        route={ride.route}
+        destination={ride.destination}
+        position={ride.position}
+      />
 
       <Card>
         <div className="lw-ride-main">

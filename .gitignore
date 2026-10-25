@@ -12,5 +12,7 @@ drive_cache.tmp
 *.local
 node_modules/
 dist/
+.build/
 demo_cache.json
 demo_cache.tmp
+example_route.json
