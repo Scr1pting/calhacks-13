@@ -1,6 +1,6 @@
 # Leeway
 
-Leeway was inspired by a team member’s former boss, who lives with primary progressive multiple sclerosis (PPMS) and is quadriplegic. Because he uses a specialized wheelchair, paratransit is essential for getting to appointments. The service’s unpredictability means he must spend significant time planning around rides and scheduling extra time to account for potential delays, placing an additional burden on both him and his caretaker.
+One of our team member’s former boss lives with severe multiple sclerosis (PPMS) and is fully paralyzed. Because he uses a specialized wheelchair, paratransit is essential for getting to appointments. The service’s unpredictability means he must schedule a lot of extra time to account for potential delays or pay much more for a less disability-friendly Uber. That places an additional burden on both him and his caretaker.
 
 **The law:** The Americans with Disabilities Act (ADA) requires public transit agencies to provide complementary paratransit services for eligible people with disabilities who cannot use fixed-route transit.
 
@@ -90,20 +90,17 @@ East Bay Paratransit doesn't publish delays by time of day, so we borrow them fr
 
 ## Solution Development & Research
 
-We conducted online research, reviewed public discussions and forums, and gathered feedback through street interviews. These conversations helped us refine the solution around two priorities:
-- Reduce coordination and uncertainty. Leeway proactively manages ride planning and responds to potential delays, reducing the burden on riders and caregivers.
-- Balance autonomy with user control. Since people expressed concerns about AI making changes independently and accessing personal data, Leeway asks for confirmation along the way. Future iterations could allow users to customize the agent’s autonomy and accessibility preferences.
+We read forums and public discussions and did street interviews. Two priorities came out of them:
+- **Less waiting and fewer phone calls:** Leeway suggests how early to book, and if the van runs late, it calls the appointment so the rider or caretaker doesn't have to.
+- **Control stays with the rider:** people worried about AI acting alone and seeing their personal data, so Leeway asks before every consequential step.
 
-**Prototyping with Claude**
-
-We created wireframes in Claude Design, incorporating visual references and design direction. We narrowed early, more detailed concepts to the key screens needed to communicate a clear user flow, using Claude Design to map the experience and identify opportunities for improvement. The design evolved through several iterations informed by key research findings and feedback from street interviews. We then handed off the design files to Claude Code to develop the front-end prototype.
+**Prototyping with Claude:** We wireframed Leeway in Claude Design, starting broad and narrowing to the key screens of one clear user flow. After several rounds of feedback from street interviews, we handed the design files to Claude Code to build the front-end prototype.
 
 ## Mobile App
 
 **Design objective:** Reducing cognitive load, proactively taking action, and preserving user agency.
 
 **Key design choices**
-
 - Minimal graphics and clear visual hierarchy centered on the likelihood of arriving on time and the options available if a delay occurs.
 - Proactive assistance that anticipates problems and takes action on the user's behalf, seeking consent for consequential decisions.
 - Continuous, transparent updates so users know what Leeway did, the outcome, and what happens next.
@@ -111,51 +108,29 @@ We created wireframes in Claude Design, incorporating visual references and desi
 - When arrival probability drops below a defined threshold, Leeway proactively explores alternatives and asks for approval before committing to another ride.
 
 **Accessibility**
-
 - Design goal: Aim for WCAG 2.2 AAA conformance where feasible.
 - Future improvements: Add customizable accessibility settings, including text size, voice input and control, and color-vision preferences, alongside stronger screen-reader support and descriptive alt text.
 - Ongoing validation: Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
 
-
 ## Simulation
 
-We don't have much real data, and what we have is coarse: on-time percentages per month, not individual rides. So to test our predictions, we **generate synthetic rides** that behave like the real ones, and tune the simulation until its punctuality matches what East Bay Paratransit publishes.
+Real data is coarse: EBP publishes on-time rates per month, not individual rides. To test our predictions, we **simulate a full day of East Bay Paratransit** and tune it until its punctuality matches EBP's numbers.
 
-#### Generating likely trips
+**Trips:** 7,000 synthetic riders, each with a home in one of 18 neighborhoods from Richmond to Fremont, a reason to travel (dialysis, medical appointments, senior programs or errands), a nearby destination and a mobility type that sets how long boarding takes. That's about **2,400 one-way trips per weekday**, close to what EBP reports.
 
-We create a pool of 7,000 synthetic riders. Each one gets:
-- **a home** in one of 18 East Bay neighborhoods, from Richmond to Fremont
-- **a reason to travel:** dialysis (20%), medical appointments (30%), senior programs (30%) or other errands (20%)
-- **a usual destination**, usually one close by: real hospitals, plus placeholder dialysis centers, senior centers and stores
-- **a mobility type** (ambulatory, walker or wheelchair), which sets how long boarding takes
+**Vans:** each request goes into the van route it delays least, within a 30-minute pickup window, ride-time limits and driver shifts. Driving times come from real road distances (OSRM).
 
-The appointment schedule depends on its type. Dialysis riders go three times a week (Mon/Wed/Fri or Tue/Thu/Sat) at fixed chair times, senior programs start around 9:30am, and medical appointments are spread over the day on the quarter hour. Riders with an appointment ask to be picked up early enough to arrive 30 minutes ahead, and every trip out comes with a trip back once the appointment is over. We draw riders until we reach about **2,400 one-way trips per weekday** and a bit under a third of that on weekends, which is about what EBP reports.
-
-#### Scheduling the vans
-
-Van requests get matched greedily into whichever van route it adds the least extra time to. It promises every rider a 30-minute window, respects ride-time limits, appointment times and driver shifts, and may move a pickup by up to an hour, just like the agency. Driving times come from real road distances (OSRM) and hourly speeds.
-
-#### Making vans late
-
-Then we drive those routes through a noisy world. Each leg gets **log-normal traffic noise** that spreads wider at rush hour, plus the occasional incident, hard-to-find address, rider who isn't ready (after 5 minutes it's a no-show), slow boarding, breakdown or late shift start. Each stop starts when the previous one ends, so **lateness cascades** down the route.
-
-Every stop also records *why* it ran late, which gives us a labeled dataset for free. One thing stood out: 96% of late pickups came from vans that were already 15+ minutes behind plan when they left the previous stop. **Lateness is mostly inherited**, so you can see it coming long before the van arrives, which is what makes live prediction possible.
+**Delays:** each leg gets log-normal traffic noise, wider at rush hour, plus incidents, hard-to-find addresses, riders who aren't ready, breakdowns and late shift starts. Each stop starts when the previous one ends, so delays carry down the route. 96% of late pickups came from vans already 15+ minutes behind when they left the previous stop: **lateness is mostly inherited**.
 
 ![Fleet dashboard replaying a simulated day](graphics/sim-dashboard.png)
 
-#### Calibration
-
-The knob we tune is **how optimistic the planner is** about travel times. Plan too tight and vans carry more riders but show up late more often. Since on-time performance only goes up as the plan gets looser, a simple **bisection search** finds the setting that hits the published on-time rate.
-
-We left everything else alone and used it as a sanity check:
+**Calibration:** we tune only how optimistic the van scheduler is about travel times, using a bisection search until the on-time rate matches EBP's. We didn't tune the other numbers:
 
 | Metric | Simulation (14 days) | EBP (published) |
 |---|---|---|
 | On-time pickups | 88.0% | 87.9% |
 | More than 60 min late | 0.27% | 0.20% |
 | Rider no-shows | 2.2% | 2.6% |
-| Van minutes per passenger | 46.6 | 42.0 |
-| Miles per passenger | 6.6 | 9.8 |
 
 ## Cartesia Integration
 
