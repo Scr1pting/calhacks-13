@@ -35,7 +35,7 @@
 .lw-also-booked-list {
   background: var(--lw-card-bg);
   border-radius: var(--lw-radius-row);
-  padding: 0 18px;
+  padding: 8px 18px;
   display: flex;
   flex-direction: column;
   box-shadow: var(--lw-shadow-card);

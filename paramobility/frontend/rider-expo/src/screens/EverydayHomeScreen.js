@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
     borderRadius: radii.row,
     paddingHorizontal: 18,
+    paddingVertical: 8,
     ...cardShadow,
   },
   row: {
