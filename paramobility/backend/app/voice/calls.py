@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.schemas import Trip, VoiceTask, VoiceTaskKind
 from app.core.store import get_store
 
+from . import numbers
 from .cartesia import CartesiaClient, CartesiaError
 
 log = logging.getLogger(__name__)
@@ -38,11 +39,21 @@ async def run_voice_task(trip: Trip, kind: VoiceTaskKind, variables: dict) -> Vo
         store.log(trip.id, "call_skipped", "Voice calling is not configured, so no call was made.")
         return task
 
+    # The last gate before dialling: approved, not a blocked line, not called too often.
+    try:
+        number = numbers.authorize_call(trip.appointment.phone)
+    except numbers.NumberRejected as e:
+        task.status = "blocked"
+        store.put_voice_task(task)
+        store.log(trip.id, "call_blocked", f"Didn't call {trip.appointment.name}: {e}")
+        return task
+
     store.put_voice_task(task)
     variables = {**variables, "task_id": task.id}
     async with CartesiaClient() as cartesia:
         try:
-            call_id = await cartesia.start_call(agent_id, trip.appointment.phone, variables)
+            call_id = await cartesia.start_call(agent_id, number, variables)
+            numbers.record_call(number)
         except CartesiaError as e:
             task.status = "failed"
             store.put_voice_task(task)

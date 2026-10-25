@@ -124,8 +124,20 @@ class Event(BaseModel):
     data: dict = {}
 
 
+class CalendarEntry(BaseModel):
+    """An entry as the phone's calendar has it, before Leeway decides whether it needs a ride."""
+
+    id: str
+    title: str
+    start: datetime
+    end: datetime | None = None
+    all_day: bool = False
+    location: str = ""
+    notes: str = ""
+
+
 class CalendarEvent(BaseModel):
-    """An appointment from the rider's calendar (mocked by the app for now)."""
+    """An appointment from the rider's calendar that needs a ride."""
 
     id: str
     title: str
@@ -173,6 +185,6 @@ class VoiceTask(BaseModel):
     trip_id: str
     kind: VoiceTaskKind
     call_id: str = ""
-    status: str = "created"  # created | started | completed | failed
+    status: str = "created"  # created | started | completed | failed | skipped | blocked
     result: dict | None = None  # filled by the webhook tool or transcript extraction
     transcript: list[dict] = []

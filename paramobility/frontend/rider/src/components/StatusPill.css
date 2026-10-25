@@ -1,4 +1,5 @@
 .lw-pill {
+  align-self: flex-start;
   min-height: 28px;
   padding: 0 12px;
   border-radius: var(--lw-radius-pill);

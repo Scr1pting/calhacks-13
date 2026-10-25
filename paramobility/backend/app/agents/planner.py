@@ -127,39 +127,91 @@ def build_tools(trip_id: str):
             return "Error: copy pickup_time exactly from a get_tradeoff or get_options row."
         trip = store.get_trip(trip_id)
         try:
-            plan = Plan(
-                recommended=chosen,
-                options=await asyncio.to_thread(model_tools.options, trip, trip.certainty),
-                tradeoff=await asyncio.to_thread(model_tools.tradeoff, trip),
-                explanation=explanation,
-            )
+            opts = await asyncio.to_thread(model_tools.options, trip, trip.certainty)
+            trade = await asyncio.to_thread(model_tools.tradeoff, trip)
         except ModelUnavailable as e:
             return f"Error: {e}"
-
-        def save(t: Trip):
-            t.plan = plan
-            t.status = TripStatus.planned
-            t.error = ""
-
-        store.update_trip(trip_id, save)
-        store.log(trip_id, "plan_ready", explanation, recommended=chosen.model_dump(mode="json"))
-        # The numbers in the notice come from the model, not from Claude.
-        notify_rider(trip_id, (
-            f"Your plan{f' for {trip.title.lower()}' if trip.title else ''} is ready: "
-            f"pickup window {actions.clock(chosen.pickup_time, trip.arrive_by)}–"
-            f"{actions.clock(chosen.pickup_time + timedelta(minutes=WINDOW), trip.arrive_by)}, "
-            f"with a {chosen.p_on_time:.0%} chance of arriving on time and about "
-            f"{chosen.expected_wait_minutes:.0f} min of waiting. {explanation}"
-        ))
+        await finalize_plan(trip_id, chosen, explanation, opts, trade)
         return "Plan saved."
 
     return [get_tradeoff, get_options, call_appointment_for_policy, submit_plan]
+
+
+async def finalize_plan(
+    trip_id: str,
+    chosen: TripOption,
+    explanation: str,
+    opts: list[TripOption],
+    trade: list[TripOption],
+) -> None:
+    """Save a plan and notify the rider. Shared by submit_plan and the no-call fast path below."""
+    store = get_store()
+    trip = store.get_trip(trip_id)
+    plan = Plan(recommended=chosen, options=opts, tradeoff=trade, explanation=explanation)
+
+    def save(t: Trip):
+        t.plan = plan
+        t.status = TripStatus.planned
+        t.error = ""
+
+    store.update_trip(trip_id, save)
+    store.log(trip_id, "plan_ready", explanation, recommended=chosen.model_dump(mode="json"))
+    # The numbers in the notice come from the model, not from Claude.
+    notify_rider(trip_id, (
+        f"Your plan{f' for {trip.title.lower()}' if trip.title else ''} is ready: "
+        f"pickup window {actions.clock(chosen.pickup_time, trip.arrive_by)}–"
+        f"{actions.clock(chosen.pickup_time + timedelta(minutes=WINDOW), trip.arrive_by)}, "
+        f"with a {chosen.p_on_time:.0%} chance of arriving on time and about "
+        f"{chosen.expected_wait_minutes:.0f} min of waiting. {explanation}"
+    ))
+
+
+def _fast_explanation(reached_certainty: bool) -> str:
+    base = (
+        "This is the latest pickup that still meets the chance you asked for, so you "
+        "won't wait around longer than you need to."
+        if reached_certainty
+        else "I couldn't find a pickup that reaches the chance you asked for, so this is "
+        "the best option I found."
+    )
+    return (
+        f"{base} I didn't check with the appointment for a grace period, so this doesn't "
+        "count on them holding your slot. It's your call whether to book it."
+    )
+
+
+async def plan_fast(trip_id: str, trip: Trip) -> bool:
+    """Plan directly from the delay model, no LLM round-trip.
+
+    When the rider hasn't allowed a call to the appointment, there's nothing
+    for the planner agent to decide — get_tradeoff/get_options would be its
+    only real tool calls anyway. Skipping the tool-use conversation entirely
+    turns "Arrange rides" into a near-instant plan instead of a multi-turn
+    agent exchange. Returns whether a plan was saved.
+    """
+    try:
+        opts = await asyncio.to_thread(model_tools.options, trip, trip.certainty)
+        trade = await asyncio.to_thread(model_tools.tradeoff, trip)
+    except ModelUnavailable:
+        return False
+    if not trade:
+        return False
+    chosen = opts[0] if opts else max(trade, key=lambda o: o.p_on_time)
+    await finalize_plan(trip_id, chosen, _fast_explanation(bool(opts)), opts, trade)
+    return True
 
 
 async def plan_trip(trip_id: str) -> None:
     store = get_store()
     trip = store.get_trip(trip_id)
     store.log(trip_id, "planning", "Planning started.")
+
+    if not trip.permissions.may_call_appointment:
+        if await plan_fast(trip_id, trip):
+            return
+        # Delay model unavailable: fall through to the full agent, which will
+        # hit the same error via get_tradeoff/get_options and fail cleanly.
+
     try:
         runner = get_client().beta.messages.tool_runner(
             model=get_settings().planner_model,

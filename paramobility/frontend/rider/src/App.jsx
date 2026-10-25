@@ -13,6 +13,8 @@ import CallingClinicScreen from './screens/CallingClinicScreen.jsx'
 import OutcomeScreen from './screens/OutcomeScreen.jsx'
 import RiderDecisionScreen from './screens/RiderDecisionScreen.jsx'
 import ChatScreen from './screens/ChatScreen.jsx'
+import ChatHomeScreen from './screens/ChatHomeScreen.jsx'
+import LiveTripScreen from './screens/LiveTripScreen.jsx'
 import Headline from './components/Headline.jsx'
 
 function renderScreen(flow) {
@@ -24,7 +26,9 @@ function renderScreen(flow) {
     case 'working':
       return <BookingProgressScreen working={flow.working} />
     case 'home':
-      return <HomeScreen home={flow.home} />
+      return flow.ride ? <LiveTripScreen ride={flow.ride} /> : <HomeScreen home={flow.home} />
+    case 'ride':
+      return <LiveTripScreen ride={flow.ride} />
     case 'empty':
       return <EmptyHomeScreen empty={flow.empty} />
     case 'everyday':
@@ -37,6 +41,8 @@ function renderScreen(flow) {
       return <RiderDecisionScreen decision={flow.decision} />
     case 'chat':
       return <ChatScreen chat={flow.chat} />
+    case 'chatHome':
+      return <ChatHomeScreen chatHome={flow.chatHome} />
     case 'loading':
       return <Headline lead="One moment.">Getting your rides.</Headline>
     default:
@@ -48,7 +54,7 @@ export default function App() {
   const flow = useLeewayFlow()
 
   const bottomBar = flow.showBar
-    ? flow.screen === 'chat'
+    ? flow.screen === 'chat' || flow.screen === 'chatHome'
       ? (
           <AskLeewayBar
             mode="input"

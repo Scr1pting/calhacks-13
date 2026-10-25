@@ -103,6 +103,15 @@ class Store:
     def put_rider(self, rider: RiderProfile) -> None:
         self._put_raw("riders", rider.id, rider.model_dump_json())
 
+    def update_rider(self, rider_id: str, change: Callable[[RiderProfile], None]) -> RiderProfile:
+        with self._lock:
+            rider = self.get_rider(rider_id)
+            if rider is None:
+                raise KeyError(rider_id)
+            change(rider)
+            self.put_rider(rider)
+            return rider
+
     # voice tasks
 
     def get_voice_task(self, task_id: str) -> VoiceTask | None:

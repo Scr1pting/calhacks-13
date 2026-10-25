@@ -21,11 +21,13 @@
   --lw-map-green-patch: #dde9de;
   --lw-map-pin: #2fa36b;
 
-  --lw-success: #1f6b4a;
+  --lw-success: #1f6b4a; /* on-time odds: 90%+ */
   --lw-success-bg: #e3f1e8;
   --lw-accent: #4a3bb8;
   --lw-accent-bg: #ece9fa;
   --lw-warning-text: #8a5a00;
+  --lw-ride-amber: #9a5b13; /* on-time odds: 60-90% */
+  --lw-danger: #a4342a; /* on-time odds: under 60% */
 
   /* Radii */
   --lw-radius-map: 12px;

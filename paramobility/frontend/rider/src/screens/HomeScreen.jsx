@@ -18,7 +18,7 @@ export default function HomeScreen({ home }) {
       <Card>
         <div className="lw-forecast-main">
           <EyebrowLabel>{home.oddsEyebrow}</EyebrowLabel>
-          <BigNumber size="xl" color="var(--lw-success)">
+          <BigNumber size="xl" color={home.oddsColor}>
             {home.oddsValue}
           </BigNumber>
           <p className="lw-forecast-note">

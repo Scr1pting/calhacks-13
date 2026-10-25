@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.paramobility.rider"
     },
     "android": {
       "adaptiveIcon": {
@@ -15,14 +16,30 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.READ_CALENDAR"
+      ],
+      "package": "com.paramobility.rider"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-splash-screen"
-    ]
+      "expo-splash-screen",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Leeway reads your calendar to find appointments you may need a ride to."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "89f33d37-bad2-4fea-bf8b-55c0d99e103c"
+      }
+    },
+    "owner": "dariant"
   }
 }

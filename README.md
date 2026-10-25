@@ -41,7 +41,7 @@ cp .env.example .env    # or put the values in the repo-root .env
 
 ```bash
 cd paramobility/frontend/rider
-cp .env.example .env.local   # set VITE_API_KEY; VITE_DEMO_CLINIC_PHONE to hear the agent call
+cp .env.example .env.local   # set VITE_API_KEY; pick the number to call in the demo panel
 npm install
 npm run dev
 ```
@@ -59,4 +59,4 @@ npm run dev                      # http://localhost:5174
 npm run data                     # rebuild public/data/fleet.json after re-running the simulator
 ```
 
-Handy links: `?t=10:15` starts at that time, and `?follow=maria` opens on Maria's ride. Map data is open and needs no keys: buildings, roads and water come from OpenStreetMap via OpenFreeMap, and hillshading from AWS Terrain Tiles.
+Handy links: `?film` plays a two-minute film of the day that tells the problem through Maria's morning, `?story` a minimal 90-second cut that builds it up on a blank page (Space pauses, Esc exits, `?film=40` or `?story=40` starts 40 seconds in), `?t=10:15` starts at that time, and `?follow=maria` opens on Maria's ride. Map data is open and needs no keys: buildings, roads and water come from OpenStreetMap via OpenFreeMap, and hillshading from AWS Terrain Tiles.

@@ -1,0 +1,149 @@
+.lw-chathome-next {
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.lw-chathome-next-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.lw-chathome-next-window {
+  font-size: var(--lw-fs-display-sm);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.lw-chathome-next-title {
+  margin: 0;
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-chathome-next-odds {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lw-chathome-next-odds-label {
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-text-secondary);
+}
+
+.lw-chathome-next-odds-value {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-chathome-upcoming-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lw-chathome-upcoming-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+/* StatusPill defaults to align-self: flex-start for its usual home in a
+   column-flex card; here the row is a flex row, so that would misalign it
+   to the top instead of centering with the title/date and button. */
+.lw-chathome-upcoming-row .lw-pill {
+  align-self: center;
+  flex: none;
+}
+
+.lw-chathome-upcoming-row-divided {
+  border-top: 1px solid var(--lw-divider);
+}
+
+/* The card's own gap above this list already gives enough space below the
+   eyebrow — this row's usual top padding (for symmetry around the row
+   dividers) would stack on top of that and look like too much. */
+.lw-chathome-upcoming-row-first {
+  padding-top: 0;
+}
+
+/* No margin here — the last row's own bottom padding already gives this
+   divider the same 12px gap above it as the border-top dividers between
+   rows get above their line, from each row's own padding. */
+
+.lw-chathome-upcoming-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lw-chathome-upcoming-title {
+  font-size: var(--lw-fs-body);
+  font-weight: 500;
+}
+
+.lw-chathome-upcoming-date {
+  font-size: var(--lw-fs-caption);
+  color: var(--lw-text-secondary);
+}
+
+.lw-chathome-book-btn {
+  flex: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--lw-radius-pill);
+  border: none;
+  background: var(--lw-accent-bg);
+  color: var(--lw-accent);
+  font-family: inherit;
+  font-size: var(--lw-fs-secondary);
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.lw-chathome-seeall {
+  width: 100%;
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: inherit;
+  font-size: var(--lw-fs-body);
+  color: var(--lw-ink);
+  cursor: pointer;
+}
+
+.lw-chathome-suggestions {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lw-chathome-chip {
+  min-height: 44px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border-radius: var(--lw-radius-button-sm);
+  border: 1px solid var(--lw-border-secondary);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--lw-fs-secondary);
+  color: var(--lw-ink);
+  cursor: pointer;
+}

@@ -6,10 +6,18 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app.agents import chat
-from app.core.schemas import CalendarEvent, ChatMessage, Permissions, RiderProfile, Trip, now
+from app.agents import calendar_check, chat
+from app.core.schemas import (
+    CalendarEntry,
+    CalendarEvent,
+    ChatMessage,
+    Permissions,
+    RiderProfile,
+    Trip,
+    now,
+)
 from app.core.store import get_store
-from app.voice import speech
+from app.voice import numbers, speech
 
 from .streams import sse
 from .trips import require_api_key
@@ -30,14 +38,18 @@ class RiderUpdate(BaseModel):
     name: str
     home: str
     time_zone: str = "UTC"
-    calendar: list[CalendarEvent] = []
+    calendar: list[CalendarEvent] | None = None  # left out: keep the synced calendar
     permissions: Permissions = Permissions()
 
 
 @router.put("/riders/{rider_id}")
 async def put_rider(rider_id: str, body: RiderUpdate) -> RiderProfile:
     """Create or update the rider, including their calendar (the app syncs it on start)."""
-    rider = RiderProfile(id=rider_id, updated_at=now(), **body.model_dump())
+    fields = body.model_dump()
+    if body.calendar is None:
+        old = get_store().get_rider(rider_id)
+        fields["calendar"] = old.calendar if old else []
+    rider = RiderProfile(id=rider_id, updated_at=now(), **fields)
     get_store().put_rider(rider)
     return rider
 
@@ -45,6 +57,26 @@ async def put_rider(rider_id: str, body: RiderUpdate) -> RiderProfile:
 @router.get("/riders/{rider_id}")
 async def get_rider(rider_id: str) -> RiderProfile:
     return _rider(rider_id)
+
+
+class CalendarSync(BaseModel):
+    entries: list[CalendarEntry] = Field(max_length=500)
+
+
+@router.put("/riders/{rider_id}/calendar")
+async def put_calendar(rider_id: str, body: CalendarSync) -> calendar_check.CalendarCheck:
+    """Sync the phone's calendar: Haiku keeps the entries that need a ride.
+
+    They become the rider's calendar. The rest only count towards `skipped`.
+    """
+    result = await calendar_check.check(_rider(rider_id), body.entries)
+
+    def change(r: RiderProfile) -> None:
+        r.calendar = result.calendar
+        r.updated_at = now()
+
+    get_store().update_rider(rider_id, change)
+    return result
 
 
 @router.get("/riders/{rider_id}/trips")
@@ -115,3 +147,39 @@ async def speak(body: SpeechRequest) -> Response:
     except speech.SpeechError as e:
         raise HTTPException(502, str(e)) from e
     return Response(audio, media_type="audio/mpeg")
+
+
+# ---- the numbers Leeway may call (checks in app.voice.numbers) ----------------
+
+
+class CallNumber(BaseModel):
+    phone: str
+    pin: str = ""
+
+
+class CallNumberStatus(BaseModel):
+    phone: str
+    approved: bool
+    reason: str = ""
+
+
+@router.post("/call-numbers/check")
+async def check_call_number(body: CallNumber) -> CallNumberStatus:
+    """Whether Leeway may call this number, and if not, why."""
+    try:
+        number = numbers.check(body.phone)
+    except numbers.NumberRejected as e:
+        return CallNumberStatus(phone=body.phone, approved=False, reason=str(e))
+    approved = number in numbers.approved_numbers()
+    return CallNumberStatus(phone=number, approved=approved,
+                            reason="" if approved else "Not approved yet: enter the PIN to add it.")
+
+
+@router.post("/call-numbers")
+async def add_call_number(body: CallNumber) -> CallNumberStatus:
+    """Approve a number for calls. Needs the server's CALL_PIN."""
+    try:
+        number = numbers.approve(body.phone, body.pin)
+    except numbers.NumberRejected as e:
+        raise HTTPException(403 if isinstance(e, numbers.PinRejected) else 422, str(e)) from e
+    return CallNumberStatus(phone=number, approved=True)

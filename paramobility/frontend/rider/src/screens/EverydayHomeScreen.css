@@ -15,7 +15,6 @@
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--lw-success);
 }
 
 .lw-everyday-odds-label {
@@ -73,5 +72,20 @@
 
 .lw-also-booked-value {
   font-size: var(--lw-fs-secondary);
-  color: var(--lw-success);
+}
+
+.lw-everyday-book-btn {
+  flex: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--lw-radius-pill);
+  border: none;
+  background: var(--lw-accent-bg);
+  color: var(--lw-accent);
+  font-family: inherit;
+  font-size: var(--lw-fs-secondary);
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
 }

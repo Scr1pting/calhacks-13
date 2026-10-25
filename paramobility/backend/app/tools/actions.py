@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.core.schemas import AppointmentPolicy, Trip, VoiceTaskKind
 from app.core.store import get_store
+from app.voice import numbers
 from app.voice.calls import run_voice_task
 
 from .model_tools import DelayAssessment
@@ -28,13 +29,18 @@ def rider_label(trip: Trip) -> str:
 
 
 def _take_call(trip_id: str) -> Trip:
-    """Check the rider allows calling and use up one call from their budget."""
+    """Check the rider allows calling and the number may be called, then use up
+    one call from their budget."""
 
     def change(t: Trip):
         if not t.permissions.may_call_appointment:
             raise NotAllowed("The rider has not allowed calling the appointment.")
         if t.calls_used >= t.permissions.max_calls:
             raise NotAllowed(f"The rider's limit of {t.permissions.max_calls} calls is used up.")
+        try:
+            numbers.authorize_call(t.appointment.phone)
+        except numbers.NumberRejected as e:
+            raise NotAllowed(str(e)) from e
         t.calls_used += 1
 
     return get_store().update_trip(trip_id, change)

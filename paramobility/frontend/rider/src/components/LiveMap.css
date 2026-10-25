@@ -1,0 +1,12 @@
+.lw-live-map {
+  flex: 1;
+  min-height: 180px;
+  border-radius: var(--lw-radius-card);
+  overflow: hidden;
+  background: var(--lw-map-bg);
+  box-shadow: var(--lw-shadow-card);
+}
+
+.lw-live-map .leaflet-control-zoom {
+  display: none;
+}

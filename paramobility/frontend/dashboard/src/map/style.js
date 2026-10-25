@@ -151,3 +151,52 @@ export const mapStyle = {
     },
   ],
 }
+
+// How much of the base map shows, for the story's blank-page look. Each level
+// gives a layer's opacity; anything not listed is hidden. `full` is the style.
+const ROADS = ['road-minor', 'road-mid', 'road-major', 'road-motorway'].flatMap((id) => [id, `${id}-casing`])
+const FULL = {
+  background: LAND,
+  landcover: 0.55,
+  park: 0.85,
+  hillshade: 0.22,
+  water: 1,
+  runway: 1,
+  buildings: 0.96,
+  places: 1,
+  ...Object.fromEntries(ROADS.map((id) => [id, 1])),
+}
+const LEVELS = {
+  full: FULL,
+  blank: { background: '#f5f5f3' },
+  water: { background: '#f5f5f3', water: 0.4 },
+  streets: { background: '#f5f5f3', water: 0.55, park: 0.4, ...Object.fromEntries(ROADS.map((id) => [id, 0.75])) },
+}
+const PROP = {
+  background: 'background-color',
+  hillshade: 'hillshade-exaggeration',
+  buildings: 'fill-extrusion-opacity',
+  places: 'text-opacity',
+  ...Object.fromEntries(ROADS.map((id) => [id, 'line-opacity'])),
+}
+
+export function setBasemap(map, level, ms = 1400) {
+  const values = LEVELS[level]
+  const apply = () => {
+    for (const id of Object.keys(FULL)) {
+      const prop = PROP[id] ?? 'fill-opacity'
+      const value = values[id] ?? (id === 'background' ? LAND : 0)
+      map.setPaintProperty(id, `${prop}-transition`, { duration: ms, delay: 0 })
+      map.setPaintProperty(id, prop, value)
+    }
+  }
+  // Before the style has loaded, try again shortly.
+  const go = () => {
+    try {
+      apply()
+    } catch {
+      setTimeout(go, 150)
+    }
+  }
+  go()
+}

@@ -10,6 +10,7 @@ into it. No personal history yet: every rider gets the prior.
 """
 
 import math
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import NamedTuple
@@ -96,8 +97,22 @@ def score(ride: Ride, window_start: datetime) -> Score:
 
 @lru_cache(maxsize=256)
 def tradeoff(ride: Ride) -> tuple[Score, ...]:
-    """Every candidate window, earliest first. Cached: a plan asks for the same trip often."""
-    return tuple(score(ride, w) for w in windows(ride))
+    """Every candidate window, earliest first. Cached: a plan asks for the same trip often.
+
+    Up to MAX_BACK/STEP windows (48 by default), each needing its own
+    drive-time lookup (a network call on a cache miss) — scored concurrently
+    on a thread pool instead of one at a time, since they're independent and
+    I/O-bound. ThreadPoolExecutor.map preserves input order.
+    """
+    ws = windows(ride)
+    if not ws:
+        return ()
+    # Capped at 8, not higher: a single "Arrange rides" click already plans
+    # 2 trips at once, so this is up to 16 concurrent routing requests per
+    # rider action already — no need to burst harder against the routing
+    # API's rate limits for a marginal additional speedup.
+    with ThreadPoolExecutor(max_workers=min(8, len(ws))) as pool:
+        return tuple(pool.map(lambda w: score(ride, w), ws))
 
 
 def options(ride: Ride, certainty: float, n: int = 3) -> list[Score]:
