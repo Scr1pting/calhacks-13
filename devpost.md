@@ -15,9 +15,11 @@
 
 ## Prediction
 
+```
+arrival = booking_start + pickup_delay + travel_time
+```
 
-
-### L: 
+### Pickup Delay
 
 #### No Previous Rides
 
@@ -48,7 +50,7 @@ We noticed that our mean and therefore our offset $g(t)$ is very ragged, so we w
 
 ![](graphics/runge-mu0.svg)
 
-We ultimately settled for a **cubic spline to interpolate** the datapoints. We considered using a least squares fit but decided against it since each of the data points is backed by many datapoints.
+We ultimately settled for a **cubic spline to interpolate** the datapoints. We didn't smooth the points with a least-squares fit because each hourly value already rests on 30k–2M NYC trips.
 
 #### Previous Trips
 
@@ -62,29 +64,31 @@ We add **two personal offsets** to the general estimate: one that follows the ri
 
 Under the hood this is a **Bayesian linear regression**: fading old trips = treating them as noisier measurements (heteroscedastic noise!).
 
-### R
+### Travel Time
 
-Google Maps takes traffic data into account. Therefore, our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes.
+Google Maps takes traffic data into account. Therefore, our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. 
 
-This is great for the *average* case. But we care most about what happens in the worst case, let's say the worst 30%. That's when we might need to reschedule. We therefore again used NYC data to inform our choice of spread.
+This is great for the *average* case. But we care most about what happens in the slow tail. That's when we might need to reschedule. We therefore again used NYC data to inform our choice of spread.
 
 ![](graphics/ride-prior-08h.svg)
 *Example trip: Hayward to Highland Hospital, Oakland (~14 mi). Most affected by morning traffic because it runs toward Oakland with the morning commute, and against the evening one.*
 
 ### Calculating the Arrival
 
+The rider is on time if `pickup_delay + travel_time` fits into the time between `booking_start` and the appointment.
 
+The pickup delay is a shifted log-normal and the travel time a log-normal. Each has a simple closed-form CDF on its own, but their **sum doesn't**. So we go one pickup delay at a time: if the van shows up 15 minutes late, how likely is the ride to fit into the time that's left? We answer that for every possible pickup delay and average the answers, weighting each by how likely that delay is.
 
-Both L and R have a shifted log-normal distribution. Unfortunately, there exists no closed-form solution to its cumulative probability distribution.
+We do this for **2000 evenly spaced quantiles of the pickup delay** (not random samples). That makes it deterministic and takes about 1 ms, so we can rerun it every time something changes:
 
+- **Still waiting:** we keep only the pickup delays that are still possible, so the probability drops the longer the van doesn't show
+- **On board:** the pickup delay is known, and only the rest of the ride is uncertain
 
+### Future: Waze for Paratransit
 
-Sample 2000 points and 
+East Bay Paratransit doesn't publish delays by time of day, so today we borrow them from New York. But every trip someone takes with Leeway already records when the van came and how long the ride took (we keep just those numbers and throw away the GPS track). Today that only improves that rider's own predictions.
 
-
-### Future: Waze for Paratransport
-
-
+Pooled across riders (anonymized, and only with their consent), those trips would replace our NYC stand-in with real East Bay data: how delays change through the day, how much rides vary, and whether a late van also means a longer ride. And like Waze, it works live: if vans in Hayward are running late right now, riders still waiting there can find out before their own van is late, and reschedule while there's still time.
 
 ## Mobile App
 
