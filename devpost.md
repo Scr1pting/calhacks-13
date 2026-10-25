@@ -94,3 +94,42 @@ Sample 2000 points and
 
 ## Simulation
 
+We don't have much real data, and what we have is coarse: on-time percentages per month, not individual rides. So to train and test our predictions, we **generate synthetic rides** that behave like the real ones, and tune the simulation until its punctuality matches what East Bay Paratransit publishes.
+
+#### Generating likely trips
+
+We create a pool of 7,000 synthetic riders. Each one gets:
+- **a home** in one of 18 East Bay neighborhoods, from Richmond to Fremont
+- **a reason to travel**: dialysis (20%), medical appointments (30%), senior programs (30%) or other errands (20%)
+- **a usual destination**, usually one close by: real hospitals, plus placeholder dialysis centers, senior centers and stores
+- **a mobility type** (ambulatory, walker or wheelchair), which sets how long boarding takes
+
+The purpose sets the rhythm. Dialysis riders go three times a week (Mon/Wed/Fri or Tue/Thu/Sat) at fixed chair times, senior programs start around 9:30am, and medical appointments are spread over the day on the quarter hour. Riders with an appointment ask to be picked up early enough to arrive 30 minutes ahead, and every trip out comes with a trip back once the appointment is over. We draw riders until we reach about **2,400 one-way trips per weekday** and a bit under a third of that on weekends, which is about what EBP reports.
+
+#### Scheduling the vans
+
+A greedy scheduler, standing in for the agency's software, puts each request into whichever van route it adds the least extra time to. It promises every rider a 30-minute window, respects ride-time limits, appointment times and driver shifts, and may move a pickup by up to an hour, just like the agency. Driving times come from real road distances (OSRM) and hourly speeds.
+
+#### Making vans late
+
+Then we drive those routes through a noisy world. Each leg gets **log-normal traffic noise** that spreads wider at rush hour, plus the occasional incident, hard-to-find address, rider who isn't ready (after 5 minutes it's a no-show), slow boarding, breakdown or late shift start. Each stop starts when the previous one ends, so **lateness cascades** down the route.
+
+Every stop also records *why* it ran late, which gives us a labeled dataset for free. One thing stood out: 96% of late pickups came from vans that were already 15+ minutes behind plan when they left the previous stop. **Lateness is mostly inherited**, so you can see it coming long before the van arrives, which is what makes live prediction possible.
+
+![The simulation replayed live: every late pickup is listed with its cause](graphics/sim-replay.png)
+
+#### Calibration
+
+The knob we tune is **how optimistic the planner is** about travel times. Plan too tight and vans carry more riders but show up late more often. Since on-time performance only goes up as the plan gets looser, a simple **bisection search** finds the setting that hits the published on-time rate.
+
+We left everything else alone and used it as a sanity check:
+
+| Metric | Simulation (14 days) | EBP (published) |
+|---|---|---|
+| On-time pickups | 88.0% | 87.9% |
+| More than 60 min late | 0.27% | 0.20% |
+| Rider no-shows | 2.2% | 2.6% |
+| Van minutes per passenger | 46.6 | 42.0 |
+| Miles per passenger | 6.6 | 9.8 |
+
+Miles per passenger is too low: our trips are a bit too local, or shared too efficiently.
