@@ -367,6 +367,9 @@ def publish(trip: Trip) -> None:
 
 # per minutes moved: (planned drive it was made with, points)
 _timelines: dict[float, tuple[float, list[dict]]] = {}
+# One replay at a time: requests run on threads, and two replays at once would step each
+# other's live trip (and the wrong result would stay cached).
+_timeline_lock = threading.Lock()
 
 
 def timeline(moved: float = 0) -> list[dict]:
@@ -378,15 +381,16 @@ def timeline(moved: float = 0) -> list[dict]:
     the appointment that many minutes later (the chance once the clinic has moved it).
     """
     r = ride()
-    with routing.replaying():
+    live_id = f"presentation-timeline-{moved:g}"
+    with _timeline_lock, routing.replaying():
         drive_min = planned_drive(r)
         cached = _timelines.get(moved)
         if cached is not None and cached[0] == drive_min:
             return cached[1]
-        register(r, "presentation-timeline", drive_min, r.appointment + moved)
+        register(r, live_id, drive_min, r.appointment + moved)
         points, asked = [], False
         for point in r.track:
-            out = step(r, "presentation-timeline", point)
+            out = step(r, live_id, point)
             alert = out.get("alert")
             low, high = out.get("eta_range") or [out["eta"]] * 2
             points.append({
