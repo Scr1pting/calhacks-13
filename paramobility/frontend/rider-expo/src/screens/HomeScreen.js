@@ -6,7 +6,6 @@ import BigNumber from '../components/BigNumber'
 import Divider from '../components/Divider'
 import KeyValueRow from '../components/KeyValueRow'
 import LocationCard from '../components/LocationCard'
-import Button from '../components/Button'
 import { colors, fonts, type } from '../theme/tokens'
 
 // Screens 3 ("Ride booked, future day") and 3b ("Day of ride") — the same
@@ -31,20 +30,6 @@ export default function HomeScreen({ home }) {
       <LocationCard name={home.locationName} address={home.locationAddress} />
 
       <Text style={styles.monitor}>{home.monitorText}</Text>
-
-      {home.hasSecondary && home.secondary && (
-        <View style={styles.secondaryRow}>
-          <View style={styles.secondaryInfo}>
-            <Text style={styles.secondaryTitle}>
-              {home.secondary.visitReason} {'·'} {home.secondary.date}
-            </Text>
-            <Text style={styles.secondarySub}>{home.secondary.sub}</Text>
-          </View>
-          <Button variant="compact-solid" onPress={home.onPlanSecondary}>
-            {home.secondary.action}
-          </Button>
-        </View>
-      )}
     </>
   )
 }
@@ -59,20 +44,4 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     paddingHorizontal: 4,
   },
-  secondaryRow: {
-    minHeight: 64,
-    paddingVertical: 10,
-    paddingLeft: 18,
-    paddingRight: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.borderSecondary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  secondaryInfo: { gap: 2, flexShrink: 1 },
-  secondaryTitle: { fontFamily: fonts.medium, fontSize: type.body, color: colors.ink },
-  secondarySub: { fontFamily: fonts.regular, fontSize: type.caption, color: colors.textSecondary },
 })

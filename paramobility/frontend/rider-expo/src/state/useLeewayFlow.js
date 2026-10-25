@@ -764,40 +764,12 @@ export function useLeewayFlow() {
       monitorText: today
         ? 'I’m watching this trip. If it starts to look late, I’ll call Kaiser for you.'
         : 'I’ll watch the trip on Tuesday.',
-      hasSecondary: !today,
-      secondary: today
-        ? null
-        : {
-            visitReason: 'Physical Therapy',
-            date: 'Thu, Nov 5',
-            sub: 'Needs a ride',
-            action: 'Plan',
-            onClick: () => go('recommend', { preview: 'recommend' }),
-          },
-      onPlanSecondary: () => go('recommend', { preview: 'recommend' }),
     }
   } else if (current && pickupWindow(current)) {
     const w = pickupWindow(current)
     const riding = current.status === 'riding'
     const today = isToday(current.arrive_by)
     const appt = current.appointment.name
-    // Another appointment that needs attention: a plan to review, or one with no ride yet.
-    const review = waiting.find((t) => t.status === 'planned')
-    const secondary = review
-      ? {
-          visitReason: titleOf(review),
-          date: shortDate(review.arrive_by),
-          sub: 'Plan ready',
-          action: 'Review',
-          onClick: () => go('recommend', { queue: [review.id], qi: 0 }),
-        }
-      : unplanned[0] && {
-          visitReason: unplanned[0].title,
-          date: shortDate(unplanned[0].start),
-          sub: 'Needs a ride',
-          action: 'Plan',
-          onClick: () => arrange([unplanned[0]]),
-        }
     home = {
       today,
       headlineLead: riding
@@ -819,9 +791,6 @@ export function useLeewayFlow() {
       monitorText: riding || today
         ? `I’m watching this trip. If it starts to look late, I’ll call ${firstWord(appt)} for you.`
         : `I’ll watch the trip on ${weekday(current.arrive_by)}.`,
-      hasSecondary: !!secondary && !riding,
-      secondary,
-      onPlanSecondary: () => secondary?.onClick(),
     }
   }
 
