@@ -92,31 +92,22 @@ Sample 2000 points and
 
 ## Mobile App
 
-**Mobile UI & Design Considerations**
-
-Reducing cognitive load, proactively taking action, and preserving user agency.
+**Design Considerations:** Reducing cognitive load, proactively taking action, and preserving user agency.
 
 **Key design choices**
 
-Minimal graphics and clear visual hierarchy centered on arrival probability and trip status.
-
-Proactive assistance that anticipates problems and takes action on the user's behalf, seeking consent for consequential decisions.
-
-Continuous, transparent updates so users know what Leeway did, the outcome, and what happens next.
-
-Visible AI actions, call transcripts, and a conversational assistant with chat history.
-
-When arrival probability drops below a defined threshold, Leeway proactively explores alternatives and asks for approval before committing to another ride.
+- Minimal graphics and clear visual hierarchy centered on arrival probability and trip status.
+- Proactive assistance that anticipates problems and takes action on the user's behalf, seeking consent for consequential decisions.
+- Continuous, transparent updates so users know what Leeway did, the outcome, and what happens next.
+- Visible AI actions, call transcripts, and a conversational assistant with chat history.
+- When arrival probability drops below a defined threshold, Leeway proactively explores alternatives and asks for approval before committing to another ride.
 
 **Accessibility**
 
-Target WCAG 2.2 AAA standards where feasible.
-
-During setup, users can customize accessibility preferences, including text size, voice input and control, and color-vision needs.
-
-Support screen readers with descriptive alt text, strong contrast, and large touch targets.
-
-Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
+- Target WCAG 2.2 AAA standards where feasible.
+- During setup, users can customize accessibility preferences, including text size, voice input and control, and color-vision needs.
+- Support screen readers with descriptive alt text, strong contrast, and large touch targets.
+- Test with real riders and caregivers, using their feedback and consented trip outcomes to improve the experience and predictions.
 
 ## Simulation
 
