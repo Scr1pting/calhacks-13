@@ -283,7 +283,8 @@ export function presentationScenes(fleet, data) {
       // Long enough to watch the chance fall as the van goes: about two ride minutes a second.
       dur: Math.min(14, Math.max(6, 3 + (askT - ride.depart) * 0.45)),
       t: [ride.depart, askT],
-      ...above,
+      // The stop it's heading for, in the picture from the start: the reason for the detour.
+      ...(stops[0] ? { birdsEye: { ...above.birdsEye, anchors: [...above.birdsEye.anchors, stops[0].pos] } } : above),
       phone: 'ride',
       chart: true,
       title: 'Then the van goes the other way.',

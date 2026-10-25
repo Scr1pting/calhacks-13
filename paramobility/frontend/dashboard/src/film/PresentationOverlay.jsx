@@ -77,11 +77,11 @@ export default function PresentationOverlay({ scenes, view, getT, onExit, onRepl
 const W = 560
 const H = 120
 const PAD = 16
-const TOP = 12
+const TOP = 26 // the strip above holds the labels, clear of the line
+const LABEL_Y = 16
 const BASE = H - 22
 
 function ChanceChart({ pres, getT }) {
-  const label = useRef(null)
   // After the clinic moves the appointment: when, and the server's chance since, against the new time.
   const after = useRef({ at: null, samples: [] })
   const line = useRef(null)
@@ -129,7 +129,6 @@ function ChanceChart({ pres, getT }) {
       }
       for (const [st, sp] of a.samples) pts.push(`${x(st).toFixed(1)},${y(sp).toFixed(1)}`)
       pts.push(`${x(t).toFixed(1)},${y(s.p_on_time).toFixed(1)}`)
-      if (label.current) label.current.textContent = `on time for ${hm(movedTo ?? pres.appointment)}`
       line.current?.setAttribute('points', pts.join(' '))
       area.current?.setAttribute('points', `${x(from)},${BASE} ${pts.join(' ')} ${x(t).toFixed(1)},${BASE}`)
       dot.current?.setAttribute('cx', x(t).toFixed(1))
@@ -166,14 +165,12 @@ function ChanceChart({ pres, getT }) {
       <div className="live-odds">
         <span ref={odds} className="live-odds-value" />
         <span className="live-odds-label">
-          <span ref={label}>on time for {pres.appointmentLabel}</span>
-          <br />
           <span ref={eta} />
         </span>
       </div>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
         <rect x={x(pres.windowStart)} y={TOP} width={x(pres.windowEnd) - x(pres.windowStart)} height={BASE - TOP} className="pres-chart-window" />
-        <text x={x(pres.windowStart) + 5} y={BASE - 6} className="live-chart-tick">
+        <text x={x(pres.windowStart) + 4} y={LABEL_Y} className="live-chart-tick">
           pickup window
         </text>
         <polygon ref={area} className="pres-chart-area" />
@@ -186,15 +183,16 @@ function ChanceChart({ pres, getT }) {
         <polyline ref={line} className="live-chart-line" />
         <line x1={PAD} x2={W - PAD} y1={BASE} y2={BASE} className="live-chart-axis" />
         <g ref={pickup} opacity="0">
-          <line x1={x(pres.ride.pickup.t)} x2={x(pres.ride.pickup.t)} y1={TOP} y2={BASE} className="pres-chart-mark" />
-          <text x={x(pres.ride.pickup.t) + 5} y={TOP + 9} className="live-chart-tick">
+          <line x1={x(pres.ride.pickup.t)} x2={x(pres.ride.pickup.t)} y1={LABEL_Y + 4} y2={BASE} className="pres-chart-mark" />
+          <text x={x(pres.ride.pickup.t) + 4} y={LABEL_Y} className="live-chart-tick">
             picked up
           </text>
         </g>
         {pres.ask && (
           <g ref={asked} opacity="0">
             <circle cx={x(pres.ask.t)} cy={y(askP)} r="5" className="pres-chart-ask" />
-            <text x={x(pres.ask.t) + 8} y={y(askP) + 16} className="live-chart-appt-label">
+            <line x1={x(pres.ask.t)} x2={x(pres.ask.t)} y1={LABEL_Y + 4} y2={y(askP) - 6} className="pres-chart-mark" />
+            <text x={x(pres.ask.t) + 4} y={LABEL_Y} className="live-chart-appt-label">
               asks {hm(pres.ask.t)}{pres.ask.ask_minutes ? ` · ~${pres.ask.ask_minutes} min late` : ''}
             </text>
           </g>
