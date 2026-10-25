@@ -12,7 +12,15 @@ import { config, liveCall } from './liveCall.js'
 
 const API = import.meta.env.VITE_API_BASE || 'https://api.cal.fuzz.li'
 
-const run = { online: false, tripId: null, pending: null, error: '' }
+// `trip`: the server's trip, followed once the rider said yes (a call can move the appointment).
+const run = { online: false, tripId: null, pending: null, error: '', following: false, trip: null }
+
+// Minutes after midnight in the rider's zone, for an ISO time.
+const ZONE = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', hour: 'numeric', minute: 'numeric' })
+const minutesOf = (iso) => {
+  const p = Object.fromEntries(ZONE.formatToParts(new Date(iso)).map((x) => [x.type, Number(x.value)]))
+  return p.hour * 60 + p.minute
+}
 let flight = null // the clock post on its way, if any
 
 async function api(method, path, body) {
@@ -82,6 +90,7 @@ function pump() {
   const t = run.pending
   run.pending = null
   flight = api('POST', '/presentation/clock', { t })
+    .then(() => (run.following ? api('GET', `/trips/${run.tripId}`).then((trip) => (run.trip = trip)) : null))
     .catch((e) => {
       run.error = e.message
     })
@@ -90,6 +99,12 @@ function pump() {
 
 export const presentationSync = {
   get: () => ({ ...run }),
+  // The new appointment, in minutes after midnight, once a call moved it; else null.
+  movedTo(appointment) {
+    if (!run.trip) return null
+    const m = minutesOf(run.trip.arrive_by)
+    return Math.abs(m - appointment) >= 1 ? m : null
+  },
 
   // The trip the film drives: a fresh one (a whole call budget each run) for
   // the configured rider, or the one the phone started. Offline, none.
@@ -97,6 +112,8 @@ export const presentationSync = {
     run.online = online
     run.tripId = null
     run.pending = null
+    run.following = false
+    run.trip = null
     if (!online) return
     const { rider, phone } = config()
     if (!rider && info.trip_id) {
@@ -127,6 +144,7 @@ export const presentationSync = {
       return
     }
     while (flight) await flight
+    run.following = true
     try {
       await api('POST', `/trips/${run.tripId}/late-ask`, { call: true })
     } catch (e) {

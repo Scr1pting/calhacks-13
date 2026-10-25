@@ -101,6 +101,11 @@ LATE_TOOL = (
             "type": "boolean",
             "description": "True if the rider can still be seen, false if it must be moved.",
         },
+        "new_time": {
+            "type": "string",
+            "description": "The new appointment time you agreed with them, as HH:MM (24-hour), "
+            "if it was moved. Leave out if it wasn't.",
+        },
         "notes": {"type": "string", "description": "Anything the rider should know."},
     },
 )

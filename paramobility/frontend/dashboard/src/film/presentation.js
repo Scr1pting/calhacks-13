@@ -299,6 +299,8 @@ export function presentationScenes(fleet, data) {
       chart: true,
       title: 'The clinic knows before she’s late.',
       line: `${Math.round(appointment - askT)} minutes’ notice, instead of a missed appointment.`,
+      // When the clinic moved the appointment on the call (`{time}`: the new time).
+      ifMoved: { title: 'Moved to {time}.', line: 'Before she’s late, not after.' },
     },
     {
       id: 'drive',
@@ -312,6 +314,7 @@ export function presentationScenes(fleet, data) {
       // Back from the call's outcome to the live trip, as she would.
       tap: { at: 0.4, button: 'Back to my ride' },
       line: 'The clinic already knows she’ll be late.',
+      ifMoved: { line: 'Her chance, now for {time}.' },
     },
     {
       id: 'arrive',
@@ -325,6 +328,7 @@ export function presentationScenes(fleet, data) {
         lateBy > 0
           ? `${lateBy} minute${lateBy === 1 ? '' : 's'} late, and the clinic was expecting it.`
           : 'On time, and the clinic knew she might not be.',
+      ifMoved: { line: 'In time for her new appointment, {time}.', lineIfLate: 'The clinic moved her to {time}.' },
     },
     // Why it matters, and what Leeway does.
     {

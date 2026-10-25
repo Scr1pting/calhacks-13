@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { clock } from '../sim/fleet.js'
 import { filmLength, sceneAt } from './script.js'
 import { sampleAt } from './presentation.js'
-import { isPaired } from './presentationSync.js'
+import { isPaired, presentationSync } from './presentationSync.js'
 import { StoryEnd } from './StoryOverlay.jsx'
 import PresentationPhone from './PresentationPhone.jsx'
 
@@ -19,6 +19,15 @@ export default function PresentationOverlay({ scenes, view, getT, onExit, onRepl
   const progress = Math.min(1, elapsed / filmLength(scenes))
   // A paired real phone plays her phone: no phone on screen, the words use the width.
   const paired = isPaired()
+  // The clinic moved the appointment on the call: the words and the chart follow.
+  const movedTo = presentationSync.movedTo(pres.appointment)
+  const words = (text) => text.replace('{time}', hm(movedTo))
+  const late = movedTo != null && pres.arrival > movedTo
+  const title = movedTo != null && scene.ifMoved?.title ? words(scene.ifMoved.title) : scene.title
+  const line =
+    movedTo != null && scene.ifMoved
+      ? words((late && scene.ifMoved.lineIfLate) || scene.ifMoved.line || scene.line)
+      : scene.line
 
   return (
     <div className={`film story live ${paired ? 'no-phone' : ''}`}>
@@ -35,8 +44,8 @@ export default function PresentationOverlay({ scenes, view, getT, onExit, onRepl
           aria-live="polite"
         >
           {scene.eyebrow && <div className="film-eyebrow">{scene.eyebrow}</div>}
-          <h2 className="story-title">{scene.title}</h2>
-          {scene.line && <p className="story-line">{scene.line}</p>}
+          <h2 className="story-title">{title}</h2>
+          {line && <p className="story-line">{line}</p>}
           {scene.points && (
             <ol className="live-points">
               {scene.points.map((p, i) => (
@@ -72,6 +81,9 @@ const TOP = 12
 const BASE = H - 22
 
 function ChanceChart({ pres, getT }) {
+  const label = useRef(null)
+  // After the clinic moves the appointment: when, and the server's chance since, against the new time.
+  const after = useRef({ at: null, samples: [] })
   const line = useRef(null)
   const area = useRef(null)
   const dot = useRef(null)
@@ -89,9 +101,28 @@ function ChanceChart({ pres, getT }) {
     const points = pres.timeline.filter((q) => q.t >= from && q.t <= to)
     const draw = () => {
       const t = Math.min(to, Math.max(from, getT()))
-      const s = sampleAt(pres.timeline, t)
-      const pts = points.filter((q) => q.t < t).map((q) => `${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      const s = { ...sampleAt(pres.timeline, t) }
+      const movedTo = presentationSync.movedTo(pres.appointment)
+      const a = after.current
+      if (movedTo == null || (a.at != null && t < a.at)) {
+        a.at = null
+        a.samples = []
+      }
+      if (movedTo != null) {
+        const p = presentationSync.get().trip?.outlook?.p_on_time
+        if (a.at == null) a.at = t
+        if (p != null) {
+          s.p_on_time = p
+          const last = a.samples[a.samples.length - 1]
+          if (!last || t - last[0] >= 0.25) a.samples.push([t, p])
+        }
+        s.minutes_late = Math.max(0, Math.round(pres.arrival - movedTo))
+      }
+      const until = a.at ?? t
+      const pts = points.filter((q) => q.t < until).map((q) => `${x(q.t).toFixed(1)},${y(q.p_on_time).toFixed(1)}`)
+      for (const [st, sp] of a.samples) pts.push(`${x(st).toFixed(1)},${y(sp).toFixed(1)}`)
       pts.push(`${x(t).toFixed(1)},${y(s.p_on_time).toFixed(1)}`)
+      if (label.current) label.current.textContent = `on time for ${hm(movedTo ?? pres.appointment)}`
       line.current?.setAttribute('points', pts.join(' '))
       area.current?.setAttribute('points', `${x(from)},${BASE} ${pts.join(' ')} ${x(t).toFixed(1)},${BASE}`)
       dot.current?.setAttribute('cx', x(t).toFixed(1))
@@ -128,7 +159,7 @@ function ChanceChart({ pres, getT }) {
       <div className="live-odds">
         <span ref={odds} className="live-odds-value" />
         <span className="live-odds-label">
-          on time for {pres.appointmentLabel}
+          <span ref={label}>on time for {pres.appointmentLabel}</span>
           <br />
           <span ref={eta} />
         </span>

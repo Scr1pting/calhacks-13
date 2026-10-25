@@ -39,7 +39,7 @@ from app.core.schemas import (
     now,
 )
 from app.core.store import get_store
-from app.prediction import live, routing
+from app.prediction import live, onboard, routing
 from app.prediction.plan import BOARD_AFTER_START
 
 log = logging.getLogger(__name__)
@@ -226,6 +226,18 @@ def advance(t: float) -> dict:
         return _advance(run, t)
 
 
+def resync(trip_id: str) -> None:
+    """The trip changed outside the clock (a call moved the appointment): its chance and the
+    rider app follow now, not at the film's next post."""
+    with _lock:
+        try:
+            run = _current()
+        except LookupError:
+            return
+        if run.trip_id == trip_id and run.next > 0:
+            _advance(run, run.t)
+
+
 def current_trip_id() -> str | None:
     doc = get_store().get_json(CURRENT)
     return doc["trip_id"] if doc else None
@@ -254,13 +266,32 @@ def _reset(run: Run) -> None:
         t.live = LiveStatus()
         t.outlook = t.late_ask = t.late_notice = None
         t.calls_used = 0
+        t.arrive_by = at(run, ride().appointment)  # a call may have moved it
 
     get_store().update_trip(run.trip_id, change)
+
+
+def _follow_appointment(run: Run, now: float) -> None:
+    """The Trip's appointment moved (the clinic offered a new time on the call): the live model
+    measures against the new time from here on, and its chance is worked out again now."""
+    trip = get_store().get_trip(run.trip_id)
+    midnight = datetime.datetime.combine(run.date, datetime.time(), routing.TZ)
+    appointment = (trip.arrive_by.astimezone(routing.TZ) - midnight).total_seconds() / 60
+    trip_live = live.get(run.trip_id)
+    if abs(appointment - trip_live.appointment) < 0.01:
+        return
+    trip_live.appointment = appointment
+    state = trip_live.state
+    if state is not None:
+        state.appointment = appointment
+        if state.last_drive is not None:
+            onboard.update_display(state, onboard.onboard_status(state, now, state.last_drive))
 
 
 def _advance(run: Run, t: float) -> dict:
     r = ride()
     status = None
+    _follow_appointment(run, max(run.t, r.track[0][0]))
     with routing.replaying():
         while run.next < len(r.track) and r.track[run.next][0] <= t:
             status = step(r, run.trip_id, r.track[run.next])

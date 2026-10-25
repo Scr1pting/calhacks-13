@@ -27,6 +27,13 @@ const eventListeners = new Set()
 const iso = (minutes) => toLocalISO(new Date(riderTime(0, 0, 0).getTime() + minutes * 60000))
 const latLng = ([lng, lat]) => [lat, lng]
 
+// The server's trip once a call moved its appointment (online only), else null.
+function moved() {
+  const pres = film.pres
+  if (!pres || presentationSync.movedTo(pres.appointment) == null) return null
+  return presentationSync.get().trip
+}
+
 // The trip as the server would have it at the film's clock.
 function trip() {
   const { pres, t } = film
@@ -69,12 +76,20 @@ function trip() {
       ? { asked_at: iso(pres.ask.t), minutes_late: pres.ask.ask_minutes, message: pres.ask.ask, answer: film.answered ? 'call' : null }
       : null,
     late_notice: film.call.ended ? { sent_at: iso(t), minutes_late: pres.ask?.ask_minutes ?? 5 } : null,
+    // After a move the server's appointment and chance (the timeline was for the old time).
+    ...(moved() && { arrive_by: moved().arrive_by, outlook: moved().outlook ?? null }),
   }
 }
 
 function emitTrip() {
   // Nobody listening yet (the app is loading): it catches up when it subscribes.
   if (!film.pres || !tripListeners.size) return
+  // A call moved the appointment: say so, as the server does.
+  const server = moved()
+  if (server && !film.movedSent) {
+    film.movedSent = true
+    emitEvent('appointment_moved', `Appointment moved to ${server.arrive_by}.`)
+  }
   const now = trip()
   const key = JSON.stringify({ ...now, outlook: { ...now.outlook, checked_at: 0 } })
   if (key === film.sent) return
@@ -112,7 +127,7 @@ export const filmRider = {
   reset(pres, t) {
     // Starting past the question (a presenter skipping ahead): she has said yes already.
     const answered = !!pres.ask && t > pres.ask.t + 0.5
-    Object.assign(film, { pres, t, answered, events: [], sent: '', call: { started: false, lines: 0, ended: false } })
+    Object.assign(film, { pres, t, answered, events: [], sent: '', movedSent: false, call: { started: false, lines: 0, ended: false } })
   },
   // The film's clock moved: the server's trip moves with it.
   tick(t) {

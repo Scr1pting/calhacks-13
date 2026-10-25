@@ -26,6 +26,7 @@ class LateNoticeOutcome(BaseModel):
     reached_someone: bool
     acknowledged: bool
     appointment_held: bool | None
+    new_time: str  # HH:MM, the same day, when they moved the appointment; else empty
     notes: str
 
 

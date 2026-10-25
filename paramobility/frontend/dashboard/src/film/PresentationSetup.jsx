@@ -176,7 +176,8 @@ export default function PresentationSetup({ onClose }) {
         <>
           <p className="setup-note">
             Scan with the phone’s camera, or open <b>{riderUrl.replace(/^https?:\/\//, '')}</b> on it and type the code.
-            This panel notices when it’s paired.
+            In the native app: open the menu, and enter the code under Presentation. This panel notices when it’s
+            paired.
           </p>
           <img className="setup-qr" src={qr} alt="QR code that pairs a phone" />
           <div className="setup-code" aria-label="Pairing code">

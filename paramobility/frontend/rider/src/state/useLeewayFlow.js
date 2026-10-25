@@ -235,6 +235,8 @@ export function useLeewayFlow() {
           return { ...prev, screen: 'call', callTripId: tripId }
         }
         if (ev.kind === 'call_ended' && ev.data.call_kind === 'late_notice' && prev.callTripId === tripId) {
+          // They gave a new time: the appointment_moved that follows shows it.
+          if (ev.data.result?.new_time) return prev
           const held = ev.data.result?.appointment_held
           if (held === false) {
             return { ...prev, screen: 'decision', decision: { tripId, choice: 'offer' } }

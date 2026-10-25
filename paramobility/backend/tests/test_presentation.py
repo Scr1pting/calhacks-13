@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import time
 
 import pytest
@@ -123,6 +124,18 @@ def test_the_trip_shows_where_the_ride_is_only_once_she_is_aboard(client, store)
     assert riding.position is not None and ORIGIN[0] < riding.position[0] < DEST[0]
 
 
+def test_a_moved_appointment_moves_the_chance_and_going_back_restores_it(client, store):
+    trip_id = start(client)["id"]
+    clock(client, 650)
+    before = store.get_trip(trip_id)
+    later = before.arrive_by + datetime.timedelta(minutes=45)  # the clinic offered a new time
+    store.update_trip(trip_id, lambda t: setattr(t, "arrive_by", later))
+    clock(client, 652)
+    assert store.get_trip(trip_id).outlook.p_on_time > before.outlook.p_on_time
+    clock(client, PICKUP - 5)  # back in time: the appointment as booked
+    assert store.get_trip(trip_id).arrive_by == before.arrive_by
+
+
 def test_going_back_replays_from_the_start(client, store):
     trip_id = start(client)["id"]
     clock(client, STAND_UNTIL)
@@ -154,6 +167,29 @@ def test_saying_yes_places_the_call(client, store, monkeypatch):
     assert calls[0].minutes_late == ask.minutes_late
     assert "hold your appointment" in store.messages("rider_1")[-1].text
     assert client.post(f"/trips/{trip_id}/late-ask", json={"call": True}).status_code == 409
+
+
+def test_a_new_time_from_the_call_moves_the_trip_and_its_chance_at_once(client, store, monkeypatch):
+    async def fake_call(trip_id, a):
+        return {
+            "reached_someone": True,
+            "acknowledged": True,
+            "appointment_held": False,
+            "new_time": "11:30",
+        }  # the fixture's appointment is 10:45
+
+    monkeypatch.setattr(monitor.actions, "call_about_delay", fake_call)
+    trip_id = start(client, phone="+14155550199")["id"]
+    clock(client, STAND_UNTIL)
+    before = store.get_trip(trip_id)
+    client.post(f"/trips/{trip_id}/late-ask", json={"call": True})
+    eventually(lambda: store.get_trip(trip_id).late_notice is not None)
+    eventually(lambda: store.get_trip(trip_id).outlook is not None)
+    after = store.get_trip(trip_id)  # no clock post since: the server worked it out itself
+    assert (after.arrive_by - before.arrive_by).total_seconds() == 45 * 60
+    assert after.outlook.p_on_time > before.outlook.p_on_time
+    assert any(e.kind == "appointment_moved" for e in store.events(trip_id))
+    assert "moved your appointment to 11:30 AM" in store.messages("rider_1")[-1].text
 
 
 def test_a_new_start_retires_the_last_trip(client, store):
