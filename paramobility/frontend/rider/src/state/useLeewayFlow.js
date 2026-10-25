@@ -3,7 +3,7 @@ import { api, API_BASE, streamRider, streamTrip } from '../api/client.js'
 import { DEMO_CLINIC_PHONE, RIDER, SKIPPED_EVENTS, upcomingAppointments } from '../mocks/calendar.js'
 import { confirmBooking, requestPickupWindow } from '../mocks/paratransit.js'
 import { playAudio, startRecording } from '../lib/recorder.js'
-import { addMinutes, clock, clockShort, isToday, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
+import { TIME_ZONE, addMinutes, clock, clockShort, isToday, percent, shortDate, toLocalISO, weekday } from '../lib/time.js'
 import { DESTINATION, milesBetween, routeAt } from '../lib/liveRoute.js'
 
 // The rider app's logic, backed by the Paramobility API. Screens stay
@@ -25,7 +25,7 @@ function riderProfile(calendar) {
   return {
     name: RIDER.name,
     home: RIDER.home,
-    time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    time_zone: TIME_ZONE,
     calendar: calendar.map((a) => ({
       id: a.id,
       title: a.title,
@@ -95,7 +95,9 @@ export function useLeewayFlow() {
     return data
   })
   const riderId = saved.riderId
-  const voiceRef = useRef({ stop: null, stopAudio: null })
+  const voiceRef = useRef({ stop: null, stopAudio: null, starting: false, released: false })
+  // The rider the backend knows about: its stream 404s until the profile is saved.
+  const [syncedRider, setSyncedRider] = useState(null)
   const [trips, setTrips] = useState({})
   const [events, setEvents] = useState({})
   const [messages, setMessages] = useState({})
@@ -130,6 +132,7 @@ export function useLeewayFlow() {
       try {
         // Sync the profile and calendar, then load everything Leeway knows.
         await api.putRider(riderId, riderProfile(calendar))
+        if (!cancelled) setSyncedRider(riderId)
         const [list, thread] = await Promise.all([api.riderTrips(riderId), api.riderMessages(riderId)])
         const evs = await Promise.all(list.map((t) => api.events(t.id)))
         if (cancelled) return
@@ -203,7 +206,11 @@ export function useLeewayFlow() {
     setEvents((prev) => (prev[trip.id] ? prev : { ...prev, [trip.id]: [] }))
   }, [])
 
-  useEffect(() => streamRider(riderId, { onMessage, onTrip }), [riderId, onMessage, onTrip])
+  // Only once the rider exists: EventSource gives up for good on a 404.
+  useEffect(
+    () => (syncedRider === riderId ? streamRider(riderId, { onMessage, onTrip }) : undefined),
+    [syncedRider, riderId, onMessage, onTrip],
+  )
 
   const streamKey = tripIds.join(',')
   useEffect(() => {
@@ -306,18 +313,34 @@ export function useLeewayFlow() {
   const setVoice = (voice) => setS((prev) => ({ ...prev, voice }))
 
   async function holdStart() {
-    voiceRef.current.stopAudio?.()
-    if (voiceRef.current.stop || s.voice === 'thinking') return
+    const v = voiceRef.current
+    v.stopAudio?.()
+    if (v.stop || v.starting || s.voice === 'thinking') return
+    v.starting = true
+    v.released = false
     try {
-      voiceRef.current.stop = await startRecording()
+      const stop = await startRecording()
+      v.starting = false
+      // Let go while the microphone was starting (or its permission prompt
+      // was up): drop the recording rather than listen with nobody holding.
+      if (v.released) {
+        await stop()
+        return setVoice('idle')
+      }
+      v.stop = stop
       setVoice('listening')
     } catch (e) {
-      voiceRef.current.stop = null
+      v.starting = false
+      v.stop = null
       fail(new Error(`I can't use the microphone: ${e.message}`))
     }
   }
 
   async function holdEnd() {
+    if (voiceRef.current.starting) {
+      voiceRef.current.released = true
+      return
+    }
     const stop = voiceRef.current.stop
     if (!stop) return
     voiceRef.current.stop = null
