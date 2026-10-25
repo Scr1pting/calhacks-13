@@ -140,12 +140,18 @@ function follow(tripId, key, onFail, since = 0) {
   }
   const es = new EventSource(`${API}/trips/${tripId}/stream?api_key=${encodeURIComponent(key)}`)
   es.addEventListener('events', (e) => handle(JSON.parse(e.data)))
-  es.onopen = () =>
+  const backfill = () =>
     fetch(`${API}/trips/${tripId}/events`, { headers: { 'X-API-Key': key } })
       .then((r) => r.json())
       .then((list) => list.forEach(handle))
       .catch(() => {})
-  close = () => es.close()
+  es.onopen = backfill
+  // And every two seconds: a stream that drops (or never opens) mustn't leave the film waiting.
+  const poll = setInterval(backfill, 2000)
+  close = () => {
+    es.close()
+    clearInterval(poll)
+  }
 }
 
 // The scripted call: same shape, fixed lines, paced like a real one. `call.reply`

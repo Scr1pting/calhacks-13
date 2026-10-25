@@ -545,6 +545,26 @@ export function useLeewayFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoKey, s.screen])
 
+  // The presentation ride changes quickly and a phone's stream can drop (a locked
+  // screen, a network or proxy holding it back): ask for it every two seconds too.
+  const presentationId = presentationTrip && presentationTrip.status !== 'completed' ? presentationTrip.id : null
+  const eventsRef = useRef(events)
+  eventsRef.current = events
+  useEffect(() => {
+    if (!presentationId) return undefined
+    const iv = setInterval(async () => {
+      try {
+        const [trip, list] = await Promise.all([api.getTrip(presentationId), api.events(presentationId)])
+        setTrips((prev) => ({ ...prev, [trip.id]: trip }))
+        const seen = new Set((eventsRef.current[presentationId] || []).map((e) => e.id))
+        list.filter((ev) => !seen.has(ev.id)).forEach((ev) => onTripEvent(presentationId, ev))
+      } catch {
+        // offline for a moment: the next round tries again
+      }
+    }, 2000)
+    return () => clearInterval(iv)
+  }, [presentationId, onTripEvent])
+
   const pickupWindow = (t) => {
     const start = t.booked_pickup || t.plan?.recommended.pickup_time
     return start ? { start, end: addMinutes(start, WINDOW_MINUTES) } : null
