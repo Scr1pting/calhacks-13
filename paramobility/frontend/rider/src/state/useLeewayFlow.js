@@ -155,15 +155,25 @@ export function useLeewayFlow() {
         ])
         const evs = await Promise.all(list.map((t) => api.events(t.id)))
         if (cancelled) return
-        setAppointments(checked.calendar.map(appointmentOf))
+        const appts = checked.calendar.map(appointmentOf)
+        setAppointments(appts)
         setSkipped(checked.skipped)
         setEvents(Object.fromEntries(list.map((t, i) => [t.id, evs[i]])))
         setMessages({ [riderId]: thread })
         setTrips(Object.fromEntries(list.map((t) => [t.id, t])))
         // Pick up where the rider left off: plans still waiting to be booked first.
         const waiting = list.filter((t) => WAITING.includes(t.status)).map((t) => t.id)
-        if (waiting.length) go('recommend', { queue: waiting, qi: 0 })
-        else go('chatHome')
+        if (waiting.length) {
+          go('recommend', { queue: waiting, qi: 0 })
+        } else if (list.length === 0 && appts.length) {
+          // A brand new rider: book the first appointment automatically, so
+          // Chat as home opens already showing it instead of the bare
+          // "nothing booked yet" state — stays on the loading screen meanwhile.
+          await autoBookFirst(appts[0])
+          if (!cancelled) go('chatHome')
+        } else {
+          go('chatHome')
+        }
       } catch (e) {
         if (!cancelled) fail(e)
       }
@@ -292,6 +302,29 @@ export function useLeewayFlow() {
     )
     created.forEach(onTrip)
     return created.map((t) => t.id)
+  }
+
+  // Plans and books one appointment silently in the background — no
+  // "Here's what I'd book" or "Calling East Bay Paratransit" in between,
+  // since the rider never asked for this one; it's just how the app opens.
+  // Quietly gives up on any error, leaving the rider on the empty chatHome.
+  async function autoBookFirst(appointment) {
+    try {
+      const [tripId] = await createTrips([appointment])
+      let trip = await refreshTrip(tripId)
+      for (let i = 0; i < 40 && trip.status === 'planning'; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        trip = await refreshTrip(tripId)
+      }
+      if (trip.status !== 'planned' || !trip.plan) return
+      await requestPickupWindow(() => {})
+      await api.book(tripId, trip.plan.recommended.pickup_time)
+      const confirmation = await confirmBooking()
+      updateSaved((prev) => ({ ...prev, confirmations: { ...prev.confirmations, [tripId]: confirmation } }))
+      await refreshTrip(tripId)
+    } catch {
+      // Not fatal — the rider just sees nothing booked yet.
+    }
   }
 
   async function arrange(appointments) {
@@ -1138,42 +1171,73 @@ export function useLeewayFlow() {
     .sort((a, b) => a.start - b.start)
     .slice(0, 2)
 
-  const chatHome = {
-    nextRide: booked.length ? {
-      dateCaps: shortDate(booked[0].arrive_by).toUpperCase(),
-      window: windowText(pickupWindow(booked[0])),
-      title: `${titleOf(booked[0])}, ${booked[0].appointment.name}`,
-      time: clock(booked[0].arrive_by),
-      oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
-      oddsColor: oddsColor(odds(booked[0])),
-      onClick: () => go('home'),
-    } : null,
-    comingUp: nextOnCalendar.length ? {
-      items: nextOnCalendar.map((a) => {
-        const trip = linked.find((t) => t.calendar_event_id === a.id)
-        const date = `${shortDate(a.start)} · ${clock(a.start)}`
-        if (!trip) {
-          return { key: a.id, title: a.title, date, status: null, actionLabel: 'Book ride', onAction: () => arrange([a]) }
+  const chatHome =
+    s.screen === 'chatHome' && s.preview === 'chatHome'
+      ? {
+          nextRide: {
+            dateCaps: 'TUE, NOV 3',
+            window: '9:15 – 9:45',
+            title: 'Neurology, Kaiser Oakland',
+            time: '10:30 AM',
+            oddsValue: '86%',
+            oddsColor: oddsColor(0.86),
+            onClick: () => go('home', { preview: 'homeToday' }),
+          },
+          comingUp: {
+            items: [
+              {
+                key: 'preview-pt',
+                title: 'Physical Therapy',
+                date: 'Thu, Nov 5 · 2:00 PM',
+                status: null,
+                actionLabel: 'Book ride',
+                onAction: () => go('recommend', { preview: 'recommend' }),
+              },
+            ],
+            onSeeAll: () => go('everyday', { preview: 'everyday' }),
+          },
+          suggestions: ['Can someone ride with me?', 'Cancel Tuesday’s ride'].map((q) => ({ text: q, onClick: () => {} })),
         }
-        if (ACTIVE.includes(trip.status)) {
-          return { key: a.id, title: a.title, date, status: 'Booked', actionLabel: null, onAction: null }
+      : {
+          nextRide: booked.length
+            ? {
+                dateCaps: shortDate(booked[0].arrive_by).toUpperCase(),
+                window: windowText(pickupWindow(booked[0])),
+                title: `${titleOf(booked[0])}, ${booked[0].appointment.name}`,
+                time: clock(booked[0].arrive_by),
+                oddsValue: odds(booked[0]) != null ? percent(odds(booked[0])) : '–',
+                oddsColor: oddsColor(odds(booked[0])),
+                onClick: () => go('home'),
+              }
+            : null,
+          comingUp: nextOnCalendar.length
+            ? {
+                items: nextOnCalendar.map((a) => {
+                  const trip = linked.find((t) => t.calendar_event_id === a.id)
+                  const date = `${shortDate(a.start)} · ${clock(a.start)}`
+                  if (!trip) {
+                    return { key: a.id, title: a.title, date, status: null, actionLabel: 'Book ride', onAction: () => arrange([a]) }
+                  }
+                  if (ACTIVE.includes(trip.status)) {
+                    return { key: a.id, title: a.title, date, status: 'Booked', actionLabel: null, onAction: null }
+                  }
+                  return {
+                    key: a.id,
+                    title: a.title,
+                    date,
+                    status: null,
+                    actionLabel: 'Book ride',
+                    onAction: () => go('recommend', { queue: [trip.id], qi: 0 }),
+                  }
+                }),
+                onSeeAll: () => go('everyday'),
+              }
+            : null,
+          suggestions: [
+            'Can someone ride with me?',
+            booked.length ? `Cancel ${weekday(booked[0].arrive_by)}’s ride` : 'Cancel my next ride',
+          ].map((q) => ({ text: q, onClick: () => openChat(q) })),
         }
-        return {
-          key: a.id,
-          title: a.title,
-          date,
-          status: null,
-          actionLabel: 'Book ride',
-          onAction: () => go('recommend', { queue: [trip.id], qi: 0 }),
-        }
-      }),
-      onSeeAll: () => go('everyday'),
-    } : null,
-    suggestions: [
-      'Can someone ride with me?',
-      booked.length ? `Cancel ${weekday(booked[0].arrive_by)}’s ride` : 'Cancel my next ride',
-    ].map((q) => ({ text: q, onClick: () => openChat(q) })),
-  }
 
   // ---- demo panel: live state and simulated ride updates -----------------------
 
@@ -1183,7 +1247,10 @@ export function useLeewayFlow() {
     setTrips({})
     setEvents({})
     setMessages({})
-    setS({ ...INIT, screen: 'chatHome' })
+    // Back to 'loading' (INIT's default) — the load effect below picks the
+    // new riderId up, books the first appointment, then lands on chatHome
+    // already populated.
+    setS(INIT)
   }
   // ---- which screen to show ----------------------------------------------------
 
@@ -1239,7 +1306,7 @@ export function useLeewayFlow() {
       title: 'ASK LEEWAY',
       steps: [
         navStep('7', 'Ask Leeway', screen === 'chat', () => openChat()),
-        navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome')),
+        navStep('7c', 'Chat as home', screen === 'chatHome', () => go('chatHome', { preview: 'chatHome' })),
       ],
     },
   ]
