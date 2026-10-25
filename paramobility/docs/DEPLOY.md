@@ -68,6 +68,9 @@ ssh root@2.29.114.245 'cd /opt/paramobility/repo/paramobility/deploy && PARAMOBI
 | `CARTESIA_FROM_NUMBER_ID` | The number calls come from (its `ap_…` id, or the `+1…` number) |
 | `CARTESIA_POLICY_AGENT_ID`, `CARTESIA_LATE_AGENT_ID`, `CARTESIA_MESSAGE_AGENT_ID` | Printed by `python -m app.voice.setup` |
 | `VOICE_WEBHOOK_SECRET` | Bearer token Cartesia sends to `/voice/webhooks/*` |
+| `CALL_PIN` | PIN the rider app's demo panel needs to approve a new number to call. Unset: numbers can't be added from the app |
+| `CALL_ALLOWLIST` | Comma-separated numbers that may always be called (E.164 or as typed) |
+| `CALL_LIMIT_PER_HOUR`, `CALL_LIMIT_PER_DAY` | Calls per number (default 4 an hour, 12 a day) |
 
 The webhook listener's own settings are in `/opt/paramobility/webhook.env`: `GITHUB_WEBHOOK_SECRET`, `DEPLOY_BRANCH`, and `DEPLOY_WORKFLOW` (must match the workflow's `name:`).
 

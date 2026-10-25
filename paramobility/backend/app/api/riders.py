@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from app.agents import chat
 from app.core.schemas import CalendarEvent, ChatMessage, Permissions, RiderProfile, Trip, now
 from app.core.store import get_store
-from app.voice import speech
+from app.voice import numbers, speech
 
 from .streams import sse
 from .trips import require_api_key
@@ -115,3 +115,39 @@ async def speak(body: SpeechRequest) -> Response:
     except speech.SpeechError as e:
         raise HTTPException(502, str(e)) from e
     return Response(audio, media_type="audio/mpeg")
+
+
+# ---- the numbers Leeway may call (checks in app.voice.numbers) ----------------
+
+
+class CallNumber(BaseModel):
+    phone: str
+    pin: str = ""
+
+
+class CallNumberStatus(BaseModel):
+    phone: str
+    approved: bool
+    reason: str = ""
+
+
+@router.post("/call-numbers/check")
+async def check_call_number(body: CallNumber) -> CallNumberStatus:
+    """Whether Leeway may call this number, and if not, why."""
+    try:
+        number = numbers.check(body.phone)
+    except numbers.NumberRejected as e:
+        return CallNumberStatus(phone=body.phone, approved=False, reason=str(e))
+    approved = number in numbers.approved_numbers()
+    return CallNumberStatus(phone=number, approved=approved,
+                            reason="" if approved else "Not approved yet: enter the PIN to add it.")
+
+
+@router.post("/call-numbers")
+async def add_call_number(body: CallNumber) -> CallNumberStatus:
+    """Approve a number for calls. Needs the server's CALL_PIN."""
+    try:
+        number = numbers.approve(body.phone, body.pin)
+    except numbers.NumberRejected as e:
+        raise HTTPException(403 if isinstance(e, numbers.PinRejected) else 422, str(e)) from e
+    return CallNumberStatus(phone=number, approved=True)

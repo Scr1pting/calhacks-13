@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     cartesia_voice_id: str = "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4"
     voice_webhook_secret: str = ""
     call_timeout_seconds: int = 600
+    # Which numbers may be called (app.voice.numbers): these, comma-separated,
+    # plus any added in the app with this PIN (no PIN: adding is off).
+    call_allowlist: str = ""
+    call_pin: str = ""
+    call_limit_per_hour: int = 4  # per number
+    call_limit_per_day: int = 12
 
     monitor_interval_seconds: int = 60
     # A trip counts as running late once P(arrive by deadline) drops below this.

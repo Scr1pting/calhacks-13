@@ -73,6 +73,8 @@ A trip created without a `rider_id` gets its own conversation at `/trips/{id}/me
 | `POST` | `/riders/{rider_id}/voice` | multipart, field `audio` | `{"transcript", "messages"}` |
 | `GET` | `/riders/{rider_id}/stream` | | server-sent events `messages` and `trips` |
 | `POST` | `/speech` | `{"text": "…"}` | `audio/mpeg`: the text in Leeway's voice |
+| `POST` | `/call-numbers/check` | `{"phone": "…"}` | `{"phone", "approved", "reason"}`: whether Leeway may call it (normalized to E.164) and if not, why |
+| `POST` | `/call-numbers` | `{"phone": "…", "pin": "…"}` | the same, approved; 403 for a wrong or missing PIN (or none set on the server), 422 for a number that can never be called |
 | `GET` | `/trips/{id}` | | `Trip` |
 | `GET` | `/trips/{id}/messages` | | `ChatMessage[]` (the rider's conversation if the trip has one) |
 | `POST` | `/trips/{id}/messages` | `{"text": "…"}` | `ChatMessage[]` |
@@ -87,6 +89,8 @@ A trip created without a `rider_id` gets its own conversation at `/trips/{id}/me
 | `GET` | `/trips/{id}/distribution?pickup_time=…` | | arrival histogram for one pickup time: `bin_edges` and `p` per 5-min bin, for the dashboard |
 | `GET` | `/calibration` | | `[{"promised": 0.9, "observed": 0.87}, …]` |
 | `GET` | `/health` | | `{"ok": true}` |
+
+Every call is checked again just before it is dialled (`app/voice/numbers.py`): a US or Canadian number, not a premium-rate, emergency or real paratransit agency line, approved (in `CALL_ALLOWLIST` or added with `CALL_PIN`), and within `CALL_LIMIT_PER_HOUR` / `CALL_LIMIT_PER_DAY` calls. A refused call costs none of the rider's call budget, and the trip's log gets a `call_blocked` event saying why.
 
 ## Shapes
 
