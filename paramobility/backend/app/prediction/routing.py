@@ -20,10 +20,15 @@ as well as Routes.
 
 Live calls (drive_now, during a ride) depart now and are never cached on disk, since the van's
 position changes every call. Only with DEMO_CACHE=1 are live and route responses recorded in
-DEMO_CACHE_PATH and replayed afterwards, so a demo survives bad venue Wi-Fi.
+DEMO_CACHE_PATH and replayed afterwards, so a demo survives bad venue Wi-Fi. A scripted demo
+(app.demo) turns that on for its own calls with replaying(), and hears about every answer that
+wasn't recorded yet.
 """
 
+import contextlib
+import contextvars
 import json
+import logging
 import math
 import threading
 import time
@@ -48,6 +53,11 @@ ORS_GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
 LatLng = tuple[float, float]
 
 _lock = threading.Lock()
+log = logging.getLogger(__name__)
+# Keys the current replaying() block had to fetch live; None outside one.
+_replay_misses: contextvars.ContextVar[list[str] | None] = contextvars.ContextVar(
+    "replay_misses", default=None
+)
 
 
 class RoutingError(RuntimeError):
@@ -275,10 +285,26 @@ def _cached(key: str, max_age_days: float, fetch):
     return value
 
 
+@contextlib.contextmanager
+def replaying():
+    """Record and replay live and route answers inside the block as with DEMO_CACHE=1.
+
+    Yields the list of keys that weren't recorded yet and were fetched live, so a rehearsed demo
+    can check it never needs one. Each miss is also logged.
+    """
+    misses: list[str] = []
+    token = _replay_misses.set(misses)
+    try:
+        yield misses
+    finally:
+        _replay_misses.reset(token)
+
+
 def _demo_cached(key: str, fetch):
-    """fetch(), recorded in / replayed from DEMO_CACHE_PATH when DEMO_CACHE=1."""
+    """fetch(), recorded in / replayed from DEMO_CACHE_PATH when DEMO_CACHE=1 or replaying()."""
     settings = get_settings()
-    if not settings.demo_cache:
+    misses = _replay_misses.get()
+    if not settings.demo_cache and misses is None:
         return fetch()
     path = Path(settings.demo_cache_path)
     with _lock:
@@ -286,6 +312,9 @@ def _demo_cached(key: str, fetch):
     if key in cache:
         hit = cache[key]
         return (list(map(tuple, hit[0])), hit[1]) if isinstance(hit, list) else hit
+    if misses is not None:
+        misses.append(key)
+        log.warning("demo replay: no recorded answer for %s, asking %s live", key, provider())
     value = fetch()
     with _lock:
         cache = _read(path)

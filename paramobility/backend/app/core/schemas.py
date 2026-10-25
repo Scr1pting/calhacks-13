@@ -83,6 +83,7 @@ class LiveStatus(BaseModel):
     van_eta: datetime | None = None
     picked_up_at: datetime | None = None
     arrived_at: datetime | None = None
+    progress: float | None = None  # share of the ride done, when the van is tracked by GPS
 
 
 class Outlook(BaseModel):
@@ -99,6 +100,15 @@ class LateNotice(BaseModel):
     minutes_late: int
 
 
+class LateAsk(BaseModel):
+    """Leeway asked the rider whether to tell the appointment they're running late."""
+
+    asked_at: datetime
+    minutes_late: int
+    message: str
+    answer: Literal["call", "no"] | None = None
+
+
 class Trip(TripRequest):
     id: str = Field(default_factory=lambda: new_id("trip"))
     created_at: datetime = Field(default_factory=now)
@@ -110,6 +120,10 @@ class Trip(TripRequest):
     outlook: Outlook | None = None
     calls_used: int = 0
     late_notice: LateNotice | None = None
+    late_ask: LateAsk | None = None
+    # "presentation": a scripted demo ride (app.demo) whose outlook comes from the demo's clock,
+    # so the monitor leaves it alone.
+    demo: str = ""
     error: str = ""
 
 
