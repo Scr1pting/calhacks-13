@@ -32,7 +32,14 @@ export default function PresentationSetup({ onClose }) {
     setup
       .check()
       .then(() => live && setServer({ state: 'ok', text: 'Connected. The presentation drives the server’s ride.' }))
-      .catch((e) => live && setServer({ state: 'error', text: `The server says: ${e.message}` }))
+      .catch(
+        (e) =>
+          live &&
+          setServer({
+            state: 'error',
+            text: /invalid API key/i.test(e.message) ? 'That isn’t the server’s API key (API_KEY in its .env).' : `The server says: ${e.message}`,
+          }),
+      )
     return () => {
       live = false
     }
@@ -66,7 +73,9 @@ export default function PresentationSetup({ onClose }) {
   }
 
   // Pairing: a rider for the phone to become, and the link it opens.
-  const pairing = saved.rider && saved.key ? `${riderUrl}?pair=${encodeURIComponent(saved.rider)}#key=${encodeURIComponent(saved.key)}` : ''
+  // Only a key the server took goes into the code: a wrong one would pair a phone that can't connect.
+  const keyOk = server.state === 'ok'
+  const pairing = saved.rider && saved.key && keyOk ? `${riderUrl}?pair=${encodeURIComponent(saved.rider)}#key=${encodeURIComponent(saved.key)}` : ''
   useEffect(() => {
     if (!pairing) return setQr('')
     QRCode.toDataURL(pairing, { margin: 1, width: 220, color: { dark: '#141618', light: '#ffffff' } })
@@ -77,7 +86,7 @@ export default function PresentationSetup({ onClose }) {
 
   // Until the phone shows up: once its app has started, its rider exists.
   useEffect(() => {
-    if (!saved.rider || !saved.key || seen) return undefined
+    if (!saved.rider || !saved.key || !keyOk || seen) return undefined
     let live = true
     const look = async () => {
       if (await setup.riderExists(saved.rider)) {
@@ -93,7 +102,7 @@ export default function PresentationSetup({ onClose }) {
       clearInterval(id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saved.rider, saved.key, seen])
+  }, [saved.rider, saved.key, keyOk, seen])
 
   const startPairing = () => {
     setSeen(false)
@@ -139,7 +148,7 @@ export default function PresentationSetup({ onClose }) {
             <button type="button" className="btn btn-outline" onClick={() => save({ paired: false, rider: '' })}>
               Use the virtual phone
             </button>
-            <button type="button" className="btn btn-outline" onClick={startPairing} disabled={!saved.key}>
+            <button type="button" className="btn btn-outline" onClick={startPairing} disabled={!keyOk}>
               Pair another phone
             </button>
           </div>
@@ -166,7 +175,7 @@ export default function PresentationSetup({ onClose }) {
             <input type="url" value={riderUrl} onChange={(e) => setRiderUrl(e.target.value)} />
           </label>
           <div className="setup-row">
-            <button type="button" className="btn btn-outline" onClick={startPairing} disabled={!saved.key}>
+            <button type="button" className="btn btn-outline" onClick={startPairing} disabled={!keyOk}>
               Pair a phone
             </button>
           </div>

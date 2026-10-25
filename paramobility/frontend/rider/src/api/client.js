@@ -33,6 +33,12 @@ async function send(method, path, { json, form } = {}) {
     } catch {
       // not JSON
     }
+    // No key, or the wrong one: say how to get the right one (deployed, the app has none built in).
+    if (res.status === 401) {
+      detail = API_KEY
+        ? 'This phone has an old key. Pair it again: scan the code in the dashboard’s Presentation setup.'
+        : 'This phone isn’t paired yet. Scan the code in the dashboard’s Presentation setup.'
+    }
     throw new ApiError(res.status, typeof detail === 'string' ? detail : JSON.stringify(detail))
   }
   return res
