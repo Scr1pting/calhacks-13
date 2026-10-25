@@ -189,6 +189,7 @@ def test_a_new_time_from_the_call_moves_the_trip_and_its_chance_at_once(client, 
     assert (after.arrive_by - before.arrive_by).total_seconds() == 45 * 60
     assert after.outlook.p_on_time > before.outlook.p_on_time
     assert any(e.kind == "appointment_moved" for e in store.events(trip_id))
+    eventually(lambda: store.messages("rider_1"))  # sent once the chance is worked out again
     assert "moved your appointment to 11:30 AM" in store.messages("rider_1")[-1].text
 
 
