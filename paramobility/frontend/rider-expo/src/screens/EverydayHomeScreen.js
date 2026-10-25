@@ -10,25 +10,31 @@ import { cardShadow, colors, fonts, radii, type } from '../theme/tokens'
 export default function EverydayHomeScreen({ everyday }) {
   return (
     <>
-      <Headline lead="Your rides are taken care of.">
-        Next up is {everyday.next.title.toLowerCase()} on {everyday.next.day}. I'll watch the trip for
-        you.
-      </Headline>
+      {everyday.next ? (
+        <Headline lead="Your rides are taken care of.">
+          Next up is {everyday.next.title.toLowerCase()} on {everyday.next.day}. I'll watch the trip for
+          you.
+        </Headline>
+      ) : (
+        <Headline lead="Nothing booked yet.">Here's what's coming up on your calendar.</Headline>
+      )}
 
-      <Card>
-        <EyebrowLabel>
-          Next ride {'·'} {everyday.next.date}
-        </EyebrowLabel>
-        <Text style={styles.title}>
-          {everyday.next.title}, {everyday.next.location}
-        </Text>
-        <View style={styles.odds}>
-          <Text style={[styles.oddsValue, { color: everyday.next.oddsColor }]}>{everyday.next.oddsValue}</Text>
-          <Text style={styles.oddsLabel}>chance of arriving by {everyday.next.arriveByTime}</Text>
-        </View>
-        <Divider />
-        <KeyValueRow label="Pickup window" value={everyday.next.pickupWindow} />
-      </Card>
+      {everyday.next && (
+        <Card>
+          <EyebrowLabel>
+            Next ride {'·'} {everyday.next.date}
+          </EyebrowLabel>
+          <Text style={styles.title}>
+            {everyday.next.title}, {everyday.next.location}
+          </Text>
+          <View style={styles.odds}>
+            <Text style={[styles.oddsValue, { color: everyday.next.oddsColor }]}>{everyday.next.oddsValue}</Text>
+            <Text style={styles.oddsLabel}>chance of arriving by {everyday.next.arriveByTime}</Text>
+          </View>
+          <Divider />
+          <KeyValueRow label="Pickup window" value={everyday.next.pickupWindow} />
+        </Card>
+      )}
 
       {everyday.alsoBooked.length > 0 && (
         <View style={styles.section}>

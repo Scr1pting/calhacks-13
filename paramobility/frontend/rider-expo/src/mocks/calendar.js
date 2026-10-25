@@ -21,7 +21,7 @@ export const RIDER = {
   home: '1520 Grand Ave, Oakland',
 }
 
-const KAISER = 'Kaiser Permanente Oakland Medical Center, 3600 Broadway, Oakland, CA 94611'
+const KAISER = 'Kaiser Oakland, 3600 Broadway, Oakland, CA 94611'
 const clinicNotes = (phone) => (phone ? `Questions? Call the clinic at ${phone}.` : '')
 
 // Times are in the rider's zone (Bay Area), not the demo machine's, and fall
@@ -46,8 +46,8 @@ function entry(id, title, start, location = '', notes = '') {
 // `phone`: the number Leeway calls as the clinic.
 export function calendarEntries(phone) {
   return [
-    entry('cal-neuro', 'Neurology follow-up – Dr. Patel', soonest(), KAISER, clinicNotes(phone)),
-    entry('cal-pt', 'PT session', riderTime(2, 14, 0), KAISER, clinicNotes(phone)),
+    entry('cal-neuro', 'Neurology', soonest(), KAISER, clinicNotes(phone)),
+    entry('cal-pt', 'Physical Therapy', riderTime(2, 14, 0), KAISER, clinicNotes(phone)),
     entry('cal-standup', 'Team stand-up', riderTime(1, 9, 0), 'https://zoom.us/j/84121'),
     entry('cal-mom', 'Call with Mom', riderTime(1, 18, 0)),
     entry('cal-review', 'Quarterly review', riderTime(3, 11, 0), 'Google Meet', 'meet.google.com/abc-defg-hij'),

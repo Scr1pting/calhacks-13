@@ -10,8 +10,7 @@ export default function CalendarDiscoveryScreen({ discover }) {
   return (
     <>
       <Headline lead="Let's plan ahead.">
-        I found a few upcoming appointments in your calendar. Would you like
-        me to arrange transportation?
+        I found a few upcoming appointments in your calendar.
       </Headline>
 
       <View accessibilityLabel="Appointments that may need a ride" style={styles.list}>
