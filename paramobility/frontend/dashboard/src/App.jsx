@@ -70,6 +70,13 @@ function frameCamera(m, scene, padding = STORY_PADDING) {
   const ys = pts.map((p) => p[1])
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
   const { clientWidth: W, clientHeight: H } = m.getContainer()
+  // On a small screen the margins shrink with it, leaving the points at least
+  // a third of each side: fixed margins bigger than the window leave no room,
+  // and the camera nowhere to go (a blank map).
+  const fit = (size, a, b) => Math.min(1, (size * 2) / 3 / Math.max(a + b, 1))
+  const kx = fit(W, padding.left, padding.right)
+  const ky = fit(H, padding.top, padding.bottom)
+  padding = { left: padding.left * kx, right: padding.right * kx, top: padding.top * ky, bottom: padding.bottom * ky }
   const room = Math.min((W - padding.left - padding.right) / (x1 - x0 || 1e-9), (H - padding.top - padding.bottom) / (y1 - y0 || 1e-9))
   const zoom = Math.min(scene.maxZoom ?? 22, Math.log2(room / 512))
   const scale = 512 * 2 ** zoom
