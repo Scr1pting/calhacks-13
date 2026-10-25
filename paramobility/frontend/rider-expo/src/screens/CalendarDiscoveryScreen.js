@@ -27,7 +27,14 @@ export default function CalendarDiscoveryScreen({ discover }) {
         I skipped {discover.skipped} events that don't look like they need a ride, like work
         meetings and calls.
       </Text>
+    </>
+  )
+}
 
+// Fixed at the bottom by Page.
+export function DiscoverActions({ discover }) {
+  return (
+    <>
       <Button variant="primary" disabled={discover.arrangeDisabled} onPress={discover.onArrange}>
         {discover.arrangeLabel}
       </Button>

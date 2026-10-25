@@ -22,11 +22,16 @@ export default function RiderDecisionScreen({ decision }) {
           </SelectRow>
         ))}
       </View>
-
-      <Button variant="primary" onPress={decision.onApprove}>
-        {decision.approveLabel}
-      </Button>
     </>
+  )
+}
+
+// Fixed at the bottom by Page.
+export function DecisionActions({ decision }) {
+  return (
+    <Button variant="primary" onPress={decision.onApprove}>
+      {decision.approveLabel}
+    </Button>
   )
 }
 

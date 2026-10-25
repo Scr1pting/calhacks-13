@@ -34,7 +34,7 @@ We still want to get the same probabilities for falling into the different bucke
 
 ![](graphics/pickup-prior-17h.svg)
 
-We noticed that our mean and therefore our offset $g(t)$ is very ragged, so we wanted to interpolate it using a polynomial. The results were slightly unrealistic (shoutout to the Runge phenomena)
+We noticed that our mean and therefore our offset $g(t)$ is very ragged, so we wanted to interpolate it using a polynomial. Some might say the result was slightly unrealistic (shoutout to the Runge phenomena):
 
 ![](graphics/runge-mu0.svg)
 
@@ -55,13 +55,11 @@ Under the hood this is a **Bayesian linear regression**: fading old trips = trea
 
 ### R
 
-Our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. It knows the traffic for the exact route and departure time, which beats going by distance: ten miles on the freeway and ten miles through downtown are very different drives.
+Our initial idea was to use Google Maps via the Google Routes API to estimate how long a ride takes. This 
 
-The catch is that **a shared van takes longer than driving straight there**, since it picks up and drops off other riders along the way.
+How can we address this?
 
-How can we address this? We multiply the drive time by a **shared-ride factor** $\kappa$. East Bay Paratransit reports an average ride of 48.9 minutes for an average trip of 11.43 miles, so we sampled similar trips (homes near BART to clinics and stations), asked Google how long they'd take to drive, and picked $\kappa$ so the averages match. We got $\kappa \approx 2.2$: a paratransit ride takes a bit more than twice as long as driving.
-
-The ride time is a **log-normal** too ($\,R = \kappa \cdot T_{\text{drive}} \cdot e^{\eta}\,$). We take its spread from how far NYC's actual ride times stray from the scheduled ones, plus a little extra because we don't know in advance who else will be on the van.
+A shared van takes longer than driving straight there. 
 
 
 

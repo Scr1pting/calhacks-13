@@ -11,23 +11,16 @@ import { colors, fonts, type } from '../theme/tokens'
 // Screen 2: "Recommended booking". No bottom bar on this screen.
 // While the plan is still being worked out, `recommend.ready` is false and
 // only the headline shows — the rider lands here directly from "Arrange
-// rides" rather than passing through a separate loading screen.
+// rides" rather than passing through a separate loading screen. The buttons
+// are RecommendActions, fixed at the bottom by Page.
 export default function RecommendedBookingScreen({ recommend }) {
   if (!recommend.ready) {
     return (
-      <>
-        <View style={styles.head}>
-          <Text style={styles.headline}>
-            Here's what I'd book. <Text style={styles.headlineGray}>{recommend.headlineGray}</Text>
-          </Text>
-        </View>
-        {recommend.failed && (
-          <Button variant="primary" onPress={recommend.onRetry}>
-            Try again
-          </Button>
-        )}
-        <NotNowButton onPress={recommend.onNotNow} />
-      </>
+      <View style={styles.head}>
+        <Text style={styles.headline}>
+          Here's what I'd book. <Text style={styles.headlineGray}>{recommend.headlineGray}</Text>
+        </Text>
+      </View>
     )
   }
 
@@ -55,10 +48,24 @@ export default function RecommendedBookingScreen({ recommend }) {
         </View>
         <Text style={styles.explanation}>{recommend.explanation}</Text>
       </Card>
+    </>
+  )
+}
 
-      <Button variant="primary" onPress={recommend.onConfirm}>
-        Confirm
-      </Button>
+export function RecommendActions({ recommend }) {
+  return (
+    <>
+      {recommend.ready ? (
+        <Button variant="primary" onPress={recommend.onConfirm}>
+          Confirm
+        </Button>
+      ) : (
+        recommend.failed && (
+          <Button variant="primary" onPress={recommend.onRetry}>
+            Try again
+          </Button>
+        )
+      )}
       <NotNowButton onPress={recommend.onNotNow} />
     </>
   )

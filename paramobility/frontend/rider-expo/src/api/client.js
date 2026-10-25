@@ -14,15 +14,35 @@ export class ApiError extends Error {
   }
 }
 
-async function send(method, path, { json, form } = {}) {
-  const res = await fetch(API_BASE + path, {
-    method,
-    headers: {
-      'X-API-Key': API_KEY,
-      ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: json !== undefined ? JSON.stringify(json) : form,
-  })
+// How long to wait for an answer: Leeway's replies (chat, voice) take a while,
+// everything else should be quick. A server that's down or out of reach then
+// shows as an error saying so, instead of the app waiting forever.
+const TIMEOUT_MS = 20000
+const SLOW_TIMEOUT_MS = 90000
+
+async function send(method, path, { json, form, timeout = TIMEOUT_MS } = {}) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  let res
+  try {
+    res = await fetch(API_BASE + path, {
+      method,
+      headers: {
+        'X-API-Key': API_KEY,
+        ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: json !== undefined ? JSON.stringify(json) : form,
+      signal: controller.signal,
+    })
+  } catch (e) {
+    throw new Error(
+      controller.signal.aborted
+        ? `the server at ${API_BASE} didn't answer within ${timeout / 1000} seconds`
+        : `can't reach the server at ${API_BASE}`,
+    )
+  } finally {
+    clearTimeout(timer)
+  }
   if (!res.ok) {
     let detail = res.statusText
     try {
@@ -35,14 +55,14 @@ async function send(method, path, { json, form } = {}) {
   return res
 }
 
-const request = async (method, path, json) => (await send(method, path, { json })).json()
+const request = async (method, path, json, timeout) => (await send(method, path, { json, timeout })).json()
 
 export const api = {
   createTrip: (tripRequest) => request('POST', '/trips', tripRequest),
   getTrip: (id) => request('GET', `/trips/${id}`),
   events: (id) => request('GET', `/trips/${id}/events`),
   messages: (id) => request('GET', `/trips/${id}/messages`),
-  sendMessage: (id, text) => request('POST', `/trips/${id}/messages`, { text }),
+  sendMessage: (id, text) => request('POST', `/trips/${id}/messages`, { text }, SLOW_TIMEOUT_MS),
   replan: (id, certainty) => request('POST', `/trips/${id}/plan`, certainty ? { certainty } : {}),
   book: (id, pickupTime) => request('POST', `/trips/${id}/book`, { pickup_time: pickupTime }),
   status: (id, kind, at) => request('POST', `/trips/${id}/status`, at ? { kind, at } : { kind }),
@@ -50,10 +70,10 @@ export const api = {
   // The rider: profile and calendar, all their trips, and their conversation with Leeway.
   putRider: (id, profile) => request('PUT', `/riders/${id}`, profile),
   // Every calendar entry in; {calendar, skipped} out: the ones that need a ride.
-  syncCalendar: (id, entries) => request('PUT', `/riders/${id}/calendar`, { entries }),
+  syncCalendar: (id, entries) => request('PUT', `/riders/${id}/calendar`, { entries }, SLOW_TIMEOUT_MS),
   riderTrips: (id) => request('GET', `/riders/${id}/trips`),
   riderMessages: (id) => request('GET', `/riders/${id}/messages`),
-  sendRiderMessage: (id, text) => request('POST', `/riders/${id}/messages`, { text }),
+  sendRiderMessage: (id, text) => request('POST', `/riders/${id}/messages`, { text }, SLOW_TIMEOUT_MS),
 
   // The numbers Leeway may call: {phone, approved, reason}. Adding one needs the server's PIN.
   checkCallNumber: (phone) => request('POST', '/call-numbers/check', { phone }),
@@ -70,11 +90,11 @@ export const api = {
       const ext = recording.type.includes('wav') ? 'wav' : recording.type.includes('mp4') ? 'mp4' : 'webm'
       form.append('audio', recording, `speech.${ext}`)
     }
-    return (await send('POST', `/riders/${id}/voice`, { form })).json()
+    return (await send('POST', `/riders/${id}/voice`, { form, timeout: SLOW_TIMEOUT_MS })).json()
   },
   // The MP3 as an ArrayBuffer, which lib/recorder plays.
   async speech(text) {
-    return (await send('POST', '/speech', { json: { text } })).arrayBuffer()
+    return (await send('POST', '/speech', { json: { text }, timeout: SLOW_TIMEOUT_MS })).arrayBuffer()
   },
 }
 

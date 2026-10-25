@@ -35,6 +35,16 @@ Restart `expo start` after changing `.env`.
 
 ## Platform notes
 
+- **Navigation.** Expo Router's native stack (`src/app/`): pages push and pop
+  like any iOS app, with the edge swipe back, Android back and browser back
+  and URLs. The flow hook still decides which page to show;
+  `src/state/useNavSync.js` turns that into pushes and pops, and reports a page
+  the rider goes back to. On iOS the top bar is the native header,
+  transparent with native buttons (Liquid Glass on iOS 26); on Android and
+  web it's `TopBar`, frosted. The Ask Leeway bar floats over the page in
+  Liquid Glass (`Glass`, a white bar where there's no glass) and moves with
+  the keyboard.
+
 - **Calendar.** On a phone with a development build, the app reads the phone's
   calendar (two weeks ahead) and the backend picks the entries that need a
   ride. On web, in Expo Go, or if the rider says no, it uses the mock calendar
